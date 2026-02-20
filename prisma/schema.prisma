@@ -1,0 +1,394 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  PENDING_VERIFICATION
+  LOCKED
+  DELETED
+}
+
+enum AuthProvider {
+  LOCAL
+  GOOGLE
+  GITHUB
+  MICROSOFT
+}
+
+enum PermissionAction {
+  CREATE
+  READ
+  UPDATE
+  DELETE
+  EXPORT
+  ADMIN
+}
+
+enum NotificationChannel {
+  EMAIL
+  IN_APP
+  SMS
+  PUSH
+}
+
+enum NotificationStatus {
+  PENDING
+  SENT
+  DELIVERED
+  READ
+  FAILED
+}
+
+enum AuditAction {
+  CREATE
+  UPDATE
+  DELETE
+  LOGIN
+  LOGOUT
+  LOGIN_FAILED
+  PASSWORD_RESET
+  PERMISSION_CHANGE
+  EXPORT
+  VIEW
+}
+
+enum ConfigType {
+  STRING
+  INTEGER
+  BOOLEAN
+  JSON
+  SECRET
+}
+
+model Organization {
+  id                   String                @id @default(uuid()) @db.Uuid
+  name                 String                @db.VarChar(255)
+  slug                 String                @unique @db.VarChar(100)
+  description          String?
+  logoUrl              String?               @db.VarChar(500)
+  website              String?               @db.VarChar(255)
+  isActive             Boolean               @default(true)
+  settings             Json?
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
+  deletedAt            DateTime?
+  roles                Role[]
+  users                User[]
+  systemConfigurations SystemConfiguration[]
+  auditLogs            AuditLog[]
+  fileUploads          FileUpload[]
+}
+
+model Role {
+  id              String           @id @default(uuid()) @db.Uuid
+  organizationId  String?          @db.Uuid
+  name            String           @db.VarChar(100)
+  slug            String           @db.VarChar(100)
+  description     String?
+  isSystemRole    Boolean          @default(false)
+  isActive        Boolean          @default(true)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  organization    Organization?    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  rolePermissions RolePermission[]
+  userRoles       UserRole[]
+
+  @@unique([organizationId, slug])
+}
+
+model Module {
+  id           String       @id @default(uuid()) @db.Uuid
+  name         String       @unique @db.VarChar(100)
+  slug         String       @unique @db.VarChar(100)
+  description  String?
+  icon         String?      @db.VarChar(100)
+  routePath    String?      @db.VarChar(255)
+  isActive     Boolean      @default(true)
+  displayOrder Int          @default(0)
+  parentId     String?      @db.Uuid
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  parent       Module?      @relation("ModuleHierarchy", fields: [parentId], references: [id])
+  children     Module[]     @relation("ModuleHierarchy")
+  permissions  Permission[]
+}
+
+model Permission {
+  id              String           @id @default(uuid()) @db.Uuid
+  moduleId        String           @db.Uuid
+  action          PermissionAction
+  name            String           @db.VarChar(150)
+  description     String?
+  createdAt       DateTime         @default(now())
+  module          Module           @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  rolePermissions RolePermission[]
+
+  @@unique([moduleId, action])
+}
+
+model RolePermission {
+  id           String     @id @default(uuid()) @db.Uuid
+  roleId       String     @db.Uuid
+  permissionId String     @db.Uuid
+  grantedAt    DateTime   @default(now())
+  grantedBy    String?    @db.Uuid
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@unique([roleId, permissionId])
+}
+
+model User {
+  id                     String                   @id @default(uuid()) @db.Uuid
+  organizationId         String?                  @db.Uuid
+  email                  String                   @unique @db.VarChar(255)
+  emailVerifiedAt        DateTime?
+  username               String?                  @unique @db.VarChar(100)
+  passwordHash           String?                  @db.VarChar(255)
+  authProvider           AuthProvider             @default(LOCAL)
+  providerId             String?                  @db.VarChar(255)
+  status                 UserStatus               @default(PENDING_VERIFICATION)
+  firstName              String?                  @db.VarChar(100)
+  lastName               String?                  @db.VarChar(100)
+  displayName            String?                  @db.VarChar(200)
+  avatarUrl              String?                  @db.VarChar(500)
+  phone                  String?                  @db.VarChar(20)
+  phoneVerifiedAt        DateTime?
+  timezone               String?                  @default("UTC") @db.VarChar(50)
+  locale                 String?                  @default("en") @db.VarChar(10)
+  lastLoginAt            DateTime?
+  lastLoginIp            String?                  @db.VarChar(45)
+  failedLoginAttempts    Int                      @default(0)
+  lockedUntil            DateTime?
+  mfaEnabled             Boolean                  @default(false)
+  mfaSecret              String?                  @db.VarChar(255)
+  mfaBackupCodes         String[]
+  metadata               Json?
+  createdAt              DateTime                 @default(now())
+  updatedAt              DateTime                 @updatedAt
+  deletedAt              DateTime?
+  organization           Organization?            @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  userRoles              UserRole[]
+  sessions               Session[]
+  passwordResetTokens    PasswordResetToken[]
+  emailVerificationToken EmailVerificationToken[]
+  profile                UserProfile?
+  notifications          Notification[]
+  notificationPrefs      NotificationPreference[]
+  auditLogs              AuditLog[]
+  dashboardLayouts       UserDashboardLayout[]
+  fileUploads            FileUpload[]
+}
+
+model UserRole {
+  id         String    @id @default(uuid()) @db.Uuid
+  userId     String    @db.Uuid
+  roleId     String    @db.Uuid
+  assignedAt DateTime  @default(now())
+  assignedBy String?   @db.Uuid
+  expiresAt  DateTime?
+  isActive   Boolean   @default(true)
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role       Role      @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, roleId])
+}
+
+model Session {
+  id           String    @id @default(uuid()) @db.Uuid
+  userId       String    @db.Uuid
+  tokenHash    String    @unique @db.VarChar(255)
+  refreshToken String?   @unique @db.VarChar(255)
+  ipAddress    String?   @db.VarChar(45)
+  userAgent    String?
+  deviceInfo   Json?
+  isActive     Boolean   @default(true)
+  expiresAt    DateTime
+  lastActivity DateTime  @default(now())
+  createdAt    DateTime  @default(now())
+  revokedAt    DateTime?
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  auditLogs    AuditLog[]
+}
+
+model PasswordResetToken {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @db.Uuid
+  tokenHash String    @unique @db.VarChar(255)
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model EmailVerificationToken {
+  id         String    @id @default(uuid()) @db.Uuid
+  userId     String    @db.Uuid
+  email      String    @db.VarChar(255)
+  tokenHash  String    @unique @db.VarChar(255)
+  expiresAt  DateTime
+  verifiedAt DateTime?
+  createdAt  DateTime  @default(now())
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model UserProfile {
+  id          String   @id @default(uuid()) @db.Uuid
+  userId      String   @unique @db.Uuid
+  bio         String?
+  jobTitle    String?  @db.VarChar(150)
+  department  String?  @db.VarChar(150)
+  company     String?  @db.VarChar(150)
+  addressLine1 String? @db.VarChar(255)
+  addressLine2 String? @db.VarChar(255)
+  city        String?  @db.VarChar(100)
+  state       String?  @db.VarChar(100)
+  postalCode  String?  @db.VarChar(20)
+  country     String?  @db.VarChar(100)
+  socialLinks Json?
+  preferences Json?
+  customFields Json?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Notification {
+  id           String             @id @default(uuid()) @db.Uuid
+  userId       String             @db.Uuid
+  title        String             @db.VarChar(255)
+  body         String
+  type         String             @db.VarChar(100)
+  channel      NotificationChannel @default(IN_APP)
+  status       NotificationStatus @default(PENDING)
+  data         Json?
+  actionUrl    String?            @db.VarChar(500)
+  readAt       DateTime?
+  sentAt       DateTime?
+  scheduledFor DateTime?
+  expiresAt    DateTime?
+  createdAt    DateTime           @default(now())
+  user         User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model NotificationPreference {
+  id               String              @id @default(uuid()) @db.Uuid
+  userId           String              @db.Uuid
+  notificationType String              @db.VarChar(100)
+  channel          NotificationChannel
+  isEnabled        Boolean             @default(true)
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+  user             User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, notificationType, channel])
+}
+
+model SystemConfiguration {
+  id              String       @id @default(uuid()) @db.Uuid
+  organizationId  String?      @db.Uuid
+  category        String       @db.VarChar(100)
+  key             String       @db.VarChar(150)
+  value           String?
+  configType      ConfigType   @default(STRING)
+  description     String?
+  isPublic        Boolean      @default(false)
+  isEditable      Boolean      @default(true)
+  validationRules Json?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  updatedBy       String?      @db.Uuid
+  organization    Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, category, key])
+}
+
+model AuditLog {
+  id             String      @id @default(uuid()) @db.Uuid
+  organizationId String?     @db.Uuid
+  userId         String?     @db.Uuid
+  sessionId      String?     @db.Uuid
+  action         AuditAction
+  entityType     String?     @db.VarChar(100)
+  entityId       String?     @db.Uuid
+  entityName     String?     @db.VarChar(255)
+  oldValues      Json?
+  newValues      Json?
+  changedFields  String[]
+  ipAddress      String?     @db.VarChar(45)
+  userAgent      String?
+  requestId      String?     @db.Uuid
+  durationMs     Int?
+  statusCode     Int?
+  errorMessage   String?
+  metadata       Json?
+  createdAt      DateTime    @default(now())
+  organization   Organization? @relation(fields: [organizationId], references: [id])
+  user           User?       @relation(fields: [userId], references: [id], onDelete: SetNull)
+  session        Session?    @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+}
+
+model DashboardWidget {
+  id                  String                @id @default(uuid()) @db.Uuid
+  name                String                @db.VarChar(150)
+  slug                String                @unique @db.VarChar(150)
+  description         String?
+  componentName       String                @db.VarChar(150)
+  defaultConfig       Json?
+  requiredPermissions String[]
+  isActive            Boolean               @default(true)
+  createdAt           DateTime              @default(now())
+  userLayouts         UserDashboardLayout[]
+}
+
+model UserDashboardLayout {
+  id        String          @id @default(uuid()) @db.Uuid
+  userId    String          @db.Uuid
+  widgetId  String          @db.Uuid
+  positionX Int             @default(0)
+  positionY Int             @default(0)
+  width     Int             @default(4)
+  height    Int             @default(3)
+  config    Json?
+  isVisible Boolean         @default(true)
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+  user      User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  widget    DashboardWidget @relation(fields: [widgetId], references: [id])
+
+  @@unique([userId, widgetId])
+}
+
+model FileUpload {
+  id             String        @id @default(uuid()) @db.Uuid
+  userId         String?       @db.Uuid
+  organizationId String?       @db.Uuid
+  originalName   String        @db.VarChar(255)
+  storedName     String        @db.VarChar(255)
+  filePath       String        @db.VarChar(500)
+  fileUrl        String?       @db.VarChar(500)
+  mimeType       String?       @db.VarChar(100)
+  fileSize       BigInt?
+  checksum       String?       @db.VarChar(64)
+  entityType     String?       @db.VarChar(100)
+  entityId       String?       @db.Uuid
+  isPublic       Boolean       @default(false)
+  metadata       Json?
+  createdAt      DateTime      @default(now())
+  deletedAt      DateTime?
+  user           User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+}
