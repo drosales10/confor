@@ -1,0 +1,1669 @@
+"use client";
+
+import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { useDebounce } from "@/hooks/useDebounce";
+
+type Level2Item = {
+  id: string;
+  code: string;
+  name: string;
+  type: string;
+  totalAreaHa: string | number;
+  legalStatus: string | null;
+  isActive: boolean;
+};
+
+type Level3Item = {
+  id: string;
+  code: string;
+  name: string;
+  type: string;
+  totalAreaHa: string | number;
+};
+
+type Level4Item = {
+  id: string;
+  code: string;
+  name: string;
+  type: string;
+  totalAreaHa: string | number;
+};
+
+type Level5Item = {
+  id: string;
+  code: string;
+  name: string;
+  type: string;
+  shapeType: string;
+  areaM2: string | number;
+};
+
+type NeighborItem = {
+  id: string;
+  code: string;
+  name: string;
+  type: string;
+};
+
+type PaginationState = {
+  page: number;
+  totalPages: number;
+  total: number;
+  limit: number;
+};
+
+type PageAdjustReason = "filtro" | "límite" | "eliminación" | "navegación";
+
+function parseLocaleDecimal(value: string | number) {
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? value : Number.NaN;
+  }
+
+  const normalized = value.trim().replace(",", ".");
+  if (!normalized) return Number.NaN;
+
+  const parsed = Number(normalized);
+  return Number.isFinite(parsed) ? parsed : Number.NaN;
+}
+
+export default function PatrimonioForestalPage() {
+  const [items, setItems] = useState<Level2Item[]>([]);
+  const [level3Items, setLevel3Items] = useState<Level3Item[]>([]);
+  const [level4Items, setLevel4Items] = useState<Level4Item[]>([]);
+  const [level5Items, setLevel5Items] = useState<Level5Item[]>([]);
+  const [neighbors, setNeighbors] = useState<NeighborItem[]>([]);
+
+  const [selectedLevel2Id, setSelectedLevel2Id] = useState("");
+  const [selectedLevel3Id, setSelectedLevel3Id] = useState("");
+  const [selectedLevel4Id, setSelectedLevel4Id] = useState("");
+
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [infoMessage, setInfoMessage] = useState<string | null>(null);
+  const [pageAdjustReason, setPageAdjustReason] = useState<PageAdjustReason>("navegación");
+
+  const [form, setForm] = useState({
+    code: "",
+    name: "",
+    type: "FINCA",
+    legalStatus: "ADQUISICION",
+    totalAreaHa: "",
+  });
+
+  const [level3Form, setLevel3Form] = useState({
+    code: "",
+    name: "",
+    type: "LOTE",
+    totalAreaHa: "",
+  });
+
+  const [level4Form, setLevel4Form] = useState({
+    code: "",
+    name: "",
+    type: "RODAL",
+    totalAreaHa: "",
+  });
+
+  const [level5Form, setLevel5Form] = useState({
+    code: "",
+    name: "",
+    type: "SUBUNIDAD",
+    shapeType: "RECTANGULAR",
+    dimension1M: "",
+    dimension2M: "",
+    dimension3M: "",
+    dimension4M: "",
+  });
+
+  const [neighborForm, setNeighborForm] = useState({
+    code: "",
+    name: "",
+    type: "Colindante",
+  });
+
+  const [searchLevel2, setSearchLevel2] = useState("");
+  const [searchLevel3, setSearchLevel3] = useState("");
+  const [searchLevel4, setSearchLevel4] = useState("");
+  const [searchLevel5, setSearchLevel5] = useState("");
+
+  const [pageLevel2, setPageLevel2] = useState(1);
+  const [pageLevel3, setPageLevel3] = useState(1);
+  const [pageLevel4, setPageLevel4] = useState(1);
+  const [pageLevel5, setPageLevel5] = useState(1);
+
+  const [limitLevel2, setLimitLevel2] = useState(25);
+  const [limitLevel3, setLimitLevel3] = useState(25);
+  const [limitLevel4, setLimitLevel4] = useState(25);
+  const [limitLevel5, setLimitLevel5] = useState(25);
+
+  const [paginationLevel2, setPaginationLevel2] = useState<PaginationState>({ page: 1, totalPages: 1, total: 0, limit: 25 });
+  const [paginationLevel3, setPaginationLevel3] = useState<PaginationState>({ page: 1, totalPages: 1, total: 0, limit: 25 });
+  const [paginationLevel4, setPaginationLevel4] = useState<PaginationState>({ page: 1, totalPages: 1, total: 0, limit: 25 });
+  const [paginationLevel5, setPaginationLevel5] = useState<PaginationState>({ page: 1, totalPages: 1, total: 0, limit: 25 });
+
+  const [editingLevel2Id, setEditingLevel2Id] = useState<string | null>(null);
+  const [editingLevel3Id, setEditingLevel3Id] = useState<string | null>(null);
+  const [editingLevel4Id, setEditingLevel4Id] = useState<string | null>(null);
+  const [editingLevel5Id, setEditingLevel5Id] = useState<string | null>(null);
+  const [editingNeighborId, setEditingNeighborId] = useState<string | null>(null);
+
+  const [editLevel2Form, setEditLevel2Form] = useState({ code: "", name: "", type: "FINCA", totalAreaHa: "" });
+  const [editLevel3Form, setEditLevel3Form] = useState({ code: "", name: "", type: "LOTE", totalAreaHa: "" });
+  const [editLevel4Form, setEditLevel4Form] = useState({ code: "", name: "", type: "RODAL", totalAreaHa: "" });
+  const [editLevel5Form, setEditLevel5Form] = useState({ code: "", name: "", type: "SUBUNIDAD" });
+  const [editNeighborForm, setEditNeighborForm] = useState({ code: "", name: "", type: "" });
+
+  const debouncedSearchLevel2 = useDebounce(searchLevel2, 300);
+  const debouncedSearchLevel3 = useDebounce(searchLevel3, 300);
+  const debouncedSearchLevel4 = useDebounce(searchLevel4, 300);
+  const debouncedSearchLevel5 = useDebounce(searchLevel5, 300);
+
+  const buildPageAdjustMessage = useCallback((level: 2 | 3 | 4 | 5, page: number, reason: PageAdjustReason) => {
+    return `Nivel ${level} ajustado automáticamente a la página ${page} por ${reason}.`;
+  }, []);
+
+  const canSubmit = useMemo(() => {
+    const totalAreaHa = parseLocaleDecimal(form.totalAreaHa);
+    return form.code.trim().length > 0 && form.name.trim().length > 1 && totalAreaHa > 0;
+  }, [form]);
+
+  const loadLevel2 = useCallback(async (search = "", page = 1, limit = 25) => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const response = await fetch(
+        `/api/forest/patrimony?level=2&page=${page}&limit=${limit}${search ? `&search=${encodeURIComponent(search)}` : ""}`,
+        { cache: "no-store" },
+      );
+      const result = await response.json();
+
+      if (!response.ok || !result?.success) {
+        setError(result?.error ?? "No fue posible cargar datos del patrimonio forestal");
+        return;
+      }
+
+      const level2Data = (result.data.items ?? []) as Level2Item[];
+      setItems(level2Data);
+      setPaginationLevel2({
+        page: result?.data?.pagination?.page ?? 1,
+        totalPages: result?.data?.pagination?.totalPages ?? 1,
+        total: result?.data?.pagination?.total ?? 0,
+        limit: result?.data?.pagination?.limit ?? limit,
+      });
+      setSelectedLevel2Id((current) => current || level2Data[0]?.id || "");
+    } catch {
+      setError("No fue posible cargar datos del patrimonio forestal");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const loadLevel3 = useCallback(async (level2Id: string, search = "", page = 1, limit = 25) => {
+    const response = await fetch(
+      `/api/forest/patrimony?level=3&parentId=${level2Id}&page=${page}&limit=${limit}${search ? `&search=${encodeURIComponent(search)}` : ""}`,
+      { cache: "no-store" },
+    );
+    const result = await response.json();
+    const data = (result?.data?.items ?? []) as Level3Item[];
+    setLevel3Items(data);
+    setPaginationLevel3({
+      page: result?.data?.pagination?.page ?? 1,
+      totalPages: result?.data?.pagination?.totalPages ?? 1,
+      total: result?.data?.pagination?.total ?? 0,
+      limit: result?.data?.pagination?.limit ?? limit,
+    });
+    if (data.length > 0) {
+      setSelectedLevel3Id((current) => current || data[0].id);
+    } else {
+      setSelectedLevel3Id("");
+    }
+  }, []);
+
+  const loadLevel4 = useCallback(async (level3Id: string, search = "", page = 1, limit = 25) => {
+    const response = await fetch(
+      `/api/forest/patrimony?level=4&parentId=${level3Id}&page=${page}&limit=${limit}${search ? `&search=${encodeURIComponent(search)}` : ""}`,
+      { cache: "no-store" },
+    );
+    const result = await response.json();
+    const data = (result?.data?.items ?? []) as Level4Item[];
+    setLevel4Items(data);
+    setPaginationLevel4({
+      page: result?.data?.pagination?.page ?? 1,
+      totalPages: result?.data?.pagination?.totalPages ?? 1,
+      total: result?.data?.pagination?.total ?? 0,
+      limit: result?.data?.pagination?.limit ?? limit,
+    });
+    if (data.length > 0) {
+      setSelectedLevel4Id((current) => current || data[0].id);
+    } else {
+      setSelectedLevel4Id("");
+    }
+  }, []);
+
+  const loadLevel5 = useCallback(async (level4Id: string, search = "", page = 1, limit = 25) => {
+    const response = await fetch(
+      `/api/forest/patrimony?level=5&parentId=${level4Id}&page=${page}&limit=${limit}${search ? `&search=${encodeURIComponent(search)}` : ""}`,
+      { cache: "no-store" },
+    );
+    const result = await response.json();
+    setLevel5Items((result?.data?.items ?? []) as Level5Item[]);
+    setPaginationLevel5({
+      page: result?.data?.pagination?.page ?? 1,
+      totalPages: result?.data?.pagination?.totalPages ?? 1,
+      total: result?.data?.pagination?.total ?? 0,
+      limit: result?.data?.pagination?.limit ?? limit,
+    });
+  }, []);
+
+  const loadNeighbors = useCallback(async (level2Id: string) => {
+    const response = await fetch(`/api/forest/patrimony/neighbors?level2Id=${level2Id}`, { cache: "no-store" });
+    const result = await response.json();
+    setNeighbors((result?.data?.items ?? []) as NeighborItem[]);
+  }, []);
+
+  useEffect(() => {
+    loadLevel2(debouncedSearchLevel2, pageLevel2, limitLevel2);
+  }, [debouncedSearchLevel2, limitLevel2, loadLevel2, pageLevel2]);
+
+  useEffect(() => {
+    if (!selectedLevel2Id) {
+      setLevel3Items([]);
+      setNeighbors([]);
+      return;
+    }
+    loadLevel3(selectedLevel2Id, debouncedSearchLevel3, pageLevel3, limitLevel3);
+    loadNeighbors(selectedLevel2Id);
+  }, [debouncedSearchLevel3, limitLevel3, loadLevel3, loadNeighbors, pageLevel3, selectedLevel2Id]);
+
+  useEffect(() => {
+    if (!selectedLevel3Id) {
+      setLevel4Items([]);
+      return;
+    }
+    loadLevel4(selectedLevel3Id, debouncedSearchLevel4, pageLevel4, limitLevel4);
+  }, [debouncedSearchLevel4, limitLevel4, loadLevel4, pageLevel4, selectedLevel3Id]);
+
+  useEffect(() => {
+    if (!selectedLevel4Id) {
+      setLevel5Items([]);
+      return;
+    }
+    loadLevel5(selectedLevel4Id, debouncedSearchLevel5, pageLevel5, limitLevel5);
+  }, [debouncedSearchLevel5, limitLevel5, loadLevel5, pageLevel5, selectedLevel4Id]);
+
+  useEffect(() => {
+    const maxPage = Math.max(1, paginationLevel2.totalPages);
+    if (pageLevel2 > maxPage) {
+      setPageLevel2(maxPage);
+      setInfoMessage(buildPageAdjustMessage(2, maxPage, pageAdjustReason));
+    }
+  }, [buildPageAdjustMessage, pageAdjustReason, pageLevel2, paginationLevel2.totalPages]);
+
+  useEffect(() => {
+    const maxPage = Math.max(1, paginationLevel3.totalPages);
+    if (pageLevel3 > maxPage) {
+      setPageLevel3(maxPage);
+      setInfoMessage(buildPageAdjustMessage(3, maxPage, pageAdjustReason));
+    }
+  }, [buildPageAdjustMessage, pageAdjustReason, pageLevel3, paginationLevel3.totalPages]);
+
+  useEffect(() => {
+    const maxPage = Math.max(1, paginationLevel4.totalPages);
+    if (pageLevel4 > maxPage) {
+      setPageLevel4(maxPage);
+      setInfoMessage(buildPageAdjustMessage(4, maxPage, pageAdjustReason));
+    }
+  }, [buildPageAdjustMessage, pageAdjustReason, pageLevel4, paginationLevel4.totalPages]);
+
+  useEffect(() => {
+    const maxPage = Math.max(1, paginationLevel5.totalPages);
+    if (pageLevel5 > maxPage) {
+      setPageLevel5(maxPage);
+      setInfoMessage(buildPageAdjustMessage(5, maxPage, pageAdjustReason));
+    }
+  }, [buildPageAdjustMessage, pageAdjustReason, pageLevel5, paginationLevel5.totalPages]);
+
+  useEffect(() => {
+    if (!infoMessage) return;
+    const timeout = setTimeout(() => setInfoMessage(null), 3500);
+    return () => clearTimeout(timeout);
+  }, [infoMessage]);
+
+  async function createPatrimony(level: "2" | "3" | "4" | "5", data: Record<string, unknown>) {
+    const response = await fetch("/api/forest/patrimony", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ level, data }),
+    });
+
+    const result = await response.json();
+    if (!response.ok || !result?.success) {
+      throw new Error(result?.error ?? "No fue posible crear el registro");
+    }
+  }
+
+  async function deletePatrimony(level: "2" | "3" | "4" | "5", id: string) {
+    const response = await fetch("/api/forest/patrimony", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ level, id }),
+    });
+
+    const result = await response.json();
+    if (!response.ok || !result?.success) {
+      throw new Error(result?.error ?? "No fue posible eliminar el registro");
+    }
+  }
+
+  async function deleteNeighbor(id: string) {
+    const response = await fetch("/api/forest/patrimony/neighbors", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id }),
+    });
+
+    const result = await response.json();
+    if (!response.ok || !result?.success) {
+      throw new Error(result?.error ?? "No fue posible eliminar el vecino");
+    }
+  }
+
+  async function updatePatrimony(level: "2" | "3" | "4" | "5", id: string, data: Record<string, unknown>) {
+    const response = await fetch("/api/forest/patrimony", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ level, id, data }),
+    });
+
+    const result = await response.json();
+    if (!response.ok || !result?.success) {
+      throw new Error(result?.error ?? "No fue posible actualizar el registro");
+    }
+  }
+
+  async function updateNeighbor(id: string, data: Record<string, unknown>) {
+    const response = await fetch("/api/forest/patrimony/neighbors", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, ...data }),
+    });
+
+    const result = await response.json();
+    if (!response.ok || !result?.success) {
+      throw new Error(result?.error ?? "No fue posible actualizar el vecino");
+    }
+  }
+
+  function onEditLevel2(item: Level2Item) {
+    setEditingLevel2Id(item.id);
+    setEditLevel2Form({ code: item.code, name: item.name, type: item.type, totalAreaHa: String(item.totalAreaHa) });
+  }
+
+  function onEditLevel3(item: Level3Item) {
+    setEditingLevel3Id(item.id);
+    setEditLevel3Form({ code: item.code, name: item.name, type: item.type, totalAreaHa: String(item.totalAreaHa) });
+  }
+
+  function onEditLevel4(item: Level4Item) {
+    setEditingLevel4Id(item.id);
+    setEditLevel4Form({ code: item.code, name: item.name, type: item.type, totalAreaHa: String(item.totalAreaHa) });
+  }
+
+  function onEditLevel5(item: Level5Item) {
+    setEditingLevel5Id(item.id);
+    setEditLevel5Form({ code: item.code, name: item.name, type: item.type });
+  }
+
+  function onEditNeighbor(item: NeighborItem) {
+    setEditingNeighborId(item.id);
+    setEditNeighborForm({ code: item.code, name: item.name, type: item.type });
+  }
+
+  async function onSaveLevel2Edit() {
+    if (!editingLevel2Id) return;
+    const totalAreaHa = Number(editLevel2Form.totalAreaHa);
+    if (Number.isNaN(totalAreaHa) || totalAreaHa <= 0) {
+      setError("Superficie inválida");
+      return;
+    }
+
+    setSubmitting(true);
+    setError(null);
+    try {
+      await updatePatrimony("2", editingLevel2Id, {
+        code: editLevel2Form.code.trim(),
+        name: editLevel2Form.name.trim(),
+        type: editLevel2Form.type,
+        totalAreaHa,
+      });
+      setEditingLevel2Id(null);
+      await loadLevel2(debouncedSearchLevel2, pageLevel2, limitLevel2);
+    } catch (updateError) {
+      setError(updateError instanceof Error ? updateError.message : "No fue posible actualizar el nivel 2");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function onSaveLevel3Edit() {
+    if (!editingLevel3Id || !selectedLevel2Id) return;
+    const totalAreaHa = Number(editLevel3Form.totalAreaHa);
+    if (Number.isNaN(totalAreaHa) || totalAreaHa <= 0) {
+      setError("Superficie inválida");
+      return;
+    }
+
+    setSubmitting(true);
+    setError(null);
+    try {
+      await updatePatrimony("3", editingLevel3Id, {
+        code: editLevel3Form.code.trim(),
+        name: editLevel3Form.name.trim(),
+        type: editLevel3Form.type,
+        totalAreaHa,
+      });
+      setEditingLevel3Id(null);
+      await loadLevel3(selectedLevel2Id, debouncedSearchLevel3, pageLevel3, limitLevel3);
+    } catch (updateError) {
+      setError(updateError instanceof Error ? updateError.message : "No fue posible actualizar el nivel 3");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function onSaveLevel4Edit() {
+    if (!editingLevel4Id || !selectedLevel3Id) return;
+    const totalAreaHa = Number(editLevel4Form.totalAreaHa);
+    if (Number.isNaN(totalAreaHa) || totalAreaHa <= 0) {
+      setError("Superficie inválida");
+      return;
+    }
+
+    setSubmitting(true);
+    setError(null);
+    try {
+      await updatePatrimony("4", editingLevel4Id, {
+        code: editLevel4Form.code.trim(),
+        name: editLevel4Form.name.trim(),
+        type: editLevel4Form.type,
+        totalAreaHa,
+      });
+      setEditingLevel4Id(null);
+      await loadLevel4(selectedLevel3Id, debouncedSearchLevel4, pageLevel4, limitLevel4);
+    } catch (updateError) {
+      setError(updateError instanceof Error ? updateError.message : "No fue posible actualizar el nivel 4");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function onSaveLevel5Edit() {
+    if (!editingLevel5Id || !selectedLevel4Id) return;
+
+    setSubmitting(true);
+    setError(null);
+    try {
+      await updatePatrimony("5", editingLevel5Id, {
+        code: editLevel5Form.code.trim(),
+        name: editLevel5Form.name.trim(),
+        type: editLevel5Form.type,
+      });
+      setEditingLevel5Id(null);
+      await loadLevel5(selectedLevel4Id, debouncedSearchLevel5, pageLevel5, limitLevel5);
+    } catch (updateError) {
+      setError(updateError instanceof Error ? updateError.message : "No fue posible actualizar el nivel 5");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function onSaveNeighborEdit() {
+    if (!editingNeighborId || !selectedLevel2Id) return;
+
+    setSubmitting(true);
+    setError(null);
+    try {
+      await updateNeighbor(editingNeighborId, {
+        code: editNeighborForm.code.trim(),
+        name: editNeighborForm.name.trim(),
+        type: editNeighborForm.type.trim(),
+      });
+      setEditingNeighborId(null);
+      await loadNeighbors(selectedLevel2Id);
+    } catch (updateError) {
+      setError(updateError instanceof Error ? updateError.message : "No fue posible actualizar el vecino");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function onDeleteLevel2(id: string) {
+    if (!confirm("¿Eliminar este registro de nivel 2?")) return;
+    setPageAdjustReason("eliminación");
+    setSubmitting(true);
+    setError(null);
+    try {
+      await deletePatrimony("2", id);
+      await loadLevel2(debouncedSearchLevel2, pageLevel2, limitLevel2);
+    } catch (deleteError) {
+      setError(deleteError instanceof Error ? deleteError.message : "No fue posible eliminar el nivel 2");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function onDeleteLevel3(id: string) {
+    if (!selectedLevel2Id || !confirm("¿Eliminar este registro de nivel 3?")) return;
+    setPageAdjustReason("eliminación");
+    setSubmitting(true);
+    setError(null);
+    try {
+      await deletePatrimony("3", id);
+      await loadLevel3(selectedLevel2Id, debouncedSearchLevel3, pageLevel3, limitLevel3);
+      setSelectedLevel4Id("");
+      setLevel5Items([]);
+    } catch (deleteError) {
+      setError(deleteError instanceof Error ? deleteError.message : "No fue posible eliminar el nivel 3");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function onDeleteLevel4(id: string) {
+    if (!selectedLevel3Id || !confirm("¿Eliminar este registro de nivel 4?")) return;
+    setPageAdjustReason("eliminación");
+    setSubmitting(true);
+    setError(null);
+    try {
+      await deletePatrimony("4", id);
+      await loadLevel4(selectedLevel3Id, debouncedSearchLevel4, pageLevel4, limitLevel4);
+      setLevel5Items([]);
+    } catch (deleteError) {
+      setError(deleteError instanceof Error ? deleteError.message : "No fue posible eliminar el nivel 4");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function onDeleteLevel5(id: string) {
+    if (!selectedLevel4Id || !confirm("¿Eliminar este registro de nivel 5?")) return;
+    setPageAdjustReason("eliminación");
+    setSubmitting(true);
+    setError(null);
+    try {
+      await deletePatrimony("5", id);
+      await loadLevel5(selectedLevel4Id, debouncedSearchLevel5, pageLevel5, limitLevel5);
+    } catch (deleteError) {
+      setError(deleteError instanceof Error ? deleteError.message : "No fue posible eliminar el nivel 5");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function onDeleteNeighbor(id: string) {
+    if (!selectedLevel2Id || !confirm("¿Eliminar este vecino colindante?")) return;
+    setSubmitting(true);
+    setError(null);
+    try {
+      await deleteNeighbor(id);
+      await loadNeighbors(selectedLevel2Id);
+    } catch (deleteError) {
+      setError(deleteError instanceof Error ? deleteError.message : "No fue posible eliminar el vecino");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function onSubmit(event: FormEvent) {
+    event.preventDefault();
+    if (!canSubmit) return;
+
+    setSubmitting(true);
+    setError(null);
+
+    try {
+      const totalAreaHa = parseLocaleDecimal(form.totalAreaHa);
+      if (Number.isNaN(totalAreaHa) || totalAreaHa <= 0) {
+        setError("Superficie total inválida");
+        return;
+      }
+
+      await createPatrimony("2", {
+        code: form.code.trim(),
+        name: form.name.trim(),
+        type: form.type,
+        legalStatus: form.legalStatus,
+        totalAreaHa,
+      });
+
+      setForm({ code: "", name: "", type: "FINCA", legalStatus: "ADQUISICION", totalAreaHa: "" });
+      setSearchLevel2("");
+      setPageAdjustReason("navegación");
+      setPageLevel2(1);
+      await loadLevel2("", 1, limitLevel2);
+    } catch (submissionError) {
+      setError(submissionError instanceof Error ? submissionError.message : "No fue posible crear el registro");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function onSubmitLevel3(event: FormEvent) {
+    event.preventDefault();
+    if (!selectedLevel2Id) return;
+
+    setSubmitting(true);
+    setError(null);
+
+    try {
+      await createPatrimony("3", {
+        level2Id: selectedLevel2Id,
+        code: level3Form.code.trim(),
+        name: level3Form.name.trim(),
+        type: level3Form.type,
+        totalAreaHa: Number(level3Form.totalAreaHa),
+      });
+      setLevel3Form({ code: "", name: "", type: "LOTE", totalAreaHa: "" });
+      await loadLevel3(selectedLevel2Id, debouncedSearchLevel3, pageLevel3, limitLevel3);
+    } catch (submissionError) {
+      setError(submissionError instanceof Error ? submissionError.message : "No fue posible crear el nivel 3");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function onSubmitLevel4(event: FormEvent) {
+    event.preventDefault();
+    if (!selectedLevel3Id) return;
+
+    setSubmitting(true);
+    setError(null);
+
+    try {
+      await createPatrimony("4", {
+        level3Id: selectedLevel3Id,
+        code: level4Form.code.trim(),
+        name: level4Form.name.trim(),
+        type: level4Form.type,
+        totalAreaHa: Number(level4Form.totalAreaHa),
+      });
+      setLevel4Form({ code: "", name: "", type: "RODAL", totalAreaHa: "" });
+      await loadLevel4(selectedLevel3Id, debouncedSearchLevel4, pageLevel4, limitLevel4);
+    } catch (submissionError) {
+      setError(submissionError instanceof Error ? submissionError.message : "No fue posible crear el nivel 4");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function onSubmitLevel5(event: FormEvent) {
+    event.preventDefault();
+    if (!selectedLevel4Id) return;
+
+    setSubmitting(true);
+    setError(null);
+
+    try {
+      await createPatrimony("5", {
+        level4Id: selectedLevel4Id,
+        code: level5Form.code.trim(),
+        name: level5Form.name.trim(),
+        type: level5Form.type,
+        shapeType: level5Form.shapeType,
+        dimension1M: level5Form.dimension1M ? Number(level5Form.dimension1M) : undefined,
+        dimension2M: level5Form.dimension2M ? Number(level5Form.dimension2M) : undefined,
+        dimension3M: level5Form.dimension3M ? Number(level5Form.dimension3M) : undefined,
+        dimension4M: level5Form.dimension4M ? Number(level5Form.dimension4M) : undefined,
+      });
+      setLevel5Form({
+        code: "",
+        name: "",
+        type: "SUBUNIDAD",
+        shapeType: "RECTANGULAR",
+        dimension1M: "",
+        dimension2M: "",
+        dimension3M: "",
+        dimension4M: "",
+      });
+      await loadLevel5(selectedLevel4Id, debouncedSearchLevel5, pageLevel5, limitLevel5);
+    } catch (submissionError) {
+      setError(submissionError instanceof Error ? submissionError.message : "No fue posible crear el nivel 5");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function onSubmitNeighbor(event: FormEvent) {
+    event.preventDefault();
+    if (!selectedLevel2Id) return;
+
+    setSubmitting(true);
+    setError(null);
+
+    try {
+      const response = await fetch("/api/forest/patrimony/neighbors", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          level2Id: selectedLevel2Id,
+          code: neighborForm.code.trim(),
+          name: neighborForm.name.trim(),
+          type: neighborForm.type.trim(),
+        }),
+      });
+
+      const result = await response.json();
+      if (!response.ok || !result?.success) {
+        throw new Error(result?.error ?? "No fue posible crear vecino");
+      }
+
+      setNeighborForm({ code: "", name: "", type: "Colindante" });
+      await loadNeighbors(selectedLevel2Id);
+    } catch (submissionError) {
+      setError(submissionError instanceof Error ? submissionError.message : "No fue posible crear vecino");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <div className="space-y-6">
+      <section>
+        <h1 className="text-2xl font-semibold">Información del Patrimonio Forestal</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Inicio de implementación Fase 1: captura y consulta de unidades administrativas Nivel 2 (Finca/Predio/Hato/Fundo/Hacienda).
+        </p>
+        {infoMessage ? <p className="mt-2 text-xs text-blue-600">{infoMessage}</p> : null}
+      </section>
+
+      <section className="rounded-lg border p-4">
+        <h2 className="text-lg font-medium">Nuevo registro Nivel 2</h2>
+        <form className="mt-4 grid gap-3 md:grid-cols-2" onSubmit={onSubmit}>
+          <label className="space-y-1 text-sm">
+            <span>Código</span>
+            <input
+              className="w-full rounded-md border px-3 py-2"
+              value={form.code}
+              onChange={(event) => setForm((prev) => ({ ...prev, code: event.target.value }))}
+            />
+          </label>
+          <label className="space-y-1 text-sm">
+            <span>Nombre</span>
+            <input
+              className="w-full rounded-md border px-3 py-2"
+              value={form.name}
+              onChange={(event) => setForm((prev) => ({ ...prev, name: event.target.value }))}
+            />
+          </label>
+          <label className="space-y-1 text-sm">
+            <span>Tipo</span>
+            <select
+              className="w-full rounded-md border px-3 py-2"
+              value={form.type}
+              onChange={(event) => setForm((prev) => ({ ...prev, type: event.target.value }))}
+            >
+              <option value="FINCA">Finca</option>
+              <option value="PREDIO">Predio</option>
+              <option value="HATO">Hato</option>
+              <option value="FUNDO">Fundo</option>
+              <option value="HACIENDA">Hacienda</option>
+            </select>
+          </label>
+          <label className="space-y-1 text-sm">
+            <span>Estado legal</span>
+            <select
+              className="w-full rounded-md border px-3 py-2"
+              value={form.legalStatus}
+              onChange={(event) => setForm((prev) => ({ ...prev, legalStatus: event.target.value }))}
+            >
+              <option value="ADQUISICION">Adquisición</option>
+              <option value="ARRIENDO">Arriendo</option>
+              <option value="USUFRUCTO">Usufructo</option>
+              <option value="COMODATO">Comodato</option>
+            </select>
+          </label>
+          <label className="space-y-1 text-sm md:col-span-2">
+            <span>Superficie total (ha)</span>
+            <input
+              className="w-full rounded-md border px-3 py-2"
+              type="number"
+              min="0"
+              step="0.01"
+              value={form.totalAreaHa}
+              onChange={(event) => setForm((prev) => ({ ...prev, totalAreaHa: event.target.value }))}
+            />
+          </label>
+          <div className="md:col-span-2">
+            <button
+              className="rounded-md border px-3 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-60"
+              disabled={!canSubmit || submitting}
+              type="submit"
+            >
+              {submitting ? "Guardando..." : "Crear registro"}
+            </button>
+          </div>
+        </form>
+      </section>
+
+      <section className="rounded-lg border p-4">
+        <h2 className="text-lg font-medium">Registros Nivel 2</h2>
+        <div className="mt-3 flex flex-wrap items-end gap-3">
+          <div className="max-w-sm flex-1">
+            <input
+              className="w-full rounded-md border px-3 py-2 text-sm"
+              onChange={(event) => {
+                setPageAdjustReason("filtro");
+                setPageLevel2(1);
+                setSearchLevel2(event.target.value);
+              }}
+              placeholder="Buscar por código o nombre"
+              value={searchLevel2}
+            />
+          </div>
+          <label className="text-xs">
+            <span className="mr-2">Límite</span>
+            <select
+              className="rounded-md border px-2 py-1"
+              onChange={(event) => {
+                setPageAdjustReason("límite");
+                setPageLevel2(1);
+                setLimitLevel2(Number(event.target.value));
+              }}
+              value={limitLevel2}
+            >
+              <option value={10}>10</option>
+              <option value={25}>25</option>
+              <option value={50}>50</option>
+            </select>
+          </label>
+          <p className="text-xs text-muted-foreground">Total: {paginationLevel2.total}</p>
+        </div>
+        {loading ? <p className="mt-3 text-sm">Cargando...</p> : null}
+        {error ? <p className="mt-3 text-sm text-red-600">{error}</p> : null}
+        <div className="mt-3 overflow-x-auto rounded-lg border">
+          <table className="w-full text-left text-sm">
+            <thead>
+              <tr className="border-b">
+                <th className="px-3 py-2">Código</th>
+                <th className="px-3 py-2">Nombre</th>
+                <th className="px-3 py-2">Tipo</th>
+                <th className="px-3 py-2">Superficie (ha)</th>
+                <th className="px-3 py-2">Estado legal</th>
+                <th className="px-3 py-2">Estatus</th>
+                <th className="px-3 py-2">Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              {items.map((item) => (
+                <tr className="border-b" key={item.id}>
+                  <td className="px-3 py-2">
+                    {editingLevel2Id === item.id ? (
+                      <input
+                        className="w-full rounded-md border px-2 py-1 text-xs"
+                        onChange={(event) => setEditLevel2Form((prev) => ({ ...prev, code: event.target.value }))}
+                        value={editLevel2Form.code}
+                      />
+                    ) : (
+                      item.code
+                    )}
+                  </td>
+                  <td className="px-3 py-2">
+                    {editingLevel2Id === item.id ? (
+                      <input
+                        className="w-full rounded-md border px-2 py-1 text-xs"
+                        onChange={(event) => setEditLevel2Form((prev) => ({ ...prev, name: event.target.value }))}
+                        value={editLevel2Form.name}
+                      />
+                    ) : (
+                      item.name
+                    )}
+                  </td>
+                  <td className="px-3 py-2">
+                    {editingLevel2Id === item.id ? (
+                      <select
+                        className="w-full rounded-md border px-2 py-1 text-xs"
+                        onChange={(event) => setEditLevel2Form((prev) => ({ ...prev, type: event.target.value }))}
+                        value={editLevel2Form.type}
+                      >
+                        <option value="FINCA">Finca</option>
+                        <option value="PREDIO">Predio</option>
+                        <option value="HATO">Hato</option>
+                        <option value="FUNDO">Fundo</option>
+                        <option value="HACIENDA">Hacienda</option>
+                      </select>
+                    ) : (
+                      item.type
+                    )}
+                  </td>
+                  <td className="px-3 py-2">
+                    {editingLevel2Id === item.id ? (
+                      <input
+                        className="w-full rounded-md border px-2 py-1 text-xs"
+                        min="0"
+                        onChange={(event) => setEditLevel2Form((prev) => ({ ...prev, totalAreaHa: event.target.value }))}
+                        step="0.01"
+                        type="number"
+                        value={editLevel2Form.totalAreaHa}
+                      />
+                    ) : (
+                      String(item.totalAreaHa)
+                    )}
+                  </td>
+                  <td className="px-3 py-2">{item.legalStatus ?? "-"}</td>
+                  <td className="px-3 py-2">{item.isActive ? "Activo" : "Inactivo"}</td>
+                  <td className="px-3 py-2">
+                    {editingLevel2Id === item.id ? (
+                      <>
+                        <button
+                          className="mr-2 rounded-md border px-2 py-1 text-xs disabled:opacity-60"
+                          disabled={submitting}
+                          onClick={onSaveLevel2Edit}
+                          type="button"
+                        >
+                          Guardar
+                        </button>
+                        <button
+                          className="rounded-md border px-2 py-1 text-xs disabled:opacity-60"
+                          disabled={submitting}
+                          onClick={() => setEditingLevel2Id(null)}
+                          type="button"
+                        >
+                          Cancelar
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <button
+                          className="mr-2 rounded-md border px-2 py-1 text-xs disabled:opacity-60"
+                          disabled={submitting}
+                          onClick={() => onEditLevel2(item)}
+                          type="button"
+                        >
+                          Editar
+                        </button>
+                        <button
+                          className="rounded-md border px-2 py-1 text-xs disabled:opacity-60"
+                          disabled={submitting}
+                          onClick={() => onDeleteLevel2(item.id)}
+                          type="button"
+                        >
+                          Eliminar
+                        </button>
+                      </>
+                    )}
+                  </td>
+                </tr>
+              ))}
+              {!loading && items.length === 0 ? (
+                <tr>
+                  <td className="px-3 py-3" colSpan={7}>
+                    Sin resultados
+                  </td>
+                </tr>
+              ) : null}
+            </tbody>
+          </table>
+        </div>
+        <div className="mt-3 flex items-center justify-end gap-2 text-xs">
+          <button
+            className="rounded-md border px-2 py-1 disabled:opacity-60"
+            disabled={pageLevel2 <= 1 || submitting}
+            onClick={() => setPageLevel2((current) => Math.max(1, current - 1))}
+            type="button"
+          >
+            Anterior
+          </button>
+          <span>
+            Página {paginationLevel2.page} de {paginationLevel2.totalPages} · Total {paginationLevel2.total}
+          </span>
+          <button
+            className="rounded-md border px-2 py-1 disabled:opacity-60"
+            disabled={pageLevel2 >= paginationLevel2.totalPages || submitting}
+            onClick={() => setPageLevel2((current) => Math.min(paginationLevel2.totalPages, current + 1))}
+            type="button"
+          >
+            Siguiente
+          </button>
+        </div>
+      </section>
+
+      <section className="rounded-lg border p-4">
+        <h2 className="text-lg font-medium">Jerarquía y vecinos</h2>
+        <div className="mt-3 grid gap-3 md:grid-cols-3">
+          <label className="space-y-1 text-sm">
+            <span>Nivel 2</span>
+            <select
+              className="w-full rounded-md border px-3 py-2"
+              value={selectedLevel2Id}
+              onChange={(event) => {
+                setPageAdjustReason("navegación");
+                setSelectedLevel2Id(event.target.value);
+                setSelectedLevel3Id("");
+                setSelectedLevel4Id("");
+                setPageLevel3(1);
+                setPageLevel4(1);
+                setPageLevel5(1);
+              }}
+            >
+              <option value="">Seleccione</option>
+              {items.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.code} - {item.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="space-y-1 text-sm">
+            <span>Nivel 3</span>
+            <select
+              className="w-full rounded-md border px-3 py-2"
+              value={selectedLevel3Id}
+              onChange={(event) => {
+                setPageAdjustReason("navegación");
+                setSelectedLevel3Id(event.target.value);
+                setSelectedLevel4Id("");
+                setPageLevel4(1);
+                setPageLevel5(1);
+              }}
+            >
+              <option value="">Seleccione</option>
+              {level3Items.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.code} - {item.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="space-y-1 text-sm">
+            <span>Nivel 4</span>
+            <select
+              className="w-full rounded-md border px-3 py-2"
+              value={selectedLevel4Id}
+              onChange={(event) => setSelectedLevel4Id(event.target.value)}
+            >
+              <option value="">Seleccione</option>
+              {level4Items.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.code} - {item.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+
+        <div className="mt-5 grid gap-4 md:grid-cols-2">
+          <form className="space-y-2 rounded-md border p-3" onSubmit={onSubmitNeighbor}>
+            <h3 className="font-medium">Vecino colindante (Nivel 2)</h3>
+            <input
+              className="w-full rounded-md border px-3 py-2 text-sm"
+              placeholder="Código vecino"
+              value={neighborForm.code}
+              onChange={(event) => setNeighborForm((prev) => ({ ...prev, code: event.target.value }))}
+            />
+            <input
+              className="w-full rounded-md border px-3 py-2 text-sm"
+              placeholder="Nombre vecino"
+              value={neighborForm.name}
+              onChange={(event) => setNeighborForm((prev) => ({ ...prev, name: event.target.value }))}
+            />
+            <input
+              className="w-full rounded-md border px-3 py-2 text-sm"
+              placeholder="Tipo vecino"
+              value={neighborForm.type}
+              onChange={(event) => setNeighborForm((prev) => ({ ...prev, type: event.target.value }))}
+            />
+            <button className="rounded-md border px-3 py-2 text-sm" disabled={!selectedLevel2Id || submitting} type="submit">
+              Guardar vecino
+            </button>
+          </form>
+
+          <div className="rounded-md border p-3">
+            <h3 className="font-medium">Vecinos registrados</h3>
+            <ul className="mt-2 space-y-1 text-sm">
+              {neighbors.map((neighbor) => (
+                <li key={neighbor.id}>
+                  {editingNeighborId === neighbor.id ? (
+                    <div className="space-y-1">
+                      <input
+                        className="w-full rounded-md border px-2 py-1 text-xs"
+                        onChange={(event) => setEditNeighborForm((prev) => ({ ...prev, code: event.target.value }))}
+                        value={editNeighborForm.code}
+                      />
+                      <input
+                        className="w-full rounded-md border px-2 py-1 text-xs"
+                        onChange={(event) => setEditNeighborForm((prev) => ({ ...prev, name: event.target.value }))}
+                        value={editNeighborForm.name}
+                      />
+                      <input
+                        className="w-full rounded-md border px-2 py-1 text-xs"
+                        onChange={(event) => setEditNeighborForm((prev) => ({ ...prev, type: event.target.value }))}
+                        value={editNeighborForm.type}
+                      />
+                      <button
+                        className="mr-2 rounded-md border px-2 py-0.5 text-xs disabled:opacity-60"
+                        disabled={submitting}
+                        onClick={onSaveNeighborEdit}
+                        type="button"
+                      >
+                        Guardar
+                      </button>
+                      <button
+                        className="rounded-md border px-2 py-0.5 text-xs disabled:opacity-60"
+                        disabled={submitting}
+                        onClick={() => setEditingNeighborId(null)}
+                        type="button"
+                      >
+                        Cancelar
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      {neighbor.code} - {neighbor.name} ({neighbor.type})
+                      <button
+                        className="ml-2 rounded-md border px-2 py-0.5 text-xs disabled:opacity-60"
+                        disabled={submitting}
+                        onClick={() => onEditNeighbor(neighbor)}
+                        type="button"
+                      >
+                        Editar
+                      </button>
+                      <button
+                        className="ml-2 rounded-md border px-2 py-0.5 text-xs disabled:opacity-60"
+                        disabled={submitting}
+                        onClick={() => onDeleteNeighbor(neighbor.id)}
+                        type="button"
+                      >
+                        Eliminar
+                      </button>
+                    </>
+                  )}
+                </li>
+              ))}
+              {neighbors.length === 0 ? <li>Sin vecinos</li> : null}
+            </ul>
+          </div>
+        </div>
+
+        <div className="mt-5 grid gap-4 lg:grid-cols-3">
+          <form className="space-y-2 rounded-md border p-3" onSubmit={onSubmitLevel3}>
+            <h3 className="font-medium">Crear Nivel 3</h3>
+            <input
+              className="w-full rounded-md border px-3 py-2 text-sm"
+              placeholder="Código"
+              value={level3Form.code}
+              onChange={(event) => setLevel3Form((prev) => ({ ...prev, code: event.target.value }))}
+            />
+            <input
+              className="w-full rounded-md border px-3 py-2 text-sm"
+              placeholder="Nombre"
+              value={level3Form.name}
+              onChange={(event) => setLevel3Form((prev) => ({ ...prev, name: event.target.value }))}
+            />
+            <select
+              className="w-full rounded-md border px-3 py-2 text-sm"
+              value={level3Form.type}
+              onChange={(event) => setLevel3Form((prev) => ({ ...prev, type: event.target.value }))}
+            >
+              <option value="COMPARTIMIENTO">Compartimiento</option>
+              <option value="BLOCK">Block</option>
+              <option value="SECCION">Sección</option>
+              <option value="LOTE">Lote</option>
+              <option value="ZONA">Zona</option>
+              <option value="BLOQUE">Bloque</option>
+            </select>
+            <input
+              className="w-full rounded-md border px-3 py-2 text-sm"
+              type="number"
+              min="0"
+              step="0.01"
+              placeholder="Superficie ha"
+              value={level3Form.totalAreaHa}
+              onChange={(event) => setLevel3Form((prev) => ({ ...prev, totalAreaHa: event.target.value }))}
+            />
+            <button className="rounded-md border px-3 py-2 text-sm" disabled={!selectedLevel2Id || submitting} type="submit">
+              Guardar nivel 3
+            </button>
+          </form>
+
+          <form className="space-y-2 rounded-md border p-3" onSubmit={onSubmitLevel4}>
+            <h3 className="font-medium">Crear Nivel 4</h3>
+            <input
+              className="w-full rounded-md border px-3 py-2 text-sm"
+              placeholder="Código"
+              value={level4Form.code}
+              onChange={(event) => setLevel4Form((prev) => ({ ...prev, code: event.target.value }))}
+            />
+            <input
+              className="w-full rounded-md border px-3 py-2 text-sm"
+              placeholder="Nombre"
+              value={level4Form.name}
+              onChange={(event) => setLevel4Form((prev) => ({ ...prev, name: event.target.value }))}
+            />
+            <select
+              className="w-full rounded-md border px-3 py-2 text-sm"
+              value={level4Form.type}
+              onChange={(event) => setLevel4Form((prev) => ({ ...prev, type: event.target.value }))}
+            >
+              <option value="RODAL">Rodal</option>
+              <option value="PARCELA">Parcela</option>
+              <option value="ENUMERATION">Enumeration</option>
+              <option value="UNIDAD_DE_MANEJO">Unidad de Manejo</option>
+            </select>
+            <input
+              className="w-full rounded-md border px-3 py-2 text-sm"
+              type="number"
+              min="0"
+              step="0.01"
+              placeholder="Superficie ha"
+              value={level4Form.totalAreaHa}
+              onChange={(event) => setLevel4Form((prev) => ({ ...prev, totalAreaHa: event.target.value }))}
+            />
+            <button className="rounded-md border px-3 py-2 text-sm" disabled={!selectedLevel3Id || submitting} type="submit">
+              Guardar nivel 4
+            </button>
+          </form>
+
+          <form className="space-y-2 rounded-md border p-3" onSubmit={onSubmitLevel5}>
+            <h3 className="font-medium">Crear Nivel 5</h3>
+            <input
+              className="w-full rounded-md border px-3 py-2 text-sm"
+              placeholder="Código"
+              value={level5Form.code}
+              onChange={(event) => setLevel5Form((prev) => ({ ...prev, code: event.target.value }))}
+            />
+            <input
+              className="w-full rounded-md border px-3 py-2 text-sm"
+              placeholder="Nombre"
+              value={level5Form.name}
+              onChange={(event) => setLevel5Form((prev) => ({ ...prev, name: event.target.value }))}
+            />
+            <select
+              className="w-full rounded-md border px-3 py-2 text-sm"
+              value={level5Form.type}
+              onChange={(event) => setLevel5Form((prev) => ({ ...prev, type: event.target.value }))}
+            >
+              <option value="REFERENCIA">Referencia</option>
+              <option value="SUBUNIDAD">Subunidad</option>
+              <option value="SUBPARCELA">Subparcela</option>
+              <option value="MUESTRA">Muestra</option>
+              <option value="SUBMUESTRA">Submuestra</option>
+            </select>
+            <select
+              className="w-full rounded-md border px-3 py-2 text-sm"
+              value={level5Form.shapeType}
+              onChange={(event) => setLevel5Form((prev) => ({ ...prev, shapeType: event.target.value }))}
+            >
+              <option value="RECTANGULAR">Rectangular</option>
+              <option value="CUADRADA">Cuadrada</option>
+              <option value="CIRCULAR">Circular</option>
+              <option value="HEXAGONAL">Hexagonal</option>
+            </select>
+            <input
+              className="w-full rounded-md border px-3 py-2 text-sm"
+              type="number"
+              min="0"
+              step="0.0001"
+              placeholder="Dimensión 1"
+              value={level5Form.dimension1M}
+              onChange={(event) => setLevel5Form((prev) => ({ ...prev, dimension1M: event.target.value }))}
+            />
+            <input
+              className="w-full rounded-md border px-3 py-2 text-sm"
+              type="number"
+              min="0"
+              step="0.0001"
+              placeholder="Dimensión 2"
+              value={level5Form.dimension2M}
+              onChange={(event) => setLevel5Form((prev) => ({ ...prev, dimension2M: event.target.value }))}
+            />
+            <input
+              className="w-full rounded-md border px-3 py-2 text-sm"
+              type="number"
+              min="0"
+              step="0.0001"
+              placeholder="Dimensión 3"
+              value={level5Form.dimension3M}
+              onChange={(event) => setLevel5Form((prev) => ({ ...prev, dimension3M: event.target.value }))}
+            />
+            <input
+              className="w-full rounded-md border px-3 py-2 text-sm"
+              type="number"
+              min="0"
+              step="0.0001"
+              placeholder="Dimensión 4"
+              value={level5Form.dimension4M}
+              onChange={(event) => setLevel5Form((prev) => ({ ...prev, dimension4M: event.target.value }))}
+            />
+            <button className="rounded-md border px-3 py-2 text-sm" disabled={!selectedLevel4Id || submitting} type="submit">
+              Guardar nivel 5
+            </button>
+          </form>
+        </div>
+
+        <div className="mt-5 grid gap-4 lg:grid-cols-3">
+          <div className="rounded-md border p-3">
+            <h3 className="font-medium">Nivel 3</h3>
+            <div className="mt-2 flex items-center justify-between gap-2">
+              <p className="text-xs text-muted-foreground">Total: {paginationLevel3.total}</p>
+              <label className="text-xs">
+                <span className="mr-1">Límite</span>
+                <select
+                  className="rounded-md border px-2 py-1"
+                  onChange={(event) => {
+                    setPageAdjustReason("límite");
+                    setPageLevel3(1);
+                    setLimitLevel3(Number(event.target.value));
+                  }}
+                  value={limitLevel3}
+                >
+                  <option value={10}>10</option>
+                  <option value={25}>25</option>
+                  <option value={50}>50</option>
+                </select>
+              </label>
+            </div>
+            <input
+              className="mt-2 w-full rounded-md border px-2 py-1 text-xs"
+              onChange={(event) => {
+                setPageAdjustReason("filtro");
+                setPageLevel3(1);
+                setSearchLevel3(event.target.value);
+              }}
+              placeholder="Buscar nivel 3"
+              value={searchLevel3}
+            />
+            <ul className="mt-2 space-y-1 text-sm">
+              {level3Items.map((item) => (
+                <li key={item.id}>
+                  {editingLevel3Id === item.id ? (
+                    <div className="space-y-1">
+                      <input
+                        className="w-full rounded-md border px-2 py-1 text-xs"
+                        onChange={(event) => setEditLevel3Form((prev) => ({ ...prev, code: event.target.value }))}
+                        value={editLevel3Form.code}
+                      />
+                      <input
+                        className="w-full rounded-md border px-2 py-1 text-xs"
+                        onChange={(event) => setEditLevel3Form((prev) => ({ ...prev, name: event.target.value }))}
+                        value={editLevel3Form.name}
+                      />
+                      <select
+                        className="w-full rounded-md border px-2 py-1 text-xs"
+                        onChange={(event) => setEditLevel3Form((prev) => ({ ...prev, type: event.target.value }))}
+                        value={editLevel3Form.type}
+                      >
+                        <option value="COMPARTIMIENTO">Compartimiento</option>
+                        <option value="BLOCK">Block</option>
+                        <option value="SECCION">Sección</option>
+                        <option value="LOTE">Lote</option>
+                        <option value="ZONA">Zona</option>
+                        <option value="BLOQUE">Bloque</option>
+                      </select>
+                      <input
+                        className="w-full rounded-md border px-2 py-1 text-xs"
+                        min="0"
+                        onChange={(event) => setEditLevel3Form((prev) => ({ ...prev, totalAreaHa: event.target.value }))}
+                        step="0.01"
+                        type="number"
+                        value={editLevel3Form.totalAreaHa}
+                      />
+                      <button className="mr-2 rounded-md border px-2 py-0.5 text-xs" onClick={onSaveLevel3Edit} type="button">
+                        Guardar
+                      </button>
+                      <button className="rounded-md border px-2 py-0.5 text-xs" onClick={() => setEditingLevel3Id(null)} type="button">
+                        Cancelar
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      {item.code} - {item.name} ({item.type}) | {String(item.totalAreaHa)} ha
+                      <button className="ml-2 rounded-md border px-2 py-0.5 text-xs" onClick={() => onEditLevel3(item)} type="button">
+                        Editar
+                      </button>
+                      <button className="ml-2 rounded-md border px-2 py-0.5 text-xs" onClick={() => onDeleteLevel3(item.id)} type="button">
+                        Eliminar
+                      </button>
+                    </>
+                  )}
+                </li>
+              ))}
+              {level3Items.length === 0 ? <li>Sin registros</li> : null}
+            </ul>
+            <div className="mt-2 flex items-center justify-end gap-2 text-xs">
+              <button
+                className="rounded-md border px-2 py-1 disabled:opacity-60"
+                disabled={pageLevel3 <= 1 || submitting}
+                onClick={() => setPageLevel3((current) => Math.max(1, current - 1))}
+                type="button"
+              >
+                Anterior
+              </button>
+              <span>
+                {paginationLevel3.page}/{paginationLevel3.totalPages} · {paginationLevel3.total}
+              </span>
+              <button
+                className="rounded-md border px-2 py-1 disabled:opacity-60"
+                disabled={pageLevel3 >= paginationLevel3.totalPages || submitting}
+                onClick={() => setPageLevel3((current) => Math.min(paginationLevel3.totalPages, current + 1))}
+                type="button"
+              >
+                Siguiente
+              </button>
+            </div>
+          </div>
+          <div className="rounded-md border p-3">
+            <h3 className="font-medium">Nivel 4</h3>
+            <div className="mt-2 flex items-center justify-between gap-2">
+              <p className="text-xs text-muted-foreground">Total: {paginationLevel4.total}</p>
+              <label className="text-xs">
+                <span className="mr-1">Límite</span>
+                <select
+                  className="rounded-md border px-2 py-1"
+                  onChange={(event) => {
+                    setPageAdjustReason("límite");
+                    setPageLevel4(1);
+                    setLimitLevel4(Number(event.target.value));
+                  }}
+                  value={limitLevel4}
+                >
+                  <option value={10}>10</option>
+                  <option value={25}>25</option>
+                  <option value={50}>50</option>
+                </select>
+              </label>
+            </div>
+            <input
+              className="mt-2 w-full rounded-md border px-2 py-1 text-xs"
+              onChange={(event) => {
+                setPageAdjustReason("filtro");
+                setPageLevel4(1);
+                setSearchLevel4(event.target.value);
+              }}
+              placeholder="Buscar nivel 4"
+              value={searchLevel4}
+            />
+            <ul className="mt-2 space-y-1 text-sm">
+              {level4Items.map((item) => (
+                <li key={item.id}>
+                  {editingLevel4Id === item.id ? (
+                    <div className="space-y-1">
+                      <input
+                        className="w-full rounded-md border px-2 py-1 text-xs"
+                        onChange={(event) => setEditLevel4Form((prev) => ({ ...prev, code: event.target.value }))}
+                        value={editLevel4Form.code}
+                      />
+                      <input
+                        className="w-full rounded-md border px-2 py-1 text-xs"
+                        onChange={(event) => setEditLevel4Form((prev) => ({ ...prev, name: event.target.value }))}
+                        value={editLevel4Form.name}
+                      />
+                      <select
+                        className="w-full rounded-md border px-2 py-1 text-xs"
+                        onChange={(event) => setEditLevel4Form((prev) => ({ ...prev, type: event.target.value }))}
+                        value={editLevel4Form.type}
+                      >
+                        <option value="RODAL">Rodal</option>
+                        <option value="PARCELA">Parcela</option>
+                        <option value="ENUMERATION">Enumeration</option>
+                        <option value="UNIDAD_DE_MANEJO">Unidad de Manejo</option>
+                      </select>
+                      <input
+                        className="w-full rounded-md border px-2 py-1 text-xs"
+                        min="0"
+                        onChange={(event) => setEditLevel4Form((prev) => ({ ...prev, totalAreaHa: event.target.value }))}
+                        step="0.01"
+                        type="number"
+                        value={editLevel4Form.totalAreaHa}
+                      />
+                      <button className="mr-2 rounded-md border px-2 py-0.5 text-xs" onClick={onSaveLevel4Edit} type="button">
+                        Guardar
+                      </button>
+                      <button className="rounded-md border px-2 py-0.5 text-xs" onClick={() => setEditingLevel4Id(null)} type="button">
+                        Cancelar
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      {item.code} - {item.name} ({item.type}) | {String(item.totalAreaHa)} ha
+                      <button className="ml-2 rounded-md border px-2 py-0.5 text-xs" onClick={() => onEditLevel4(item)} type="button">
+                        Editar
+                      </button>
+                      <button className="ml-2 rounded-md border px-2 py-0.5 text-xs" onClick={() => onDeleteLevel4(item.id)} type="button">
+                        Eliminar
+                      </button>
+                    </>
+                  )}
+                </li>
+              ))}
+              {level4Items.length === 0 ? <li>Sin registros</li> : null}
+            </ul>
+            <div className="mt-2 flex items-center justify-end gap-2 text-xs">
+              <button
+                className="rounded-md border px-2 py-1 disabled:opacity-60"
+                disabled={pageLevel4 <= 1 || submitting}
+                onClick={() => setPageLevel4((current) => Math.max(1, current - 1))}
+                type="button"
+              >
+                Anterior
+              </button>
+              <span>
+                {paginationLevel4.page}/{paginationLevel4.totalPages} · {paginationLevel4.total}
+              </span>
+              <button
+                className="rounded-md border px-2 py-1 disabled:opacity-60"
+                disabled={pageLevel4 >= paginationLevel4.totalPages || submitting}
+                onClick={() => setPageLevel4((current) => Math.min(paginationLevel4.totalPages, current + 1))}
+                type="button"
+              >
+                Siguiente
+              </button>
+            </div>
+          </div>
+          <div className="rounded-md border p-3">
+            <h3 className="font-medium">Nivel 5</h3>
+            <div className="mt-2 flex items-center justify-between gap-2">
+              <p className="text-xs text-muted-foreground">Total: {paginationLevel5.total}</p>
+              <label className="text-xs">
+                <span className="mr-1">Límite</span>
+                <select
+                  className="rounded-md border px-2 py-1"
+                  onChange={(event) => {
+                    setPageAdjustReason("límite");
+                    setPageLevel5(1);
+                    setLimitLevel5(Number(event.target.value));
+                  }}
+                  value={limitLevel5}
+                >
+                  <option value={10}>10</option>
+                  <option value={25}>25</option>
+                  <option value={50}>50</option>
+                </select>
+              </label>
+            </div>
+            <input
+              className="mt-2 w-full rounded-md border px-2 py-1 text-xs"
+              onChange={(event) => {
+                setPageAdjustReason("filtro");
+                setPageLevel5(1);
+                setSearchLevel5(event.target.value);
+              }}
+              placeholder="Buscar nivel 5"
+              value={searchLevel5}
+            />
+            <ul className="mt-2 space-y-1 text-sm">
+              {level5Items.map((item) => (
+                <li key={item.id}>
+                  {editingLevel5Id === item.id ? (
+                    <div className="space-y-1">
+                      <input
+                        className="w-full rounded-md border px-2 py-1 text-xs"
+                        onChange={(event) => setEditLevel5Form((prev) => ({ ...prev, code: event.target.value }))}
+                        value={editLevel5Form.code}
+                      />
+                      <input
+                        className="w-full rounded-md border px-2 py-1 text-xs"
+                        onChange={(event) => setEditLevel5Form((prev) => ({ ...prev, name: event.target.value }))}
+                        value={editLevel5Form.name}
+                      />
+                      <select
+                        className="w-full rounded-md border px-2 py-1 text-xs"
+                        onChange={(event) => setEditLevel5Form((prev) => ({ ...prev, type: event.target.value }))}
+                        value={editLevel5Form.type}
+                      >
+                        <option value="REFERENCIA">Referencia</option>
+                        <option value="SUBUNIDAD">Subunidad</option>
+                        <option value="SUBPARCELA">Subparcela</option>
+                        <option value="MUESTRA">Muestra</option>
+                        <option value="SUBMUESTRA">Submuestra</option>
+                      </select>
+                      <button className="mr-2 rounded-md border px-2 py-0.5 text-xs" onClick={onSaveLevel5Edit} type="button">
+                        Guardar
+                      </button>
+                      <button className="rounded-md border px-2 py-0.5 text-xs" onClick={() => setEditingLevel5Id(null)} type="button">
+                        Cancelar
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      {item.code} - {item.name} ({item.shapeType}) | área: {String(item.areaM2)} m²
+                      <button className="ml-2 rounded-md border px-2 py-0.5 text-xs" onClick={() => onEditLevel5(item)} type="button">
+                        Editar
+                      </button>
+                      <button className="ml-2 rounded-md border px-2 py-0.5 text-xs" onClick={() => onDeleteLevel5(item.id)} type="button">
+                        Eliminar
+                      </button>
+                    </>
+                  )}
+                </li>
+              ))}
+              {level5Items.length === 0 ? <li>Sin registros</li> : null}
+            </ul>
+            <div className="mt-2 flex items-center justify-end gap-2 text-xs">
+              <button
+                className="rounded-md border px-2 py-1 disabled:opacity-60"
+                disabled={pageLevel5 <= 1 || submitting}
+                onClick={() => setPageLevel5((current) => Math.max(1, current - 1))}
+                type="button"
+              >
+                Anterior
+              </button>
+              <span>
+                {paginationLevel5.page}/{paginationLevel5.totalPages} · {paginationLevel5.total}
+              </span>
+              <button
+                className="rounded-md border px-2 py-1 disabled:opacity-60"
+                disabled={pageLevel5 >= paginationLevel5.totalPages || submitting}
+                onClick={() => setPageLevel5((current) => Math.min(paginationLevel5.totalPages, current + 1))}
+                type="button"
+              >
+                Siguiente
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+  );
+}

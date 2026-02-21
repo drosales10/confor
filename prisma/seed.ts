@@ -18,8 +18,26 @@ async function main() {
     { name: "Authentication", slug: "auth", routePath: "/login", displayOrder: 1 },
     { name: "Users", slug: "users", routePath: "/users", displayOrder: 2 },
     { name: "Dashboard", slug: "dashboard", routePath: "/dashboard", displayOrder: 3 },
-    { name: "Settings", slug: "settings", routePath: "/settings", displayOrder: 4 },
-    { name: "Audit", slug: "audit", routePath: "/audit", displayOrder: 5 },
+    {
+      name: "Forest Patrimony",
+      slug: "forest-patrimony",
+      routePath: "/patrimonio-forestal",
+      displayOrder: 4,
+    },
+    {
+      name: "Forest Biological Asset",
+      slug: "forest-biological-asset",
+      routePath: "/activo-biologico",
+      displayOrder: 5,
+    },
+    {
+      name: "Forest Configuration",
+      slug: "forest-config",
+      routePath: "/configuracion-forestal",
+      displayOrder: 6,
+    },
+    { name: "Settings", slug: "settings", routePath: "/settings", displayOrder: 7 },
+    { name: "Audit", slug: "audit", routePath: "/audit", displayOrder: 8 },
   ] as const;
 
   for (const moduleData of modules) {

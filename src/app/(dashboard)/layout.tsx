@@ -5,6 +5,9 @@ import { auth } from "@/lib/auth";
 
 const nav = [
   { href: "/dashboard", label: "Dashboard" },
+  { href: "/patrimonio-forestal", label: "Patrimonio forestal" },
+  { href: "/activo-biologico", label: "Activo biológico" },
+  { href: "/configuracion-forestal", label: "Configuración forestal" },
   { href: "/users", label: "Usuarios" },
   { href: "/profile", label: "Perfil" },
   { href: "/analytics", label: "Analítica" },
