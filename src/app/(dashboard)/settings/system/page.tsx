@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { sileo } from "sileo";
 import { canAccessOrganizations, normalizeRole } from "@/lib/rbac";
 import Link from "next/link";
@@ -25,14 +26,24 @@ type ModuleItem = {
   permissions: Array<{ id: string; action: string }>;
 };
 
+type OrganizationInfo = {
+  id: string;
+  name: string | null;
+  logoUrl: string | null;
+};
+
 export default function SystemSettingsPage() {
   const router = useRouter();
-  const rolUsuario = normalizeRole(typeof window !== "undefined" ? sessionStorage.getItem("RolUsuario") : null);
+  const [rolUsuario, setRolUsuario] = useState<ReturnType<typeof normalizeRole>>(null);
+  const [isClient, setIsClient] = useState(false);
   const [loading, setLoading] = useState(true);
   const [savingConfig, setSavingConfig] = useState(false);
   const [savingModule, setSavingModule] = useState(false);
+  const [savingLogo, setSavingLogo] = useState(false);
   const [configs, setConfigs] = useState<SystemConfigItem[]>([]);
   const [modules, setModules] = useState<ModuleItem[]>([]);
+  const [organization, setOrganization] = useState<OrganizationInfo | null>(null);
+  const [logoFile, setLogoFile] = useState<File | null>(null);
   const [category, setCategory] = useState("general");
   const [keyName, setKeyName] = useState("site_name");
   const [value, setValue] = useState("Modular Enterprise App");
@@ -43,6 +54,13 @@ export default function SystemSettingsPage() {
   const [displayOrder, setDisplayOrder] = useState(0);
 
   useEffect(() => {
+    setIsClient(true);
+    const roleValue = normalizeRole(sessionStorage.getItem("RolUsuario"));
+    setRolUsuario(roleValue);
+  }, []);
+
+  useEffect(() => {
+    if (!isClient) return;
     if (!canAccessOrganizations(rolUsuario)) {
       router.replace("/unauthorized");
       return;
@@ -51,9 +69,10 @@ export default function SystemSettingsPage() {
     const load = async () => {
       try {
         setLoading(true);
-        const [configResponse, modulesResponse] = await Promise.all([
+        const [configResponse, modulesResponse, profileResponse] = await Promise.all([
           fetch("/api/config"),
           fetch("/api/modules"),
+          fetch("/api/profile"),
         ]);
 
         if (!configResponse.ok) {
@@ -66,11 +85,20 @@ export default function SystemSettingsPage() {
           throw new Error(payload?.error ?? "No fue posible cargar módulos");
         }
 
+        if (!profileResponse.ok) {
+          const payload = await profileResponse.json().catch(() => null);
+          throw new Error(payload?.error ?? "No fue posible cargar organización");
+        }
+
         const configPayload = await configResponse.json();
         const modulesPayload = await modulesResponse.json();
+        const profilePayload = await profileResponse.json();
         const configItems = (configPayload?.data ?? []) as SystemConfigItem[];
         setConfigs(configItems);
         setModules((modulesPayload?.data ?? []) as ModuleItem[]);
+
+        const org = profilePayload?.data?.organization ?? null;
+        setOrganization(org ? { id: org.id, name: org.name ?? null, logoUrl: org.logoUrl ?? null } : null);
 
         const siteName = configItems.find((item) => item.category === "general" && item.key === "site_name");
         if (siteName) {
@@ -88,12 +116,17 @@ export default function SystemSettingsPage() {
     };
 
     void load();
-  }, [rolUsuario, router]);
+  }, [isClient, rolUsuario, router]);
 
   const selectedConfig = useMemo(
     () => configs.find((item) => item.category === category && item.key === keyName) ?? null,
     [configs, category, keyName],
   );
+
+  const appTitle = useMemo(() => {
+    const item = configs.find((entry) => entry.category === "general" && entry.key === "site_name");
+    return item?.value?.trim() || "Modular Enterprise App";
+  }, [configs]);
 
   useEffect(() => {
     if (!selectedConfig) return;
@@ -176,6 +209,50 @@ export default function SystemSettingsPage() {
     }
   }
 
+  async function onUploadLogo() {
+    if (!logoFile) {
+      sileo.warning({ title: "Archivo requerido", description: "Selecciona un logo para continuar." });
+      return;
+    }
+
+    try {
+      sileo.info({ title: "Subiendo logo", description: "Esto puede tardar unos segundos." });
+      setSavingLogo(true);
+      const formData = new FormData();
+      formData.append("file", logoFile);
+
+      const response = await fetch("/api/organizations/logo", {
+        method: "POST",
+        body: formData,
+      });
+
+      const result = await response.json().catch(() => null);
+      if (!response.ok || !result?.data?.logoUrl) {
+        throw new Error(result?.error ?? "No fue posible cargar el logo");
+      }
+
+      const profileResponse = await fetch("/api/profile");
+      const profilePayload = await profileResponse.json().catch(() => null);
+      if (profileResponse.ok && profilePayload?.data?.organization) {
+        const org = profilePayload.data.organization;
+        setOrganization({ id: org.id, name: org.name ?? null, logoUrl: org.logoUrl ?? null });
+      } else {
+        setOrganization((prev) => (prev ? { ...prev, logoUrl: result.data.logoUrl } : prev));
+      }
+      setLogoFile(null);
+      sileo.success({ title: "Logo actualizado", description: "El logo de la organización se guardó correctamente." });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Error desconocido";
+      sileo.error({ title: "No se pudo actualizar logo", description: message });
+    } finally {
+      setSavingLogo(false);
+    }
+  }
+
+  if (!isClient) {
+    return <p className="text-sm">Cargando...</p>;
+  }
+
   if (!rolUsuario || !canAccessOrganizations(rolUsuario)) {
     return <p className="text-sm">Validando permisos...</p>;
   }
@@ -185,6 +262,48 @@ export default function SystemSettingsPage() {
       <h1 className="text-2xl font-semibold">Configuración del sistema</h1>
 
       {loading ? <p className="text-sm">Cargando configuración...</p> : null}
+
+      <section className="space-y-3 rounded-lg border p-4">
+        <h2 className="text-lg font-semibold">Organización activa</h2>
+        <div className="flex flex-wrap items-center gap-4">
+          <div className="flex items-center gap-3">
+            <div className="h-12 w-12 overflow-hidden rounded-md border bg-white">
+              {organization?.logoUrl ? (
+                <Image
+                  alt={organization?.name ?? "Logo"}
+                  className="h-full w-full object-cover"
+                  height={48}
+                  src={organization.logoUrl}
+                  width={48}
+                />
+              ) : (
+                <div className="flex h-full w-full items-center justify-center text-xs text-muted-foreground">Sin logo</div>
+              )}
+            </div>
+            <div>
+              <div className="text-sm font-semibold">{organization?.name ?? "Sin organización"}</div>
+              <div className="text-xs text-muted-foreground">{appTitle}</div>
+              <div className="text-xs text-muted-foreground">ID: {organization?.id ?? "-"}</div>
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <input
+              accept="image/*"
+              className="block text-sm"
+              onChange={(event) => setLogoFile(event.target.files?.[0] ?? null)}
+              type="file"
+            />
+            <button
+              className="rounded-md border px-3 py-1.5 text-sm disabled:opacity-60"
+              disabled={savingLogo || !logoFile}
+              onClick={() => void onUploadLogo()}
+              type="button"
+            >
+              {savingLogo ? "Subiendo..." : "Subir logo"}
+            </button>
+          </div>
+        </div>
+      </section>
 
       <section className="space-y-3 rounded-lg border p-4">
         <h2 className="text-lg font-semibold">Parámetros de configuración</h2>

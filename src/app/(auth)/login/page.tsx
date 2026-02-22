@@ -3,11 +3,21 @@
 import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useState } from "react";
 import { getSession, signIn } from "next-auth/react";
+import Image from "next/image";
 
 type OrganizationItem = {
   id: string;
   name: string;
   rif?: string;
+};
+
+type OrganizationBranding = {
+  appTitle: string | null;
+  organization: {
+    id: string;
+    name: string | null;
+    logoUrl: string | null;
+  };
 };
 
 export default function LoginPage() {
@@ -18,6 +28,7 @@ export default function LoginPage() {
   const [organizations, setOrganizations] = useState<OrganizationItem[]>([]);
   const [organizationId, setOrganizationId] = useState("");
   const [orgError, setOrgError] = useState<string | null>(null);
+  const [branding, setBranding] = useState<OrganizationBranding | null>(null);
   const router = useRouter();
 
   useEffect(() => {
@@ -26,6 +37,29 @@ export default function LoginPage() {
     document.cookie = "OrgName=; Max-Age=0; path=/; SameSite=Lax";
     document.cookie = "EmailUsuario=; Max-Age=0; path=/; SameSite=Lax";
   }, []);
+
+  useEffect(() => {
+    const loadBranding = async () => {
+      if (!organizationId) {
+        setBranding(null);
+        return;
+      }
+
+      try {
+        const response = await fetch(`/api/organizations/${organizationId}/branding`);
+        if (!response.ok) {
+          setBranding(null);
+          return;
+        }
+        const payload = await response.json();
+        setBranding(payload?.data ?? null);
+      } catch {
+        setBranding(null);
+      }
+    };
+
+    void loadBranding();
+  }, [organizationId]);
 
   useEffect(() => {
     const load = async () => {
@@ -103,7 +137,27 @@ export default function LoginPage() {
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-md items-center p-6">
       <form onSubmit={onSubmit} className="w-full rounded-xl border p-6">
-        <h1 className="text-2xl font-semibold">Iniciar sesión</h1>
+        <div className="mb-4 flex items-center gap-3">
+          <div className="h-12 w-12 overflow-hidden rounded-md border bg-white">
+            {branding?.organization?.logoUrl ? (
+              <Image
+                alt={branding.organization.name ?? "Logo"}
+                className="h-full w-full object-cover"
+                height={48}
+                src={branding.organization.logoUrl}
+                width={48}
+              />
+            ) : (
+              <div className="flex h-full w-full items-center justify-center text-xs text-muted-foreground">Logo</div>
+            )}
+          </div>
+          <div>
+            {branding?.appTitle ? (
+              <div className="text-lg font-semibold">{branding.appTitle}</div>
+            ) : null}
+            <div className="text-2xl font-semibold">Iniciar sesión</div>
+          </div>
+        </div>
         <div className="mt-4 space-y-3">
           <input
             className="w-full rounded-md border px-3 py-2"

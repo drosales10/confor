@@ -14,7 +14,10 @@ export async function GET() {
     if (permissionError) return permissionError;
   }
 
+  const organizationId = authResult.session.user.organizationId ?? null;
+
   const configs = await prisma.systemConfiguration.findMany({
+    where: { organizationId },
     orderBy: [{ category: "asc" }, { key: "asc" }],
   });
 
@@ -32,6 +35,8 @@ export async function PATCH(req: NextRequest) {
     if (permissionError) return permissionError;
   }
 
+  const organizationId = authResult.session.user.organizationId ?? null;
+
   const body = await req.json();
   const parsed = updateSystemConfigSchema.safeParse(body);
   if (!parsed.success) {
@@ -42,7 +47,7 @@ export async function PATCH(req: NextRequest) {
 
   const existing = await prisma.systemConfiguration.findFirst({
     where: {
-      organizationId: null,
+      organizationId,
       category,
       key,
     },
@@ -59,7 +64,7 @@ export async function PATCH(req: NextRequest) {
       })
     : await prisma.systemConfiguration.create({
         data: {
-          organizationId: null,
+          organizationId,
           category,
           key,
           value,

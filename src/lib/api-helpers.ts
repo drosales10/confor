@@ -22,7 +22,10 @@ export async function requireAuth() {
       return { error: fail("Unauthorized", 401) };
     }
 
-    const user = await prisma.user.findUnique({ where: { email: emailFromCookie } });
+    const user = await prisma.user.findUnique({
+      where: { email: emailFromCookie },
+      include: { organization: true },
+    });
     if (!user) {
       return { error: fail("Unauthorized", 401) };
     }
@@ -34,6 +37,8 @@ export async function requireAuth() {
           id: user.id,
           roles: roleInfo.roles,
           permissions: roleInfo.permissions,
+          organizationId: user.organizationId ?? null,
+          organizationName: user.organization?.name ?? null,
         },
       },
     };
