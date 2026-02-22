@@ -1,4 +1,5 @@
 import { NextRequest } from "next/server";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { fail, ok, requireAuth, requirePermission } from "@/lib/api-helpers";
 import { deleteNeighborSchema, updateNeighborSchema } from "@/validations/forest-patrimony.schema";
@@ -11,6 +12,26 @@ const createNeighborSchema = z.object({
   name: z.string().min(2).max(255),
   type: z.string().min(2).max(80),
 });
+
+async function safeAuditLog(data: Prisma.AuditLogUncheckedCreateInput) {
+  try {
+    await prisma.auditLog.create({ data });
+  } catch {}
+}
+
+function mapNeighborError(error: unknown, fallbackMessage: string) {
+  if (error instanceof Prisma.PrismaClientKnownRequestError) {
+    if (error.code === "P2002") {
+      return fail("Ya existe un vecino con ese codigo", 409);
+    }
+
+    if (error.code === "P2025") {
+      return fail("Registro no encontrado", 404);
+    }
+  }
+
+  return fail(fallbackMessage, 500);
+}
 
 export async function GET(req: NextRequest) {
   const authResult = await requireAuth();
@@ -27,12 +48,16 @@ export async function GET(req: NextRequest) {
     return fail("Parámetro level2Id inválido", 400, level2IdResult.error.flatten());
   }
 
-  const items = await prisma.forestPatrimonyNeighbor.findMany({
-    where: { level2Id: level2IdResult.data },
-    orderBy: [{ createdAt: "desc" }],
-  });
+  try {
+    const items = await prisma.forestPatrimonyNeighbor.findMany({
+      where: { level2Id: level2IdResult.data },
+      orderBy: [{ createdAt: "desc" }],
+    });
 
-  return ok({ items });
+    return ok({ items });
+  } catch (error) {
+    return mapNeighborError(error, "No fue posible cargar vecinos");
+  }
 }
 
 export async function POST(req: NextRequest) {
@@ -56,21 +81,23 @@ export async function POST(req: NextRequest) {
     return fail("Nivel 2 no encontrado", 404);
   }
 
-  const created = await prisma.forestPatrimonyNeighbor.create({
-    data: parsed.data,
-  });
+  try {
+    const created = await prisma.forestPatrimonyNeighbor.create({
+      data: parsed.data,
+    });
 
-  await prisma.auditLog.create({
-    data: {
+    await safeAuditLog({
       userId: authResult.session.user.id,
       action: "CREATE",
       entityType: "ForestPatrimonyNeighbor",
       entityId: created.id,
       newValues: parsed.data,
-    },
-  });
+    });
 
-  return ok(created, 201);
+    return ok(created, 201);
+  } catch (error) {
+    return mapNeighborError(error, "No fue posible crear vecino");
+  }
 }
 
 export async function PATCH(req: NextRequest) {
@@ -89,26 +116,28 @@ export async function PATCH(req: NextRequest) {
     return fail("Datos inválidos", 400, parsed.error.flatten());
   }
 
-  const updated = await prisma.forestPatrimonyNeighbor.update({
-    where: { id: parsed.data.id },
-    data: {
-      ...(parsed.data.code !== undefined ? { code: parsed.data.code } : {}),
-      ...(parsed.data.name !== undefined ? { name: parsed.data.name } : {}),
-      ...(parsed.data.type !== undefined ? { type: parsed.data.type } : {}),
-    },
-  });
+  try {
+    const updated = await prisma.forestPatrimonyNeighbor.update({
+      where: { id: parsed.data.id },
+      data: {
+        ...(parsed.data.code !== undefined ? { code: parsed.data.code } : {}),
+        ...(parsed.data.name !== undefined ? { name: parsed.data.name } : {}),
+        ...(parsed.data.type !== undefined ? { type: parsed.data.type } : {}),
+      },
+    });
 
-  await prisma.auditLog.create({
-    data: {
+    await safeAuditLog({
       userId: authResult.session.user.id,
       action: "UPDATE",
       entityType: "ForestPatrimonyNeighbor",
       entityId: updated.id,
       newValues: parsed.data,
-    },
-  });
+    });
 
-  return ok(updated);
+    return ok(updated);
+  } catch (error) {
+    return mapNeighborError(error, "No fue posible actualizar el vecino");
+  }
 }
 
 export async function DELETE(req: NextRequest) {
@@ -127,16 +156,18 @@ export async function DELETE(req: NextRequest) {
     return fail("Datos inválidos", 400, parsed.error.flatten());
   }
 
-  await prisma.forestPatrimonyNeighbor.delete({ where: { id: parsed.data.id } });
+  try {
+    await prisma.forestPatrimonyNeighbor.delete({ where: { id: parsed.data.id } });
 
-  await prisma.auditLog.create({
-    data: {
+    await safeAuditLog({
       userId: authResult.session.user.id,
       action: "DELETE",
       entityType: "ForestPatrimonyNeighbor",
       entityId: parsed.data.id,
-    },
-  });
+    });
 
-  return ok({ message: "Vecino eliminado" });
+    return ok({ message: "Vecino eliminado" });
+  } catch (error) {
+    return mapNeighborError(error, "No fue posible eliminar el vecino");
+  }
 }
