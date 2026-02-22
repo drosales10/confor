@@ -19,6 +19,7 @@ type Level3Item = {
   name: string;
   type: string;
   totalAreaHa: string | number;
+  legalStatus?: string | null;
   isActive: boolean;
 };
 
@@ -28,6 +29,7 @@ type Level4Item = {
   name: string;
   type: string;
   totalAreaHa: string | number;
+  legalStatus?: string | null;
   isActive: boolean;
 };
 
