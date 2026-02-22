@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import SileoToaster from "@/components/SileoToaster";
+import { prisma } from "@/lib/prisma";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -12,10 +14,23 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-export const metadata: Metadata = {
-  title: "Modular Enterprise App",
-  description: "Aplicación modular full-stack con Next.js y PostgreSQL",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const config = await prisma.systemConfiguration.findFirst({
+    where: {
+      organizationId: null,
+      category: "general",
+      key: "site_name",
+    },
+    select: { value: true },
+  });
+
+  const appName = config?.value?.trim() || "Modular Enterprise App";
+
+  return {
+    title: appName,
+    description: "Aplicación modular full-stack con Next.js y PostgreSQL",
+  };
+}
 
 export default function RootLayout({
   children,
@@ -26,6 +41,7 @@ export default function RootLayout({
     <html lang="en">
       <body className={`${geistSans.variable} ${geistMono.variable} min-h-screen antialiased`}>
         {children}
+        <SileoToaster />
       </body>
     </html>
   );

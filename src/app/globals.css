@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "sileo/styles.css";
 
 :root {
   --background: #ffffff;

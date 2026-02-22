@@ -18,6 +18,7 @@ Estos agentes están diseñados para replicar el mismo patrón implementado en `
 - Listado
 - Paginación y límite
 - Edición inline
+- Alertas/confirmaciones con `sileo`
 - Verificación final (lint/types/build)
 
 ## Input sugerido por tabla

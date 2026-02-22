@@ -6,6 +6,7 @@ import { getRolePermissions, normalizeRole } from "@/lib/rbac";
 
 const protectedRoutes = [
   "/dashboard",
+  "/roles",
   "/users",
   "/organizaciones",
   "/profile",
@@ -20,6 +21,7 @@ const protectedRoutes = [
 const routeModuleMap: Array<{ prefix: string; module: string }> = [
   { prefix: "/dashboard", module: "dashboard" },
   { prefix: "/organizaciones", module: "organizations" },
+  { prefix: "/roles", module: "users" },
   { prefix: "/users", module: "users" },
   { prefix: "/patrimonio-forestal", module: "forest-patrimony" },
   { prefix: "/activo-biologico", module: "forest-biological-asset" },

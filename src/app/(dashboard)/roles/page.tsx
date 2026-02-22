@@ -1,0 +1,680 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { canAccessOrganizations, normalizeRole } from "@/lib/rbac";
+import { sileo } from "sileo";
+
+const CRUD_ACTIONS = ["CREATE", "READ", "UPDATE", "DELETE"] as const;
+const ACTION_ORDER = ["CREATE", "READ", "UPDATE", "DELETE", "EXPORT", "ADMIN"] as const;
+
+type PermissionRef = {
+  permissionId: string;
+  moduleSlug: string;
+  action: string;
+};
+
+type RoleItem = {
+  id: string;
+  name: string;
+  slug: string;
+  description?: string | null;
+  organizationId: string | null;
+  isSystemRole: boolean;
+  permissions: PermissionRef[];
+};
+
+type ModuleAction = {
+  permissionId: string;
+  action: string;
+};
+
+type ModuleItem = {
+  id: string;
+  name: string;
+  slug: string;
+  actions: ModuleAction[];
+};
+
+export default function RolesPage() {
+  const router = useRouter();
+  const rolUsuario = normalizeRole(typeof window !== "undefined" ? sessionStorage.getItem("RolUsuario") : null);
+  const [roles, setRoles] = useState<RoleItem[]>([]);
+  const [modules, setModules] = useState<ModuleItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [savingRole, setSavingRole] = useState(false);
+  const [deletingRoleId, setDeletingRoleId] = useState<string | null>(null);
+  const [deletingSelected, setDeletingSelected] = useState(false);
+  const [selectedRoleIds, setSelectedRoleIds] = useState<string[]>([]);
+  const [editingRoleId, setEditingRoleId] = useState<string | null>(null);
+  const [selectedPermissionIds, setSelectedPermissionIds] = useState<string[]>([]);
+  const [editingRoleMetaId, setEditingRoleMetaId] = useState<string | null>(null);
+  const [roleForm, setRoleForm] = useState({ name: "", slug: "", description: "" });
+
+  useEffect(() => {
+    if (!canAccessOrganizations(rolUsuario)) {
+      router.replace("/unauthorized");
+      return;
+    }
+
+    const load = async () => {
+      try {
+        setLoading(true);
+        const response = await fetch("/api/roles");
+
+        if (!response.ok) {
+          const payload = await response.json().catch(() => null);
+          throw new Error(payload?.error ?? "No fue posible cargar roles y permisos");
+        }
+
+        const payload = await response.json();
+        setRoles(payload?.data?.roles ?? []);
+        setModules(payload?.data?.modules ?? []);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "Error desconocido";
+        sileo.error({
+          title: "No se pudo cargar",
+          description: message,
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    void load();
+  }, [rolUsuario, router]);
+
+  const editingRole = useMemo(
+    () => roles.find((role) => role.id === editingRoleId) ?? null,
+    [roles, editingRoleId],
+  );
+
+  const selectedPermissionSet = useMemo(() => new Set(selectedPermissionIds), [selectedPermissionIds]);
+  const deletableRoleIds = useMemo(() => roles.filter((role) => !role.isSystemRole).map((role) => role.id), [roles]);
+  const selectedRoleSet = useMemo(() => new Set(selectedRoleIds), [selectedRoleIds]);
+
+  useEffect(() => {
+    setSelectedRoleIds((prev) => prev.filter((id) => deletableRoleIds.includes(id)));
+  }, [deletableRoleIds]);
+
+  function openModal(role: RoleItem) {
+    setEditingRoleId(role.id);
+    setSelectedPermissionIds(role.permissions.map((permission) => permission.permissionId));
+    sileo.info({
+      title: "Editando rol",
+      description: `Ahora gestionas los permisos de ${role.name}.`,
+    });
+  }
+
+  function openCreateRoleForm() {
+    setEditingRoleMetaId(null);
+    setRoleForm({ name: "", slug: "", description: "" });
+  }
+
+  function openEditRoleForm(role: RoleItem) {
+    setEditingRoleMetaId(role.id);
+    setRoleForm({
+      name: role.name,
+      slug: role.slug,
+      description: role.description ?? "",
+    });
+  }
+
+  async function onSaveRole() {
+    const payload = {
+      name: roleForm.name.trim(),
+      slug: roleForm.slug.trim(),
+      description: roleForm.description.trim() || undefined,
+    };
+
+    if (!payload.name || !payload.slug) {
+      sileo.warning({
+        title: "Datos incompletos",
+        description: "Debes indicar nombre y slug.",
+      });
+      return;
+    }
+
+    try {
+      setSavingRole(true);
+
+      const response = await fetch(editingRoleMetaId ? `/api/roles/${editingRoleMetaId}` : "/api/roles", {
+        method: editingRoleMetaId ? "PATCH" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      const result = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(result?.error ?? "No fue posible guardar el rol");
+      }
+
+      const reload = await fetch("/api/roles");
+      const reloadPayload = await reload.json();
+      setRoles(reloadPayload?.data?.roles ?? []);
+
+      sileo.success({
+        title: editingRoleMetaId ? "Rol actualizado" : "Rol creado",
+        description: `Se guardó el rol ${payload.name}.`,
+      });
+
+      setEditingRoleMetaId(null);
+      setRoleForm({ name: "", slug: "", description: "" });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Error desconocido";
+      sileo.error({
+        title: "No se pudo guardar el rol",
+        description: message,
+      });
+    } finally {
+      setSavingRole(false);
+    }
+  }
+
+  async function executeDeleteRole(role: RoleItem) {
+    if (role.isSystemRole) {
+      sileo.warning({
+        title: "Rol protegido",
+        description: "No puedes eliminar un rol del sistema.",
+      });
+      return;
+    }
+
+    try {
+      setDeletingRoleId(role.id);
+      const response = await fetch(`/api/roles/${role.id}`, {
+        method: "DELETE",
+      });
+
+      const result = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(result?.error ?? "No fue posible eliminar el rol");
+      }
+
+      setRoles((prev) => prev.filter((item) => item.id !== role.id));
+      setSelectedRoleIds((prev) => prev.filter((id) => id !== role.id));
+      sileo.success({
+        title: "Rol eliminado",
+        description: `Se eliminó el rol ${role.name}.`,
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Error desconocido";
+      sileo.error({
+        title: "No se pudo eliminar",
+        description: message,
+      });
+    } finally {
+      setDeletingRoleId(null);
+    }
+  }
+
+  function onDeleteRole(role: RoleItem) {
+    if (role.isSystemRole) {
+      sileo.warning({
+        title: "Rol protegido",
+        description: "No puedes eliminar un rol del sistema.",
+      });
+      return;
+    }
+
+    sileo.action({
+      title: "Confirmar eliminación",
+      description: `Se eliminará el rol ${role.name}.`,
+      duration: 6000,
+      button: {
+        title: "Eliminar",
+        onClick: () => {
+          void executeDeleteRole(role);
+        },
+      },
+    });
+  }
+
+  function toggleRoleSelection(roleId: string, checked: boolean) {
+    setSelectedRoleIds((prev) => {
+      const next = new Set(prev);
+      if (checked) {
+        next.add(roleId);
+      } else {
+        next.delete(roleId);
+      }
+      return Array.from(next);
+    });
+  }
+
+  function toggleSelectAllRoles(checked: boolean) {
+    if (!checked) {
+      setSelectedRoleIds([]);
+      return;
+    }
+    setSelectedRoleIds(deletableRoleIds);
+  }
+
+  async function executeDeleteSelectedRoles(roleIds: string[]) {
+    if (roleIds.length === 0) {
+      sileo.warning({
+        title: "Sin selección",
+        description: "Marca al menos un rol para eliminar.",
+      });
+      return;
+    }
+
+    try {
+      setDeletingSelected(true);
+
+      const results = await Promise.allSettled(
+        roleIds.map(async (roleId) => {
+          const response = await fetch(`/api/roles/${roleId}`, { method: "DELETE" });
+          const payload = await response.json().catch(() => null);
+          if (!response.ok) {
+            throw new Error(payload?.error ?? "No fue posible eliminar uno de los roles");
+          }
+          return roleId;
+        }),
+      );
+
+      const deletedIds = results
+        .filter((result): result is PromiseFulfilledResult<string> => result.status === "fulfilled")
+        .map((result) => result.value);
+
+      const failedCount = results.length - deletedIds.length;
+
+      if (deletedIds.length > 0) {
+        setRoles((prev) => prev.filter((role) => !deletedIds.includes(role.id)));
+      }
+      setSelectedRoleIds([]);
+
+      if (failedCount > 0) {
+        sileo.warning({
+          title: "Eliminación parcial",
+          description: `Se eliminaron ${deletedIds.length} roles y ${failedCount} fallaron.`,
+        });
+      } else {
+        sileo.success({
+          title: "Roles eliminados",
+          description: `Se eliminaron ${deletedIds.length} roles correctamente.`,
+        });
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Error desconocido";
+      sileo.error({
+        title: "No se pudieron eliminar roles",
+        description: message,
+      });
+    } finally {
+      setDeletingSelected(false);
+    }
+  }
+
+  function onDeleteSelectedRoles() {
+    if (selectedRoleIds.length === 0) {
+      sileo.warning({
+        title: "Sin selección",
+        description: "Marca al menos un rol para eliminar.",
+      });
+      return;
+    }
+
+    const roleIds = [...selectedRoleIds];
+    sileo.action({
+      title: "Confirmar eliminación masiva",
+      description: `Se eliminarán ${roleIds.length} roles seleccionados.`,
+      duration: 7000,
+      button: {
+        title: "Eliminar",
+        onClick: () => {
+          void executeDeleteSelectedRoles(roleIds);
+        },
+      },
+    });
+  }
+
+  function closeModal() {
+    if (saving) return;
+    setEditingRoleId(null);
+    setSelectedPermissionIds([]);
+  }
+
+  function togglePermission(permissionId: string, enabled: boolean) {
+    setSelectedPermissionIds((prev) => {
+      const next = new Set(prev);
+      if (enabled) {
+        next.add(permissionId);
+      } else {
+        next.delete(permissionId);
+      }
+      return Array.from(next);
+    });
+  }
+
+  function toggleAllPermissions(enabled: boolean) {
+    if (!enabled) {
+      setSelectedPermissionIds([]);
+      return;
+    }
+
+    const all = modules.flatMap((moduleItem) => moduleItem.actions.map((action) => action.permissionId));
+    setSelectedPermissionIds(Array.from(new Set(all)));
+  }
+
+  function toggleModuleCrud(moduleItem: ModuleItem, enabled: boolean) {
+    const crudPermissionIds = moduleItem.actions
+      .filter((actionItem) => CRUD_ACTIONS.includes(actionItem.action as (typeof CRUD_ACTIONS)[number]))
+      .map((actionItem) => actionItem.permissionId);
+
+    setSelectedPermissionIds((prev) => {
+      const next = new Set(prev);
+      for (const permissionId of crudPermissionIds) {
+        if (enabled) {
+          next.add(permissionId);
+        } else {
+          next.delete(permissionId);
+        }
+      }
+      return Array.from(next);
+    });
+  }
+
+  async function onSavePermissions() {
+    if (!editingRole) return;
+
+    if (selectedPermissionIds.length === 0) {
+      sileo.warning({
+        title: "Sin permisos seleccionados",
+        description: "Este rol quedará sin accesos si continúas con el guardado.",
+      });
+    }
+
+    try {
+      setSaving(true);
+
+      const response = await fetch("/api/roles", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          roleId: editingRole.id,
+          permissionIds: selectedPermissionIds,
+        }),
+      });
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        throw new Error(payload?.error ?? "No fue posible guardar permisos");
+      }
+
+      setRoles((prev) =>
+        prev.map((role) =>
+          role.id === editingRole.id
+            ? {
+                ...role,
+                permissions: modules
+                  .flatMap((moduleItem) =>
+                    moduleItem.actions.map((actionItem) => ({
+                      permissionId: actionItem.permissionId,
+                      moduleSlug: moduleItem.slug,
+                      action: actionItem.action,
+                    })),
+                  )
+                  .filter((item) => selectedPermissionSet.has(item.permissionId)),
+              }
+            : role,
+        ),
+      );
+
+      sileo.success({
+        title: "Permisos actualizados",
+        description: `Se guardaron los permisos del rol ${editingRole.name}.`,
+      });
+
+      closeModal();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Error desconocido";
+      sileo.error({
+        title: "No se pudo guardar",
+        description: message,
+      });
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  if (!rolUsuario || !canAccessOrganizations(rolUsuario)) {
+    return <p className="text-sm">Validando permisos...</p>;
+  }
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <h1 className="text-2xl font-semibold">Roles y permisos</h1>
+        <p className="text-sm text-muted-foreground">Gestiona permisos por módulo y acciones CRUD para cada rol.</p>
+      </div>
+
+      <div className="space-y-3 rounded-lg border p-4">
+        <div className="flex items-center justify-between gap-2">
+          <h2 className="text-lg font-semibold">CRUD de roles</h2>
+          <button className="rounded-md border px-3 py-1.5 text-sm" onClick={openCreateRoleForm} type="button">
+            Nuevo rol
+          </button>
+        </div>
+
+        <div className="grid gap-2 md:grid-cols-3">
+          <input
+            className="w-full rounded-md border px-3 py-2"
+            onChange={(event) => setRoleForm((prev) => ({ ...prev, name: event.target.value }))}
+            placeholder="Nombre"
+            value={roleForm.name}
+          />
+          <input
+            className="w-full rounded-md border px-3 py-2"
+            onChange={(event) => setRoleForm((prev) => ({ ...prev, slug: event.target.value }))}
+            placeholder="Slug"
+            value={roleForm.slug}
+          />
+          <input
+            className="w-full rounded-md border px-3 py-2"
+            onChange={(event) => setRoleForm((prev) => ({ ...prev, description: event.target.value }))}
+            placeholder="Descripción (opcional)"
+            value={roleForm.description}
+          />
+        </div>
+
+        <div className="flex gap-2">
+          <button
+            className="rounded-md border px-3 py-1.5 text-sm disabled:opacity-60"
+            disabled={savingRole}
+            onClick={() => void onSaveRole()}
+            type="button"
+          >
+            {savingRole ? "Guardando..." : editingRoleMetaId ? "Actualizar rol" : "Crear rol"}
+          </button>
+          {editingRoleMetaId ? (
+            <button
+              className="rounded-md border px-3 py-1.5 text-sm"
+              onClick={() => {
+                setEditingRoleMetaId(null);
+                setRoleForm({ name: "", slug: "", description: "" });
+              }}
+              type="button"
+            >
+              Cancelar edición
+            </button>
+          ) : null}
+        </div>
+      </div>
+
+      {loading ? <p className="text-sm">Cargando...</p> : null}
+
+      <div className="overflow-x-auto rounded-lg border">
+        <table className="w-full text-left text-sm">
+          <thead>
+            <tr className="border-b">
+              <th className="px-3 py-2">
+                <input
+                  checked={deletableRoleIds.length > 0 && selectedRoleIds.length === deletableRoleIds.length}
+                  onChange={(event) => toggleSelectAllRoles(event.target.checked)}
+                  type="checkbox"
+                />
+              </th>
+              <th className="px-3 py-2">Rol</th>
+              <th className="px-3 py-2">Slug</th>
+              <th className="px-3 py-2">Sistema</th>
+              <th className="px-3 py-2">Permisos</th>
+              <th className="px-3 py-2">Acción</th>
+            </tr>
+          </thead>
+          <tbody>
+            {roles.map((role) => (
+              <tr className="border-b" key={role.id}>
+                <td className="px-3 py-2">
+                  <input
+                    checked={selectedRoleSet.has(role.id)}
+                    disabled={role.isSystemRole}
+                    onChange={(event) => toggleRoleSelection(role.id, event.target.checked)}
+                    type="checkbox"
+                  />
+                </td>
+                <td className="px-3 py-2">{role.name}</td>
+                <td className="px-3 py-2">{role.slug}</td>
+                <td className="px-3 py-2">{role.isSystemRole ? "Sí" : "No"}</td>
+                <td className="px-3 py-2">{role.permissions.length}</td>
+                <td className="px-3 py-2">
+                  <div className="flex flex-wrap gap-2">
+                    <button className="rounded-md border px-3 py-1.5" onClick={() => openModal(role)} type="button">
+                      Permisos
+                    </button>
+                    <button className="rounded-md border px-3 py-1.5" onClick={() => openEditRoleForm(role)} type="button">
+                      Editar
+                    </button>
+                    <button
+                      className="rounded-md border px-3 py-1.5 disabled:opacity-60"
+                      disabled={deletingRoleId === role.id || role.isSystemRole}
+                      onClick={() => onDeleteRole(role)}
+                      type="button"
+                    >
+                      {deletingRoleId === role.id ? "Eliminando..." : "Eliminar"}
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+            {!loading && roles.length === 0 ? (
+              <tr>
+                <td className="px-3 py-3 text-sm text-muted-foreground" colSpan={6}>
+                  No hay roles disponibles.
+                </td>
+              </tr>
+            ) : null}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="flex items-center gap-2">
+        <button
+          className="rounded-md border px-3 py-1.5 text-sm disabled:opacity-60"
+          disabled={selectedRoleIds.length === 0 || deletingSelected}
+          onClick={() => onDeleteSelectedRoles()}
+          type="button"
+        >
+          {deletingSelected ? "Eliminando seleccionados..." : `Eliminar seleccionados (${selectedRoleIds.length})`}
+        </button>
+      </div>
+
+      {editingRole ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background p-4">
+          <div className="max-h-[90vh] w-full max-w-4xl overflow-y-auto rounded-xl border-2 bg-gray-100 p-4 shadow-lg">
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <div>
+                <h2 className="text-lg font-semibold">Permisos de {editingRole.name}</h2>
+                <p className="text-sm text-muted-foreground">Marca o desmarca permisos por módulo y por CRUD.</p>
+              </div>
+              <button className="rounded-md border px-3 py-1.5 text-sm" onClick={closeModal} type="button">
+                Cerrar
+              </button>
+            </div>
+
+            <div className="mb-4 flex flex-wrap gap-2">
+              <button className="rounded-md border px-3 py-1.5 text-sm" onClick={() => toggleAllPermissions(true)} type="button">
+                Marcar todo
+              </button>
+              <button className="rounded-md border px-3 py-1.5 text-sm" onClick={() => toggleAllPermissions(false)} type="button">
+                Desmarcar todo
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              {modules.map((moduleItem) => {
+                const actionMap = new Map(moduleItem.actions.map((actionItem) => [actionItem.action, actionItem.permissionId]));
+
+                const orderedActions = Array.from(
+                  new Set([
+                    ...ACTION_ORDER.filter((action) => actionMap.has(action)),
+                    ...moduleItem.actions.map((actionItem) => actionItem.action).filter((action) => !ACTION_ORDER.includes(action as (typeof ACTION_ORDER)[number])),
+                  ]),
+                );
+
+                const moduleCrudPermissionIds = CRUD_ACTIONS
+                  .map((action) => actionMap.get(action))
+                  .filter((value): value is string => Boolean(value));
+
+                const isCrudChecked =
+                  moduleCrudPermissionIds.length > 0 &&
+                  moduleCrudPermissionIds.every((permissionId) => selectedPermissionSet.has(permissionId));
+
+                return (
+                  <div className="rounded-lg border p-3" key={moduleItem.id}>
+                    <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                      <div className="font-semibold">{moduleItem.name}</div>
+                      <label className="inline-flex items-center gap-2 text-sm">
+                        <input
+                          checked={isCrudChecked}
+                          onChange={(event) => toggleModuleCrud(moduleItem, event.target.checked)}
+                          type="checkbox"
+                        />
+                        CRUD completo
+                      </label>
+                    </div>
+
+                    <div className="grid gap-2 md:grid-cols-3">
+                      {orderedActions.map((action) => {
+                        const permissionId = actionMap.get(action);
+                        if (!permissionId) return null;
+
+                        return (
+                          <label className="inline-flex items-center gap-2 text-sm" key={`${moduleItem.id}-${action}`}>
+                            <input
+                              checked={selectedPermissionSet.has(permissionId)}
+                              onChange={(event) => togglePermission(permissionId, event.target.checked)}
+                              type="checkbox"
+                            />
+                            {action}
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="mt-4 flex gap-2">
+              <button
+                className="rounded-md border px-3 py-2 text-sm disabled:opacity-60"
+                disabled={saving}
+                onClick={() => void onSavePermissions()}
+                type="button"
+              >
+                {saving ? "Guardando..." : "Guardar permisos"}
+              </button>
+              <button className="rounded-md border px-3 py-2 text-sm" onClick={closeModal} type="button">
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}

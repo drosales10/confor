@@ -7,8 +7,12 @@ export async function GET() {
   const authResult = await requireAuth();
   if ("error" in authResult) return authResult.error;
 
-  const permissionError = requirePermission(authResult.session.user.permissions, "settings", "READ");
-  if (permissionError) return permissionError;
+  const roles = authResult.session.user.roles ?? [];
+  const isAdmin = roles.includes("ADMIN") || roles.includes("SUPER_ADMIN");
+  if (!isAdmin) {
+    const permissionError = requirePermission(authResult.session.user.permissions, "settings", "READ");
+    if (permissionError) return permissionError;
+  }
 
   const configs = await prisma.systemConfiguration.findMany({
     orderBy: [{ category: "asc" }, { key: "asc" }],
@@ -21,8 +25,12 @@ export async function PATCH(req: NextRequest) {
   const authResult = await requireAuth();
   if ("error" in authResult) return authResult.error;
 
-  const permissionError = requirePermission(authResult.session.user.permissions, "settings", "UPDATE");
-  if (permissionError) return permissionError;
+  const roles = authResult.session.user.roles ?? [];
+  const isAdmin = roles.includes("ADMIN") || roles.includes("SUPER_ADMIN");
+  if (!isAdmin) {
+    const permissionError = requirePermission(authResult.session.user.permissions, "settings", "UPDATE");
+    if (permissionError) return permissionError;
+  }
 
   const body = await req.json();
   const parsed = updateSystemConfigSchema.safeParse(body);

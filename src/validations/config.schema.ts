@@ -12,3 +12,13 @@ export const updateNotificationPrefsSchema = z.object({
   channel: z.enum(["EMAIL", "IN_APP", "SMS", "PUSH"]),
   isEnabled: z.boolean(),
 });
+
+export const upsertModuleSchema = z.object({
+  name: z.string().min(2),
+  slug: z.string().min(2),
+  routePath: z.string().min(1),
+  description: z.string().optional(),
+  icon: z.string().optional(),
+  displayOrder: z.coerce.number().int().nonnegative().default(0),
+  isActive: z.boolean().optional(),
+});

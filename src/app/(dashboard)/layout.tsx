@@ -6,11 +6,13 @@ import { auth } from "@/lib/auth";
 import { canAccessOrganizations, canAccessUsers, getRolePermissions, normalizeRole } from "@/lib/rbac";
 import StatusBar from "@/components/StatusBar";
 import { buildAbilityFromPermissions } from "@/lib/ability";
+import { prisma } from "@/lib/prisma";
 
 const nav = [
   { href: "/dashboard", label: "Inicio", module: "dashboard" },
   { href: "/organizaciones", label: "Organizaciones", module: "organizations", onlyAdmin: true },
   { href: "/users", label: "Usuarios", module: "users", adminOrGerente: true },
+  { href: "/roles", label: "Roles", module: "users", onlyAdmin: true },
   { href: "/patrimonio-forestal", label: "Patrimonio forestal", module: "forest-patrimony" },
   { href: "/activo-biologico", label: "Activo biológico", module: "forest-biological-asset" },
   { href: "/configuracion-forestal", label: "Configuración forestal", module: "forest-config" },
@@ -22,6 +24,11 @@ const nav = [
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();
+  const siteNameConfig = await prisma.systemConfiguration.findFirst({
+    where: { organizationId: null, category: "general", key: "site_name" },
+    select: { value: true },
+  });
+  const appName = siteNameConfig?.value?.trim() || "Modular Enterprise App";
   const cookieStore = await cookies();
   const roleFromCookie = normalizeRole(cookieStore.get("RolUsuario")?.value ?? null);
   const roleFromSession = normalizeRole(session?.user?.roles?.[0] ?? null);
@@ -45,7 +52,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
     <div className="min-h-screen pb-12">
       <header className="border-b px-4 py-3">
         <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-4">
-          <div className="text-sm font-semibold">Modular Enterprise App</div>
+          <div className="text-sm font-semibold">{appName}</div>
           <form
             action={async () => {
               "use server";

@@ -19,8 +19,11 @@ Tomar como referencia la pantalla `patrimonio-forestal`.
 ## Reglas UX
 - Mantener estado de búsqueda/paginación tras crear/editar/eliminar.
 - Autoajustar página si queda fuera de rango.
-- Mostrar aviso breve cuando haya ajuste automático.
+- Mostrar aviso breve cuando haya ajuste automático usando `sileo`.
 - Deshabilitar botones durante `submitting`.
+- Toda alerta/notificación debe implementarse con `sileo`.
+- Confirmaciones de acciones destructivas deben usar `sileo.action`.
+- No usar `window.alert` ni `window.confirm`.
 
 ## Integración API
 - `GET`: `level/filters/search/page/limit`
