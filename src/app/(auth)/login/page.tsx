@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useState } from "react";
-import { inferRoleFromEmail } from "@/lib/rbac";
+import { getSession, signIn } from "next-auth/react";
 
 type OrganizationItem = {
   id: string;
@@ -14,6 +14,7 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [organizations, setOrganizations] = useState<OrganizationItem[]>([]);
   const [organizationId, setOrganizationId] = useState("");
   const [orgError, setOrgError] = useState<string | null>(null);
@@ -23,6 +24,7 @@ export default function LoginPage() {
     sessionStorage.removeItem("RolUsuario");
     document.cookie = "RolUsuario=; Max-Age=0; path=/; SameSite=Lax";
     document.cookie = "OrgName=; Max-Age=0; path=/; SameSite=Lax";
+    document.cookie = "EmailUsuario=; Max-Age=0; path=/; SameSite=Lax";
   }, []);
 
   useEffect(() => {
@@ -48,18 +50,50 @@ export default function LoginPage() {
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
     setLoading(true);
+    setError(null);
 
-    const assignedRole = inferRoleFromEmail(email);
-    const selectedOrganization = organizations.find((organization) => organization.id === organizationId) ?? null;
-    sessionStorage.setItem("RolUsuario", assignedRole);
-    sessionStorage.setItem("EmailUsuario", email);
-    if (selectedOrganization) {
-      sessionStorage.setItem("OrganizacionUsuario", selectedOrganization.id);
-      sessionStorage.setItem("OrganizacionNombre", selectedOrganization.name);
+    const result = await signIn("credentials", {
+      email,
+      password,
+      redirect: false,
+    });
+
+    if (result?.error) {
+      setError("Credenciales inválidas o usuario pendiente de aprobación");
+      setLoading(false);
+      return;
     }
-    document.cookie = `RolUsuario=${assignedRole}; path=/; SameSite=Lax`;
-    if (selectedOrganization) {
-      document.cookie = `OrgName=${encodeURIComponent(selectedOrganization.name)}; path=/; SameSite=Lax`;
+
+    const selectedOrganization = organizations.find((organization) => organization.id === organizationId) ?? null;
+    try {
+      const session = await getSession();
+      const roleSlug = session?.user?.roles?.[0] ?? null;
+      const orgName = session?.user?.organizationName ?? selectedOrganization?.name ?? null;
+      const orgId = session?.user?.organizationId ?? selectedOrganization?.id ?? null;
+
+      if (roleSlug) {
+        sessionStorage.setItem("RolUsuario", roleSlug);
+        document.cookie = `RolUsuario=${roleSlug}; path=/; SameSite=Lax`;
+      }
+
+      sessionStorage.setItem("EmailUsuario", email);
+      document.cookie = `EmailUsuario=${encodeURIComponent(email)}; path=/; SameSite=Lax`;
+
+      if (orgId) {
+        sessionStorage.setItem("OrganizacionUsuario", orgId);
+      }
+      if (orgName) {
+        sessionStorage.setItem("OrganizacionNombre", orgName);
+        document.cookie = `OrgName=${encodeURIComponent(orgName)}; path=/; SameSite=Lax`;
+      }
+    } catch {
+      if (selectedOrganization) {
+        sessionStorage.setItem("OrganizacionUsuario", selectedOrganization.id);
+        sessionStorage.setItem("OrganizacionNombre", selectedOrganization.name);
+        document.cookie = `OrgName=${encodeURIComponent(selectedOrganization.name)}; path=/; SameSite=Lax`;
+      }
+      sessionStorage.setItem("EmailUsuario", email);
+      document.cookie = `EmailUsuario=${encodeURIComponent(email)}; path=/; SameSite=Lax`;
     }
 
     setLoading(false);
@@ -102,14 +136,18 @@ export default function LoginPage() {
           </select>
         </div>
         {orgError ? <p className="mt-3 text-sm text-red-600">{orgError}</p> : null}
+        {error ? <p className="mt-3 text-sm text-red-600">{error}</p> : null}
         <button className="mt-4 w-full rounded-md border px-4 py-2" disabled={loading} type="submit">
           {loading ? "Ingresando..." : "Iniciar Sesión"}
         </button>
-        <p className="mt-3 text-center text-sm">
+        <div className="mt-3 flex flex-col items-center gap-2 text-sm">
+          <a className="underline" href="/forgot-password">
+            ¿Olvidaste tu contraseña?
+          </a>
           <a className="underline" href="/register">
             Registrarse
           </a>
-        </p>
+        </div>
       </form>
     </main>
   );

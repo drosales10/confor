@@ -47,11 +47,6 @@ export async function ensureRoleWithPermissions(roleSlug: string, organizationId
     },
   });
 
-  const rolePermissionCount = await prisma.rolePermission.count({ where: { roleId: role.id } });
-  if (rolePermissionCount > 0) {
-    return role;
-  }
-
   const permissionSpec = ROLE_PERMISSIONS[roleSlug] ?? ROLE_PERMISSIONS.USER;
   let permissions = [] as { id: string }[];
 

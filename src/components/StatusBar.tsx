@@ -26,7 +26,7 @@ export default function StatusBar() {
   const moduleName = useMemo(() => getModuleLabel(pathname), [pathname]);
   const [now, setNow] = useState(() => new Date());
   const [ip, setIp] = useState<string>("-");
-  const [mounted, setMounted] = useState(false);
+  const [mounted] = useState(() => typeof window !== "undefined");
 
   const userName = typeof window !== "undefined" ? sessionStorage.getItem("EmailUsuario") ?? "Usuario" : "Usuario";
   const userRole = typeof window !== "undefined" ? sessionStorage.getItem("RolUsuario") ?? "-" : "-";
@@ -35,7 +35,6 @@ export default function StatusBar() {
   const project = typeof window !== "undefined" ? sessionStorage.getItem("ProyectoActual") ?? "Sin proyecto" : "Sin proyecto";
 
   useEffect(() => {
-    setMounted(true);
     const timer = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);

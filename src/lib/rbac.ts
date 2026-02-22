@@ -17,11 +17,11 @@ export function inferRoleFromEmail(email: string): AppRole {
 }
 
 export function canAccessOrganizations(role: AppRole | null) {
-  return role === "ADMIN";
+  return role === "ADMIN" || role === "SUPER_ADMIN";
 }
 
 export function canAccessUsers(role: AppRole | null) {
-  return role === "ADMIN" || role === "GERENTE_CAMPO";
+  return role === "ADMIN" || role === "SUPER_ADMIN" || role === "GERENTE_CAMPO";
 }
 
 export function getRolePermissions(role: AppRole | null) {
@@ -39,6 +39,10 @@ export function getRolePermissions(role: AppRole | null) {
       "users:UPDATE",
       "users:DELETE",
     ];
+  }
+
+  if (role === "SUPER_ADMIN") {
+    return ["dashboard:READ", "users:ADMIN", "organizations:ADMIN", "forest-patrimony:ADMIN", "forest-biological-asset:ADMIN", "forest-config:ADMIN", "profile:ADMIN", "analytics:ADMIN", "settings:ADMIN", "audit:ADMIN"];
   }
 
   if (role === "GERENTE_CAMPO") {

@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { auth } from "@/lib/auth";
 import { hasPermission } from "@/lib/permissions";
-import { getRolePermissions, normalizeRole } from "@/lib/rbac";
+import { getUserRolesAndPermissions } from "@/lib/permissions";
+import { prisma } from "@/lib/prisma";
 
 export function ok<T>(data: T, status = 200) {
   return NextResponse.json({ success: true, data }, { status });
@@ -16,17 +17,23 @@ export async function requireAuth() {
   const session = await auth();
   if (!session?.user?.id) {
     const cookieStore = await cookies();
-    const roleFromCookie = normalizeRole(cookieStore.get("RolUsuario")?.value ?? null);
-    if (!roleFromCookie) {
+    const emailFromCookie = cookieStore.get("EmailUsuario")?.value ?? null;
+    if (!emailFromCookie) {
       return { error: fail("Unauthorized", 401) };
     }
 
+    const user = await prisma.user.findUnique({ where: { email: emailFromCookie } });
+    if (!user) {
+      return { error: fail("Unauthorized", 401) };
+    }
+
+    const roleInfo = await getUserRolesAndPermissions(user.id);
     return {
       session: {
         user: {
-          id: "simulated",
-          roles: [roleFromCookie],
-          permissions: getRolePermissions(roleFromCookie),
+          id: user.id,
+          roles: roleInfo.roles,
+          permissions: roleInfo.permissions,
         },
       },
     };

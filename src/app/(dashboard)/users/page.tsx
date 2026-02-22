@@ -14,6 +14,7 @@ type InvitedUser = {
   id: string;
   email: string;
   role: string;
+  organizationId: string | null;
   organizationName: string | null;
   registeredAt: string;
   status: string;
@@ -32,6 +33,7 @@ type ApiUser = {
   status?: string | null;
   userRoles?: ApiUserRole[] | null;
   organization?: {
+    id?: string | null;
     name?: string | null;
   } | null;
 };
@@ -44,10 +46,13 @@ export default function UsersPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showInviteForm, setShowInviteForm] = useState(false);
+  const [editingUser, setEditingUser] = useState<InvitedUser | null>(null);
+  const [editForm, setEditForm] = useState({ role: "USER", organizationId: "", status: "ACTIVE" });
   const [form, setForm] = useState({
     email: "",
     role: "USER",
     organizationId: "",
+    temporaryPassword: "",
   });
 
   useEffect(() => {
@@ -81,6 +86,7 @@ export default function UsersPage() {
           id: user.id,
           email: user.email,
           role: user.userRoles?.[0]?.role?.slug ?? "-",
+          organizationId: user.organization?.id ?? null,
           organizationName: user.organization?.name ?? null,
           registeredAt: user.createdAt,
           status: user.status ?? "-",
@@ -100,7 +106,7 @@ export default function UsersPage() {
     void load();
   }, [rolUsuario, router]);
 
-  const canInvite = useMemo(() => rolUsuario === "ADMIN", [rolUsuario]);
+  const canInvite = useMemo(() => rolUsuario === "ADMIN" || rolUsuario === "SUPER_ADMIN", [rolUsuario]);
 
   function onSubmitInvite(event: FormEvent) {
     event.preventDefault();
@@ -115,6 +121,7 @@ export default function UsersPage() {
             email: form.email,
             roleSlug: form.role,
             organizationId: form.organizationId,
+            password: form.temporaryPassword || undefined,
           }),
         });
 
@@ -129,6 +136,7 @@ export default function UsersPage() {
           id: created.id,
           email: created.email,
           role: created.userRoles?.[0]?.role?.slug ?? form.role,
+          organizationId: created.organization?.id ?? null,
           organizationName: created.organization?.name ?? null,
           registeredAt: created.createdAt,
           status: created.status ?? "-",
@@ -139,6 +147,7 @@ export default function UsersPage() {
           email: "",
           role: "USER",
           organizationId: organizations[0]?.id ?? "",
+          temporaryPassword: "",
         });
         setShowInviteForm(false);
       } catch (err) {
@@ -153,7 +162,8 @@ export default function UsersPage() {
     return <p className="text-sm">Validando permisos...</p>;
   }
 
-  const canApprove = rolUsuario === "ADMIN";
+  const canApprove = rolUsuario === "ADMIN" || rolUsuario === "SUPER_ADMIN";
+  const canManage = rolUsuario === "ADMIN" || rolUsuario === "SUPER_ADMIN";
 
   async function onApprove(userId: string) {
     try {
@@ -170,6 +180,80 @@ export default function UsersPage() {
       }
 
       setUsers((prev) => prev.map((user) => (user.id === userId ? { ...user, status: "ACTIVE" } : user)));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Error desconocido");
+    }
+  }
+
+  function onEdit(user: InvitedUser) {
+    setEditForm({
+      role: user.role === "-" ? "USER" : user.role,
+      organizationId: user.organizationId ?? "",
+      status: user.status === "-" ? "PENDING_VERIFICATION" : user.status,
+    });
+    setEditingUser(user);
+  }
+
+  async function onSaveEdit(event: FormEvent) {
+    event.preventDefault();
+    if (!editingUser) return;
+    if (!editForm.organizationId) {
+      setError("La organización es obligatoria para actualizar el usuario");
+      return;
+    }
+
+    try {
+      setError(null);
+      const response = await fetch(`/api/users/${editingUser.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          roleSlug: editForm.role,
+          organizationId: editForm.organizationId,
+          status: editForm.status,
+        }),
+      });
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        throw new Error(payload?.error ?? "No fue posible actualizar el usuario");
+      }
+
+      const payload = await response.json();
+      const updated = payload?.data;
+      setUsers((prev) =>
+        prev.map((user) =>
+          user.id === editingUser.id
+            ? {
+                ...user,
+                role: updated.userRoles?.[0]?.role?.slug ?? editForm.role,
+                organizationId: updated.organization?.id ?? user.organizationId,
+                organizationName: updated.organization?.name ?? user.organizationName,
+                status: updated.status ?? editForm.status,
+              }
+            : user,
+        ),
+      );
+      setEditingUser(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Error desconocido");
+    }
+  }
+
+  async function onDelete(user: InvitedUser) {
+    if (!window.confirm(`Eliminar usuario ${user.email}?`)) return;
+    try {
+      setError(null);
+      const response = await fetch(`/api/users/${user.id}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        throw new Error(payload?.error ?? "No fue posible eliminar el usuario");
+      }
+
+      setUsers((prev) => prev.filter((item) => item.id !== user.id));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error desconocido");
     }
@@ -202,6 +286,13 @@ export default function UsersPage() {
             required
             type="email"
             value={form.email}
+          />
+          <input
+            className="w-full rounded-md border px-3 py-2"
+            onChange={(event) => setForm((prev) => ({ ...prev, temporaryPassword: event.target.value }))}
+            placeholder="Contraseña temporal (opcional)"
+            type="password"
+            value={form.temporaryPassword}
           />
           <select
             className="w-full rounded-md border px-3 py-2"
@@ -243,6 +334,65 @@ export default function UsersPage() {
         </form>
       ) : null}
 
+      {editingUser ? (
+        <form className="space-y-3 rounded-lg border p-4" onSubmit={onSaveEdit}>
+          <div className="text-sm font-semibold">Editar usuario: {editingUser.email}</div>
+          <select
+            className="w-full rounded-md border px-3 py-2"
+            onChange={(event) => setEditForm((prev) => ({ ...prev, role: event.target.value }))}
+            value={editForm.role}
+          >
+            {APP_ROLES.map((role) => (
+              <option key={role} value={role}>
+                {role}
+              </option>
+            ))}
+          </select>
+          <select
+            className="w-full rounded-md border px-3 py-2"
+            disabled={organizations.length === 0}
+            onChange={(event) => setEditForm((prev) => ({ ...prev, organizationId: event.target.value }))}
+            value={editForm.organizationId}
+          >
+            {organizations.length === 0 ? <option value="">Sin organizaciones</option> : null}
+            {organizations.map((organization) => (
+              <option key={organization.id} value={organization.id}>
+                {organization.name}
+              </option>
+            ))}
+          </select>
+          <select
+            className="w-full rounded-md border px-3 py-2"
+            onChange={(event) => setEditForm((prev) => ({ ...prev, status: event.target.value }))}
+            value={editForm.status}
+          >
+            {[
+              "ACTIVE",
+              "INACTIVE",
+              "LOCKED",
+              "PENDING_VERIFICATION",
+              "DELETED",
+            ].map((status) => (
+              <option key={status} value={status}>
+                {status}
+              </option>
+            ))}
+          </select>
+          <div className="flex gap-2">
+            <button className="rounded-md border px-3 py-2 text-sm" type="submit">
+              Guardar cambios
+            </button>
+            <button
+              className="rounded-md border px-3 py-2 text-sm"
+              onClick={() => setEditingUser(null)}
+              type="button"
+            >
+              Cancelar
+            </button>
+          </div>
+        </form>
+      ) : null}
+
       <div className="overflow-x-auto rounded-lg border">
         <table className="w-full text-left text-sm">
           <thead>
@@ -265,13 +415,36 @@ export default function UsersPage() {
                 <td className="px-3 py-2">{user.status}</td>
                 {canApprove ? (
                   <td className="px-3 py-2">
-                    {user.status !== "ACTIVE" ? (
-                      <button className="rounded-md border px-2 py-1 text-xs" onClick={() => onApprove(user.id)} type="button">
-                        Aprobar
-                      </button>
-                    ) : (
-                      "-"
-                    )}
+                    <div className="flex flex-wrap gap-2">
+                      {user.status !== "ACTIVE" ? (
+                        <button
+                          className="rounded-md border px-2 py-1 text-xs"
+                          onClick={() => onApprove(user.id)}
+                          type="button"
+                        >
+                          Aprobar
+                        </button>
+                      ) : null}
+                      {canManage ? (
+                        <>
+                          <button
+                            className="rounded-md border px-2 py-1 text-xs"
+                            onClick={() => onEdit(user)}
+                            type="button"
+                          >
+                            Editar
+                          </button>
+                          <button
+                            className="rounded-md border px-2 py-1 text-xs"
+                            onClick={() => onDelete(user)}
+                            type="button"
+                          >
+                            Eliminar
+                          </button>
+                        </>
+                      ) : null}
+                      {!canManage && user.status === "ACTIVE" ? "-" : null}
+                    </div>
                   </td>
                 ) : null}
               </tr>

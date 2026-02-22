@@ -14,6 +14,8 @@ export const updateUserSchema = z.object({
   firstName: z.string().min(2).optional(),
   lastName: z.string().min(2).optional(),
   status: z.enum(["ACTIVE", "INACTIVE", "LOCKED", "PENDING_VERIFICATION", "DELETED"]).optional(),
+  roleSlug: z.string().min(2).optional(),
+  organizationId: uuidSchema.optional(),
 });
 
 export const getUsersQuerySchema = paginationSchema.extend({
