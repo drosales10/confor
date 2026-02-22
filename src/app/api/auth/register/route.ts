@@ -1,8 +1,10 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { hashPassword, generateSecureToken, hashToken } from "@/lib/crypto";
+import { hashPassword } from "@/lib/crypto";
 import { registerSchema } from "@/validations/auth.schema";
 import { fail, ok } from "@/lib/api-helpers";
+import { generateSlug } from "@/lib/utils";
+import { ensureRoleWithPermissions } from "@/lib/role-provisioning";
 
 export async function POST(req: NextRequest) {
   const body = await req.json();
@@ -19,6 +21,19 @@ export async function POST(req: NextRequest) {
     return fail("El email ya existe", 409);
   }
 
+  const defaultOrgName = "Por defecto";
+  const defaultOrgSlug = generateSlug(defaultOrgName);
+  const organization = await prisma.organization.upsert({
+    where: { slug: defaultOrgSlug },
+    update: {},
+    create: {
+      name: defaultOrgName,
+      slug: defaultOrgSlug,
+      isActive: true,
+    },
+  });
+
+  const role = await ensureRoleWithPermissions("USER", organization.id);
   const passwordHash = await hashPassword(password);
   const user = await prisma.user.create({
     data: {
@@ -27,16 +42,13 @@ export async function POST(req: NextRequest) {
       lastName,
       passwordHash,
       status: "PENDING_VERIFICATION",
-    },
-  });
-
-  const token = generateSecureToken();
-  await prisma.emailVerificationToken.create({
-    data: {
-      userId: user.id,
-      email,
-      tokenHash: hashToken(token),
-      expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+      organizationId: organization.id,
+      userRoles: {
+        create: {
+          roleId: role.id,
+          assignedBy: null,
+        },
+      },
     },
   });
 
@@ -49,5 +61,5 @@ export async function POST(req: NextRequest) {
     },
   });
 
-  return ok({ message: "Cuenta creada. Verifica tu correo.", verificationToken: token }, 201);
+  return ok({ message: "Cuenta creada. Pendiente de aprobacion por un ADMIN." }, 201);
 }

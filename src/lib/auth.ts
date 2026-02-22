@@ -25,8 +25,15 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           return null;
         }
 
-        const user = await prisma.user.findUnique({ where: { email } });
+        const user = await prisma.user.findUnique({
+          where: { email },
+          include: { organization: true },
+        });
         if (!user?.passwordHash) {
+          return null;
+        }
+
+        if (user.status !== "ACTIVE") {
           return null;
         }
 
@@ -64,7 +71,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           data: {
             failedLoginAttempts: 0,
             lastLoginAt: new Date(),
-            status: "ACTIVE",
           },
         });
 
@@ -83,6 +89,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           name: user.displayName ?? `${user.firstName ?? ""} ${user.lastName ?? ""}`.trim(),
           roles: roleInfo.roles,
           permissions: roleInfo.permissions,
+          organizationId: user.organizationId ?? null,
+          organizationName: user.organization?.name ?? null,
         };
       },
     }),
@@ -93,6 +101,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         token.id = user.id;
         token.roles = user.roles;
         token.permissions = user.permissions;
+        token.organizationId = user.organizationId ?? null;
+        token.organizationName = user.organizationName ?? null;
       }
       return token;
     },
@@ -101,6 +111,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         session.user.id = token.id;
         session.user.roles = token.roles ?? [];
         session.user.permissions = token.permissions ?? [];
+        session.user.organizationId = token.organizationId ?? null;
+        session.user.organizationName = token.organizationName ?? null;
       }
       return session;
     },

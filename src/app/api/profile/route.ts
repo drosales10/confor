@@ -8,7 +8,7 @@ export async function GET() {
 
   const profile = await prisma.user.findUnique({
     where: { id: authResult.session.user.id },
-    include: { profile: true, notificationPrefs: true },
+    include: { profile: true, notificationPrefs: true, userRoles: { include: { role: true } } },
   });
 
   return ok(profile);

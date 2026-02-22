@@ -3,10 +3,11 @@ import { emailSchema, paginationSchema, uuidSchema } from "@/validations/common.
 
 export const createUserSchema = z.object({
   email: emailSchema,
-  firstName: z.string().min(2),
-  lastName: z.string().min(2),
+  firstName: z.string().min(2).optional(),
+  lastName: z.string().min(2).optional(),
   roleSlug: z.string().min(2),
-  password: z.string().min(8),
+  password: z.string().min(8).optional(),
+  organizationId: uuidSchema.optional(),
 });
 
 export const updateUserSchema = z.object({

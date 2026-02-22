@@ -1,36 +1,69 @@
 "use client";
 
-import { signIn } from "next-auth/react";
-import { useRouter, useSearchParams } from "next/navigation";
-import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { FormEvent, useEffect, useState } from "react";
+import { inferRoleFromEmail } from "@/lib/rbac";
+
+type OrganizationItem = {
+  id: string;
+  name: string;
+  rif?: string;
+};
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [organizations, setOrganizations] = useState<OrganizationItem[]>([]);
+  const [organizationId, setOrganizationId] = useState("");
+  const [orgError, setOrgError] = useState<string | null>(null);
   const router = useRouter();
-  const searchParams = useSearchParams();
 
-  async function onSubmit(e: React.FormEvent) {
+  useEffect(() => {
+    sessionStorage.removeItem("RolUsuario");
+    document.cookie = "RolUsuario=; Max-Age=0; path=/; SameSite=Lax";
+    document.cookie = "OrgName=; Max-Age=0; path=/; SameSite=Lax";
+  }, []);
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        setOrgError(null);
+        const response = await fetch("/api/organizations");
+        if (!response.ok) {
+          throw new Error("No fue posible cargar organizaciones");
+        }
+        const payload = await response.json();
+        const items = payload?.data?.items ?? [];
+        setOrganizations(items);
+        setOrganizationId(items[0]?.id ?? "");
+      } catch (err) {
+        setOrgError(err instanceof Error ? err.message : "Error desconocido");
+      }
+    };
+
+    void load();
+  }, []);
+
+  async function onSubmit(e: FormEvent) {
     e.preventDefault();
     setLoading(true);
-    setError(null);
 
-    const result = await signIn("credentials", {
-      email,
-      password,
-      redirect: false,
-    });
-
-    setLoading(false);
-
-    if (result?.error) {
-      setError("Credenciales inválidas");
-      return;
+    const assignedRole = inferRoleFromEmail(email);
+    const selectedOrganization = organizations.find((organization) => organization.id === organizationId) ?? null;
+    sessionStorage.setItem("RolUsuario", assignedRole);
+    sessionStorage.setItem("EmailUsuario", email);
+    if (selectedOrganization) {
+      sessionStorage.setItem("OrganizacionUsuario", selectedOrganization.id);
+      sessionStorage.setItem("OrganizacionNombre", selectedOrganization.name);
+    }
+    document.cookie = `RolUsuario=${assignedRole}; path=/; SameSite=Lax`;
+    if (selectedOrganization) {
+      document.cookie = `OrgName=${encodeURIComponent(selectedOrganization.name)}; path=/; SameSite=Lax`;
     }
 
-    router.push(searchParams.get("next") ?? "/dashboard");
+    setLoading(false);
+    router.push("/dashboard");
   }
 
   return (
@@ -41,7 +74,7 @@ export default function LoginPage() {
           <input
             className="w-full rounded-md border px-3 py-2"
             type="email"
-            placeholder="Correo"
+            placeholder="Email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
@@ -54,11 +87,29 @@ export default function LoginPage() {
             onChange={(e) => setPassword(e.target.value)}
             required
           />
+          <select
+            className="w-full rounded-md border px-3 py-2"
+            onChange={(event) => setOrganizationId(event.target.value)}
+            required={organizations.length > 0}
+            value={organizationId}
+          >
+            {organizations.length === 0 ? <option value="">Sin organizaciones</option> : null}
+            {organizations.map((organization) => (
+              <option key={organization.id} value={organization.id}>
+                {organization.name}
+              </option>
+            ))}
+          </select>
         </div>
-        {error ? <p className="mt-3 text-sm text-red-600">{error}</p> : null}
+        {orgError ? <p className="mt-3 text-sm text-red-600">{orgError}</p> : null}
         <button className="mt-4 w-full rounded-md border px-4 py-2" disabled={loading} type="submit">
-          {loading ? "Ingresando..." : "Entrar"}
+          {loading ? "Ingresando..." : "Iniciar Sesión"}
         </button>
+        <p className="mt-3 text-center text-sm">
+          <a className="underline" href="/register">
+            Registrarse
+          </a>
+        </p>
       </form>
     </main>
   );

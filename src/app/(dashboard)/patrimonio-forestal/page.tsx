@@ -513,33 +513,6 @@ export default function PatrimonioForestalPage() {
     }
   }
 
-  async function onSaveLevel3Edit() {
-    if (!editingLevel3Id || !selectedLevel2Id) return;
-    const totalAreaHa = Number(editLevel3Form.totalAreaHa);
-    if (Number.isNaN(totalAreaHa) || totalAreaHa <= 0) {
-      setError("Superficie inválida");
-      return;
-    }
-
-    setSubmitting(true);
-    setError(null);
-    try {
-      await updatePatrimony("3", editingLevel3Id, {
-        code: editLevel3Form.code.trim(),
-        name: editLevel3Form.name.trim(),
-        type: editLevel3Form.type,
-        totalAreaHa,
-        isActive: editLevel3Form.isActive,
-      });
-      setEditingLevel3Id(null);
-      await loadLevel3(selectedLevel2Id, debouncedSearchLevel3, pageLevel3, limitLevel3);
-    } catch (updateError) {
-      setError(updateError instanceof Error ? updateError.message : "No fue posible actualizar el nivel 3");
-    } finally {
-      setSubmitting(false);
-    }
-  }
-
   async function onSaveLevel4Edit() {
     if (!editingLevel4Id || !selectedLevel3Id) return;
     const totalAreaHa = Number(editLevel4Form.totalAreaHa);

@@ -3,6 +3,8 @@ import { prisma } from "@/lib/prisma";
 import { createUserSchema, getUsersQuerySchema } from "@/validations/user.schema";
 import { fail, ok, requireAuth, requirePermission } from "@/lib/api-helpers";
 import { hashPassword } from "@/lib/crypto";
+import crypto from "crypto";
+import { ensureRoleWithPermissions } from "@/lib/role-provisioning";
 
 export async function GET(req: NextRequest) {
   const authResult = await requireAuth();
@@ -53,6 +55,7 @@ export async function GET(req: NextRequest) {
             role: true,
           },
         },
+        organization: true,
       },
     }),
   ]);
@@ -81,25 +84,27 @@ export async function POST(req: NextRequest) {
     return fail("Datos inválidos", 400, parsed.error.flatten());
   }
 
+  if (!parsed.data.organizationId) {
+    return fail("La organización es obligatoria", 400);
+  }
+
   const existing = await prisma.user.findUnique({ where: { email: parsed.data.email } });
   if (existing) {
     return fail("El usuario ya existe", 409);
   }
 
-  const role = await prisma.role.findFirst({ where: { slug: parsed.data.roleSlug } });
-  if (!role) {
-    return fail("Rol no encontrado", 404);
-  }
+  const role = await ensureRoleWithPermissions(parsed.data.roleSlug, parsed.data.organizationId);
 
-  const passwordHash = await hashPassword(parsed.data.password);
-
+  const password = parsed.data.password ?? crypto.randomBytes(12).toString("base64url");
+  const passwordHash = await hashPassword(password);
   const user = await prisma.user.create({
     data: {
       email: parsed.data.email,
-      firstName: parsed.data.firstName,
-      lastName: parsed.data.lastName,
+      firstName: parsed.data.firstName ?? null,
+      lastName: parsed.data.lastName ?? null,
       passwordHash,
-      status: "ACTIVE",
+      status: parsed.data.password ? "ACTIVE" : "PENDING_VERIFICATION",
+      organizationId: parsed.data.organizationId,
       userRoles: {
         create: {
           roleId: role.id,
@@ -111,6 +116,7 @@ export async function POST(req: NextRequest) {
       userRoles: {
         include: { role: true },
       },
+      organization: true,
     },
   });
 

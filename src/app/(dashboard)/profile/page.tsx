@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 export default function ProfilePage() {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
+  const [role, setRole] = useState("-");
   const [message, setMessage] = useState<string | null>(null);
 
   useEffect(() => {
@@ -14,6 +15,9 @@ export default function ProfilePage() {
       const user = result?.data;
       setFirstName(user?.firstName ?? "");
       setLastName(user?.lastName ?? "");
+      const apiRole = user?.userRoles?.[0]?.role?.slug ?? "-";
+      const sessionRole = typeof window !== "undefined" ? sessionStorage.getItem("RolUsuario") ?? apiRole : apiRole;
+      setRole(sessionRole);
     }
     load();
   }, []);
@@ -45,6 +49,7 @@ export default function ProfilePage() {
           onChange={(e) => setLastName(e.target.value)}
           placeholder="Apellido"
         />
+        <input className="w-full rounded-md border px-3 py-2" value={role} readOnly placeholder="Rol" />
         <button className="rounded-md border px-4 py-2" type="submit">
           Guardar
         </button>
