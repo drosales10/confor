@@ -206,7 +206,12 @@ export async function DELETE(req: NextRequest) {
   ]);
 
   if (regionsCount > 0 || statesCount > 0 || provenancesCount > 0) {
-    return fail("No se puede eliminar el país porque tiene registros relacionados", 409);
+    const dependencies: string[] = [];
+    if (regionsCount > 0) dependencies.push(`${regionsCount} región(es)`);
+    if (statesCount > 0) dependencies.push(`${statesCount} estado(s)/departamento(s)`);
+    if (provenancesCount > 0) dependencies.push(`${provenancesCount} procedencia(s)`);
+
+    return fail(`No se puede eliminar el país porque tiene registros relacionados: ${dependencies.join(", ")}.`, 409);
   }
 
   try {

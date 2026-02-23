@@ -2,6 +2,7 @@
 
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { useDebounce } from "@/hooks/useDebounce";
+import { sileo } from "sileo";
 
 type Level2Item = {
   id: string;
@@ -491,6 +492,10 @@ export default function PatrimonioForestalPage() {
     const totalAreaHa = Number(editLevel2Form.totalAreaHa);
     if (Number.isNaN(totalAreaHa) || totalAreaHa <= 0) {
       setError("Superficie inválida");
+      sileo.warning({
+        title: "Datos inválidos",
+        description: "La superficie debe ser mayor a 0.",
+      });
       return;
     }
 
@@ -506,8 +511,17 @@ export default function PatrimonioForestalPage() {
       });
       setEditingLevel2Id(null);
       await loadLevel2(debouncedSearchLevel2, pageLevel2, limitLevel2);
+      sileo.success({
+        title: "Nivel 2 actualizado",
+        description: "El registro se actualizó correctamente.",
+      });
     } catch (updateError) {
-      setError(updateError instanceof Error ? updateError.message : "No fue posible actualizar el nivel 2");
+      const message = updateError instanceof Error ? updateError.message : "No fue posible actualizar el nivel 2";
+      setError(message);
+      sileo.error({
+        title: "No se pudo actualizar",
+        description: message,
+      });
     } finally {
       setSubmitting(false);
     }
@@ -518,6 +532,10 @@ export default function PatrimonioForestalPage() {
     const totalAreaHa = Number(editLevel4Form.totalAreaHa);
     if (Number.isNaN(totalAreaHa) || totalAreaHa <= 0) {
       setError("Superficie inválida");
+      sileo.warning({
+        title: "Datos inválidos",
+        description: "La superficie debe ser mayor a 0.",
+      });
       return;
     }
 
@@ -533,8 +551,17 @@ export default function PatrimonioForestalPage() {
       });
       setEditingLevel4Id(null);
       await loadLevel4(selectedLevel3Id, debouncedSearchLevel4, pageLevel4, limitLevel4);
+      sileo.success({
+        title: "Nivel 4 actualizado",
+        description: "El registro se actualizó correctamente.",
+      });
     } catch (updateError) {
-      setError(updateError instanceof Error ? updateError.message : "No fue posible actualizar el nivel 4");
+      const message = updateError instanceof Error ? updateError.message : "No fue posible actualizar el nivel 4";
+      setError(message);
+      sileo.error({
+        title: "No se pudo actualizar",
+        description: message,
+      });
     } finally {
       setSubmitting(false);
     }
@@ -547,6 +574,10 @@ export default function PatrimonioForestalPage() {
     const name = editLevel5Form.name.trim();
     if (!code || name.length < 2) {
       setError("Codigo y nombre son obligatorios para el nivel 5");
+      sileo.warning({
+        title: "Datos incompletos",
+        description: "Código y nombre son obligatorios para el nivel 5.",
+      });
       return;
     }
 
@@ -557,6 +588,10 @@ export default function PatrimonioForestalPage() {
 
     if ([dimension1M, dimension2M, dimension3M, dimension4M].some((value) => value !== undefined && Number.isNaN(value))) {
       setError("Dimensiones invalidas");
+      sileo.warning({
+        title: "Dimensiones inválidas",
+        description: "Verifica los valores de las dimensiones ingresadas.",
+      });
       return;
     }
 
@@ -576,8 +611,17 @@ export default function PatrimonioForestalPage() {
       });
       setEditingLevel5Id(null);
       await loadLevel5(selectedLevel4Id, debouncedSearchLevel5, pageLevel5, limitLevel5);
+      sileo.success({
+        title: "Nivel 5 actualizado",
+        description: "El registro se actualizó correctamente.",
+      });
     } catch (updateError) {
-      setError(updateError instanceof Error ? updateError.message : "No fue posible actualizar el nivel 5");
+      const message = updateError instanceof Error ? updateError.message : "No fue posible actualizar el nivel 5";
+      setError(message);
+      sileo.error({
+        title: "No se pudo actualizar",
+        description: message,
+      });
     } finally {
       setSubmitting(false);
     }
@@ -601,30 +645,67 @@ export default function PatrimonioForestalPage() {
       });
       setEditingNeighborId(null);
       await loadNeighbors(selectedLevel2Id);
+      sileo.success({
+        title: "Colindante actualizado",
+        description: "El colindante se actualizó correctamente.",
+      });
     } catch (updateError) {
-      setError(updateError instanceof Error ? updateError.message : "No fue posible actualizar el vecino");
+      const message = updateError instanceof Error ? updateError.message : "No fue posible actualizar el vecino";
+      setError(message);
+      sileo.error({
+        title: "No se pudo actualizar",
+        description: message,
+      });
     } finally {
       setSubmitting(false);
     }
   }
 
-  async function onDeleteLevel2(id: string) {
-    if (!confirm("¿Eliminar este registro de nivel 2?")) return;
+  async function executeDeleteLevel2(id: string) {
     setPageAdjustReason("eliminación");
     setSubmitting(true);
     setError(null);
     try {
       await deletePatrimony("2", id);
       await loadLevel2(debouncedSearchLevel2, pageLevel2, limitLevel2);
+      sileo.success({
+        title: "Nivel 2 eliminado",
+        description: "El registro se eliminó correctamente.",
+      });
     } catch (deleteError) {
-      setError(deleteError instanceof Error ? deleteError.message : "No fue posible eliminar el nivel 2");
+      const message = deleteError instanceof Error ? deleteError.message : "No fue posible eliminar el nivel 2";
+      setError(message);
+      sileo.error({
+        title: "No se pudo eliminar",
+        description: message,
+      });
     } finally {
       setSubmitting(false);
     }
   }
 
-  async function onDeleteLevel3(id: string) {
-    if (!selectedLevel2Id || !confirm("¿Eliminar este registro de nivel 3?")) return;
+  function onDeleteLevel2(id: string) {
+    sileo.action({
+      title: "Confirmar eliminación",
+      description: "Se eliminará el registro de nivel 2.",
+      duration: 6000,
+      button: {
+        title: "Eliminar",
+        onClick: () => {
+          void executeDeleteLevel2(id);
+        },
+      },
+    });
+  }
+
+  async function executeDeleteLevel3(id: string) {
+    if (!selectedLevel2Id) {
+      sileo.warning({
+        title: "Selección requerida",
+        description: "Selecciona un nivel 2 para continuar.",
+      });
+      return;
+    }
     setPageAdjustReason("eliminación");
     setSubmitting(true);
     setError(null);
@@ -633,15 +714,44 @@ export default function PatrimonioForestalPage() {
       await loadLevel3(selectedLevel2Id, debouncedSearchLevel3, pageLevel3, limitLevel3);
       setSelectedLevel4Id("");
       setLevel5Items([]);
+      sileo.success({
+        title: "Nivel 3 eliminado",
+        description: "El registro se eliminó correctamente.",
+      });
     } catch (deleteError) {
-      setError(deleteError instanceof Error ? deleteError.message : "No fue posible eliminar el nivel 3");
+      const message = deleteError instanceof Error ? deleteError.message : "No fue posible eliminar el nivel 3";
+      setError(message);
+      sileo.error({
+        title: "No se pudo eliminar",
+        description: message,
+      });
     } finally {
       setSubmitting(false);
     }
   }
 
-  async function onDeleteLevel4(id: string) {
-    if (!selectedLevel3Id || !confirm("¿Eliminar este registro de nivel 4?")) return;
+  function onDeleteLevel3(id: string) {
+    sileo.action({
+      title: "Confirmar eliminación",
+      description: "Se eliminará el registro de nivel 3.",
+      duration: 6000,
+      button: {
+        title: "Eliminar",
+        onClick: () => {
+          void executeDeleteLevel3(id);
+        },
+      },
+    });
+  }
+
+  async function executeDeleteLevel4(id: string) {
+    if (!selectedLevel3Id) {
+      sileo.warning({
+        title: "Selección requerida",
+        description: "Selecciona un nivel 3 para continuar.",
+      });
+      return;
+    }
     setPageAdjustReason("eliminación");
     setSubmitting(true);
     setError(null);
@@ -649,40 +759,121 @@ export default function PatrimonioForestalPage() {
       await deletePatrimony("4", id);
       await loadLevel4(selectedLevel3Id, debouncedSearchLevel4, pageLevel4, limitLevel4);
       setLevel5Items([]);
+      sileo.success({
+        title: "Nivel 4 eliminado",
+        description: "El registro se eliminó correctamente.",
+      });
     } catch (deleteError) {
-      setError(deleteError instanceof Error ? deleteError.message : "No fue posible eliminar el nivel 4");
+      const message = deleteError instanceof Error ? deleteError.message : "No fue posible eliminar el nivel 4";
+      setError(message);
+      sileo.error({
+        title: "No se pudo eliminar",
+        description: message,
+      });
     } finally {
       setSubmitting(false);
     }
   }
 
-  async function onDeleteLevel5(id: string) {
-    if (!selectedLevel4Id || !confirm("¿Eliminar este registro de nivel 5?")) return;
+  function onDeleteLevel4(id: string) {
+    sileo.action({
+      title: "Confirmar eliminación",
+      description: "Se eliminará el registro de nivel 4.",
+      duration: 6000,
+      button: {
+        title: "Eliminar",
+        onClick: () => {
+          void executeDeleteLevel4(id);
+        },
+      },
+    });
+  }
+
+  async function executeDeleteLevel5(id: string) {
+    if (!selectedLevel4Id) {
+      sileo.warning({
+        title: "Selección requerida",
+        description: "Selecciona un nivel 4 para continuar.",
+      });
+      return;
+    }
     setPageAdjustReason("eliminación");
     setSubmitting(true);
     setError(null);
     try {
       await deletePatrimony("5", id);
       await loadLevel5(selectedLevel4Id, debouncedSearchLevel5, pageLevel5, limitLevel5);
+      sileo.success({
+        title: "Nivel 5 eliminado",
+        description: "El registro se eliminó correctamente.",
+      });
     } catch (deleteError) {
-      setError(deleteError instanceof Error ? deleteError.message : "No fue posible eliminar el nivel 5");
+      const message = deleteError instanceof Error ? deleteError.message : "No fue posible eliminar el nivel 5";
+      setError(message);
+      sileo.error({
+        title: "No se pudo eliminar",
+        description: message,
+      });
     } finally {
       setSubmitting(false);
     }
   }
 
-  async function onDeleteNeighbor(id: string) {
-    if (!selectedLevel2Id || !confirm("¿Eliminar este vecino colindante?")) return;
+  function onDeleteLevel5(id: string) {
+    sileo.action({
+      title: "Confirmar eliminación",
+      description: "Se eliminará el registro de nivel 5.",
+      duration: 6000,
+      button: {
+        title: "Eliminar",
+        onClick: () => {
+          void executeDeleteLevel5(id);
+        },
+      },
+    });
+  }
+
+  async function executeDeleteNeighbor(id: string) {
+    if (!selectedLevel2Id) {
+      sileo.warning({
+        title: "Selección requerida",
+        description: "Selecciona un nivel 2 para continuar.",
+      });
+      return;
+    }
     setSubmitting(true);
     setError(null);
     try {
       await deleteNeighbor(id);
       await loadNeighbors(selectedLevel2Id);
+      sileo.success({
+        title: "Colindante eliminado",
+        description: "El colindante se eliminó correctamente.",
+      });
     } catch (deleteError) {
-      setError(deleteError instanceof Error ? deleteError.message : "No fue posible eliminar el vecino");
+      const message = deleteError instanceof Error ? deleteError.message : "No fue posible eliminar el vecino";
+      setError(message);
+      sileo.error({
+        title: "No se pudo eliminar",
+        description: message,
+      });
     } finally {
       setSubmitting(false);
     }
+  }
+
+  function onDeleteNeighbor(id: string) {
+    sileo.action({
+      title: "Confirmar eliminación",
+      description: "Se eliminará el vecino colindante.",
+      duration: 6000,
+      button: {
+        title: "Eliminar",
+        onClick: () => {
+          void executeDeleteNeighbor(id);
+        },
+      },
+    });
   }
 
   async function onSubmit(event: FormEvent) {
@@ -696,6 +887,10 @@ export default function PatrimonioForestalPage() {
       const totalAreaHa = parseLocaleDecimal(form.totalAreaHa);
       if (Number.isNaN(totalAreaHa) || totalAreaHa <= 0) {
         setError("Superficie total inválida");
+        sileo.warning({
+          title: "Datos inválidos",
+          description: "La superficie total debe ser mayor a 0.",
+        });
         return;
       }
 
@@ -712,8 +907,17 @@ export default function PatrimonioForestalPage() {
       setPageAdjustReason("navegación");
       setPageLevel2(1);
       await loadLevel2("", 1, limitLevel2);
+      sileo.success({
+        title: "Nivel 2 creado",
+        description: "El registro se creó correctamente.",
+      });
     } catch (submissionError) {
-      setError(submissionError instanceof Error ? submissionError.message : "No fue posible crear el registro");
+      const message = submissionError instanceof Error ? submissionError.message : "No fue posible crear el registro";
+      setError(message);
+      sileo.error({
+        title: "No se pudo crear",
+        description: message,
+      });
     } finally {
       setSubmitting(false);
     }
@@ -736,8 +940,17 @@ export default function PatrimonioForestalPage() {
       });
       setLevel3Form({ code: "", name: "", type: "LOTE", totalAreaHa: "" });
       await loadLevel3(selectedLevel2Id, debouncedSearchLevel3, pageLevel3, limitLevel3);
+      sileo.success({
+        title: "Nivel 3 creado",
+        description: "El registro se creó correctamente.",
+      });
     } catch (submissionError) {
-      setError(submissionError instanceof Error ? submissionError.message : "No fue posible crear el nivel 3");
+      const message = submissionError instanceof Error ? submissionError.message : "No fue posible crear el nivel 3";
+      setError(message);
+      sileo.error({
+        title: "No se pudo crear",
+        description: message,
+      });
     } finally {
       setSubmitting(false);
     }
@@ -747,6 +960,10 @@ export default function PatrimonioForestalPage() {
     event.preventDefault();
     if (!selectedLevel3Id) {
       setError("Selecciona un nivel 3 antes de crear el nivel 4");
+      sileo.warning({
+        title: "Selección requerida",
+        description: "Selecciona un nivel 3 antes de crear el nivel 4.",
+      });
       return;
     }
 
@@ -755,10 +972,18 @@ export default function PatrimonioForestalPage() {
     const totalAreaHa = parseLocaleDecimal(level4Form.totalAreaHa);
     if (!code || name.length < 2) {
       setError("Código y nombre son obligatorios para el nivel 4");
+      sileo.warning({
+        title: "Datos incompletos",
+        description: "Código y nombre son obligatorios para el nivel 4.",
+      });
       return;
     }
     if (Number.isNaN(totalAreaHa) || totalAreaHa <= 0) {
       setError("Superficie inválida");
+      sileo.warning({
+        title: "Datos inválidos",
+        description: "La superficie debe ser mayor a 0.",
+      });
       return;
     }
 
@@ -775,8 +1000,17 @@ export default function PatrimonioForestalPage() {
       });
       setLevel4Form({ code: "", name: "", type: "RODAL", totalAreaHa: "" });
       await loadLevel4(selectedLevel3Id, debouncedSearchLevel4, pageLevel4, limitLevel4);
+      sileo.success({
+        title: "Nivel 4 creado",
+        description: "El registro se creó correctamente.",
+      });
     } catch (submissionError) {
-      setError(submissionError instanceof Error ? submissionError.message : "No fue posible crear el nivel 4");
+      const message = submissionError instanceof Error ? submissionError.message : "No fue posible crear el nivel 4";
+      setError(message);
+      sileo.error({
+        title: "No se pudo crear",
+        description: message,
+      });
     } finally {
       setSubmitting(false);
     }
@@ -812,8 +1046,17 @@ export default function PatrimonioForestalPage() {
         dimension4M: "",
       });
       await loadLevel5(selectedLevel4Id, debouncedSearchLevel5, pageLevel5, limitLevel5);
+      sileo.success({
+        title: "Nivel 5 creado",
+        description: "El registro se creó correctamente.",
+      });
     } catch (submissionError) {
-      setError(submissionError instanceof Error ? submissionError.message : "No fue posible crear el nivel 5");
+      const message = submissionError instanceof Error ? submissionError.message : "No fue posible crear el nivel 5";
+      setError(message);
+      sileo.error({
+        title: "No se pudo crear",
+        description: message,
+      });
     } finally {
       setSubmitting(false);
     }
@@ -845,8 +1088,17 @@ export default function PatrimonioForestalPage() {
 
       setNeighborForm({ code: "", name: "", type: "Colindante" });
       await loadNeighbors(selectedLevel2Id);
+      sileo.success({
+        title: "Colindante creado",
+        description: "El colindante se creó correctamente.",
+      });
     } catch (submissionError) {
-      setError(submissionError instanceof Error ? submissionError.message : "No fue posible crear vecino");
+      const message = submissionError instanceof Error ? submissionError.message : "No fue posible crear vecino";
+      setError(message);
+      sileo.error({
+        title: "No se pudo crear",
+        description: message,
+      });
     } finally {
       setSubmitting(false);
     }

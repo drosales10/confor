@@ -4,6 +4,7 @@
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { useDebounce } from "@/hooks/useDebounce";
 import { ApiResponse, PaginatedResponse } from "@/types/api.types";
+import { sileo } from "sileo";
 
 type PaginationState = {
   page: number;
@@ -309,10 +310,10 @@ async function requestJson<T>(url: string, init?: RequestInit): Promise<ApiRespo
 
   const payload = (await response.json()) as ApiResponse<T>;
   if (!response.ok) {
-    return { success: false, error: payload?.error ?? "Error de servidor", details: payload?.details };
+    return { success: false, error: payload?.error ?? "Error de servidor", details: payload?.details, statusCode: response.status };
   }
 
-  return payload;
+  return { ...payload, statusCode: response.status };
 }
 
 async function fetchAllPages<T>(endpoint: string, limit = 100): Promise<T[]> {
@@ -1192,6 +1193,42 @@ export default function ConfiguracionForestalPage() {
   );
   const activeContinents = useMemo(() => continentItems.filter((item) => item.isActive), [continentItems]);
 
+  function showCrudSuccess(message: string) {
+    setGlobalMessage(message);
+    sileo.success({
+      title: "Operación completada",
+      description: message,
+    });
+  }
+
+  function showCrudError(setter: (value: string | null) => void, message: string) {
+    setter(message);
+    sileo.error({
+      title: "No se pudo completar",
+      description: message,
+    });
+  }
+
+  function showCrudWarning(setter: (value: string | null) => void, message: string) {
+    setter(message);
+    sileo.warning({
+      title: "Acción no permitida",
+      description: message,
+    });
+  }
+
+  function confirmDeletion(description: string, onConfirm: () => void) {
+    sileo.action({
+      title: "Confirmar eliminación",
+      description,
+      duration: 6000,
+      button: {
+        title: "Eliminar",
+        onClick: onConfirm,
+      },
+    });
+  }
+
   async function createScheme(event: FormEvent) {
     event.preventDefault();
     if (!canCreateScheme) return;
@@ -1202,11 +1239,11 @@ export default function ConfiguracionForestalPage() {
     });
 
     if (!result.success) {
-      setSchemeError(result.error ?? "No fue posible crear el esquema de manejo");
+      showCrudError(setSchemeError, result.error ?? "No fue posible crear el esquema de manejo");
       return;
     }
 
-    setGlobalMessage("Esquema de manejo creado");
+    showCrudSuccess("Esquema de manejo creado");
     setSchemeForm({ code: "", name: "", isActive: true });
     setSchemePage(1);
     await loadSchemes();
@@ -1222,11 +1259,11 @@ export default function ConfiguracionForestalPage() {
     });
 
     if (!result.success) {
-      setSchemeError(result.error ?? "No fue posible actualizar el esquema de manejo");
+      showCrudError(setSchemeError, result.error ?? "No fue posible actualizar el esquema de manejo");
       return;
     }
 
-    setGlobalMessage("Esquema de manejo actualizado");
+    showCrudSuccess("Esquema de manejo actualizado");
     setEditingScheme(null);
     await loadSchemes();
   }
@@ -1238,11 +1275,11 @@ export default function ConfiguracionForestalPage() {
     });
 
     if (!result.success) {
-      setSchemeError(result.error ?? "No fue posible eliminar el esquema de manejo");
+      showCrudError(setSchemeError, result.error ?? "No fue posible eliminar el esquema de manejo");
       return;
     }
 
-    setGlobalMessage("Esquema de manejo eliminado");
+    showCrudSuccess("Esquema de manejo eliminado");
     await loadSchemes();
   }
 
@@ -1256,11 +1293,11 @@ export default function ConfiguracionForestalPage() {
     });
 
     if (!result.success) {
-      setInventoryError(result.error ?? "No fue posible crear el tipo de inventario");
+      showCrudError(setInventoryError, result.error ?? "No fue posible crear el tipo de inventario");
       return;
     }
 
-    setGlobalMessage("Tipo de inventario creado");
+    showCrudSuccess("Tipo de inventario creado");
     setInventoryForm({ code: "", name: "", isActive: true });
     setInventoryPage(1);
     await loadInventoryTypes();
@@ -1276,11 +1313,11 @@ export default function ConfiguracionForestalPage() {
     });
 
     if (!result.success) {
-      setInventoryError(result.error ?? "No fue posible actualizar el tipo de inventario");
+      showCrudError(setInventoryError, result.error ?? "No fue posible actualizar el tipo de inventario");
       return;
     }
 
-    setGlobalMessage("Tipo de inventario actualizado");
+    showCrudSuccess("Tipo de inventario actualizado");
     setEditingInventory(null);
     await loadInventoryTypes();
   }
@@ -1292,11 +1329,11 @@ export default function ConfiguracionForestalPage() {
     });
 
     if (!result.success) {
-      setInventoryError(result.error ?? "No fue posible eliminar el tipo de inventario");
+      showCrudError(setInventoryError, result.error ?? "No fue posible eliminar el tipo de inventario");
       return;
     }
 
-    setGlobalMessage("Tipo de inventario eliminado");
+    showCrudSuccess("Tipo de inventario eliminado");
     await loadInventoryTypes();
   }
 
@@ -1314,11 +1351,11 @@ export default function ConfiguracionForestalPage() {
     });
 
     if (!result.success) {
-      setImaError(result.error ?? "No fue posible crear la clase IMA");
+      showCrudError(setImaError, result.error ?? "No fue posible crear la clase IMA");
       return;
     }
 
-    setGlobalMessage("Clase IMA creada");
+    showCrudSuccess("Clase IMA creada");
     setImaForm({
       code: "",
       classification: "I",
@@ -1346,11 +1383,11 @@ export default function ConfiguracionForestalPage() {
     });
 
     if (!result.success) {
-      setImaError(result.error ?? "No fue posible actualizar la clase IMA");
+      showCrudError(setImaError, result.error ?? "No fue posible actualizar la clase IMA");
       return;
     }
 
-    setGlobalMessage("Clase IMA actualizada");
+    showCrudSuccess("Clase IMA actualizada");
     setEditingIma(null);
     await loadImaClasses();
   }
@@ -1362,11 +1399,11 @@ export default function ConfiguracionForestalPage() {
     });
 
     if (!result.success) {
-      setImaError(result.error ?? "No fue posible eliminar la clase IMA");
+      showCrudError(setImaError, result.error ?? "No fue posible eliminar la clase IMA");
       return;
     }
 
-    setGlobalMessage("Clase IMA eliminada");
+    showCrudSuccess("Clase IMA eliminada");
     await loadImaClasses();
   }
 
@@ -1386,11 +1423,11 @@ export default function ConfiguracionForestalPage() {
     });
 
     if (!result.success) {
-      setSpeciesError(result.error ?? "No fue posible crear la especie vegetal");
+      showCrudError(setSpeciesError, result.error ?? "No fue posible crear la especie vegetal");
       return;
     }
 
-    setGlobalMessage("Especie vegetal creada");
+    showCrudSuccess("Especie vegetal creada");
     setSpeciesForm({
       code: "",
       scientificName: "",
@@ -1421,11 +1458,11 @@ export default function ConfiguracionForestalPage() {
     });
 
     if (!result.success) {
-      setSpeciesError(result.error ?? "No fue posible actualizar la especie vegetal");
+      showCrudError(setSpeciesError, result.error ?? "No fue posible actualizar la especie vegetal");
       return;
     }
 
-    setGlobalMessage("Especie vegetal actualizada");
+    showCrudSuccess("Especie vegetal actualizada");
     setEditingSpecies(null);
     await loadSpecies();
     await loadSpeciesOptions();
@@ -1438,11 +1475,11 @@ export default function ConfiguracionForestalPage() {
     });
 
     if (!result.success) {
-      setSpeciesError(result.error ?? "No fue posible eliminar la especie vegetal");
+      showCrudError(setSpeciesError, result.error ?? "No fue posible eliminar la especie vegetal");
       return;
     }
 
-    setGlobalMessage("Especie vegetal eliminada");
+    showCrudSuccess("Especie vegetal eliminada");
     await loadSpecies();
     await loadSpeciesOptions();
   }
@@ -1457,11 +1494,11 @@ export default function ConfiguracionForestalPage() {
     });
 
     if (!result.success) {
-      setProvenanceError(result.error ?? "No fue posible crear la procedencia");
+      showCrudError(setProvenanceError, result.error ?? "No fue posible crear la procedencia");
       return;
     }
 
-    setGlobalMessage("Procedencia creada");
+    showCrudSuccess("Procedencia creada");
     setProvenanceForm((prev) => ({
       countryId: prev.countryId,
       code: "",
@@ -1489,11 +1526,11 @@ export default function ConfiguracionForestalPage() {
     });
 
     if (!result.success) {
-      setProvenanceError(result.error ?? "No fue posible actualizar la procedencia");
+      showCrudError(setProvenanceError, result.error ?? "No fue posible actualizar la procedencia");
       return;
     }
 
-    setGlobalMessage("Procedencia actualizada");
+    showCrudSuccess("Procedencia actualizada");
     setEditingProvenance(null);
     await loadProvenances();
     await loadProvenanceOptions();
@@ -1506,11 +1543,11 @@ export default function ConfiguracionForestalPage() {
     });
 
     if (!result.success) {
-      setProvenanceError(result.error ?? "No fue posible eliminar la procedencia");
+      showCrudError(setProvenanceError, result.error ?? "No fue posible eliminar la procedencia");
       return;
     }
 
-    setGlobalMessage("Procedencia eliminada");
+    showCrudSuccess("Procedencia eliminada");
     await loadProvenances();
     await loadProvenanceOptions();
   }
@@ -1528,11 +1565,11 @@ export default function ConfiguracionForestalPage() {
     });
 
     if (!result.success) {
-      setMaterialError(result.error ?? "No fue posible crear el material vegetal");
+      showCrudError(setMaterialError, result.error ?? "No fue posible crear el material vegetal");
       return;
     }
 
-    setGlobalMessage("Material vegetal creado");
+    showCrudSuccess("Material vegetal creado");
     setMaterialForm((prev) => ({
       code: "",
       name: "",
@@ -1567,11 +1604,11 @@ export default function ConfiguracionForestalPage() {
     });
 
     if (!result.success) {
-      setMaterialError(result.error ?? "No fue posible actualizar el material vegetal");
+      showCrudError(setMaterialError, result.error ?? "No fue posible actualizar el material vegetal");
       return;
     }
 
-    setGlobalMessage("Material vegetal actualizado");
+    showCrudSuccess("Material vegetal actualizado");
     setEditingMaterial(null);
     await loadVegetalMaterials();
   }
@@ -1583,11 +1620,11 @@ export default function ConfiguracionForestalPage() {
     });
 
     if (!result.success) {
-      setMaterialError(result.error ?? "No fue posible eliminar el material vegetal");
+      showCrudError(setMaterialError, result.error ?? "No fue posible eliminar el material vegetal");
       return;
     }
 
-    setGlobalMessage("Material vegetal eliminado");
+    showCrudSuccess("Material vegetal eliminado");
     await loadVegetalMaterials();
   }
 
@@ -1601,11 +1638,11 @@ export default function ConfiguracionForestalPage() {
     });
 
     if (!result.success) {
-      setContinentError(result.error ?? "No fue posible crear el continente");
+      showCrudError(setContinentError, result.error ?? "No fue posible crear el continente");
       return;
     }
 
-    setGlobalMessage("Continente creado");
+    showCrudSuccess("Continente creado");
     setContinentForm({ code: "", name: "", isActive: true });
     setContinentPage(1);
     await loadContinents();
@@ -1621,11 +1658,11 @@ export default function ConfiguracionForestalPage() {
     });
 
     if (!result.success) {
-      setContinentError(result.error ?? "No fue posible actualizar el continente");
+      showCrudError(setContinentError, result.error ?? "No fue posible actualizar el continente");
       return;
     }
 
-    setGlobalMessage("Continente actualizado");
+    showCrudSuccess("Continente actualizado");
     setEditingContinent(null);
     await loadContinents();
   }
@@ -1637,11 +1674,11 @@ export default function ConfiguracionForestalPage() {
     });
 
     if (!result.success) {
-      setContinentError(result.error ?? "No fue posible eliminar el continente");
+      showCrudError(setContinentError, result.error ?? "No fue posible eliminar el continente");
       return;
     }
 
-    setGlobalMessage("Continente eliminado");
+    showCrudSuccess("Continente eliminado");
     await loadContinents();
   }
 
@@ -1655,11 +1692,11 @@ export default function ConfiguracionForestalPage() {
     });
 
     if (!result.success) {
-      setCountryError(result.error ?? "No fue posible crear el país");
+      showCrudError(setCountryError, result.error ?? "No fue posible crear el país");
       return;
     }
 
-    setGlobalMessage("País creado");
+    showCrudSuccess("País creado");
     setCountryForm((prev) => ({
       continentId: prev.continentId,
       code: "",
@@ -1687,11 +1724,11 @@ export default function ConfiguracionForestalPage() {
     });
 
     if (!result.success) {
-      setCountryError(result.error ?? "No fue posible actualizar el país");
+      showCrudError(setCountryError, result.error ?? "No fue posible actualizar el país");
       return;
     }
 
-    setGlobalMessage("País actualizado");
+    showCrudSuccess("País actualizado");
     setEditingCountry(null);
     await loadCountries();
     await loadCountryOptions();
@@ -1704,11 +1741,15 @@ export default function ConfiguracionForestalPage() {
     });
 
     if (!result.success) {
-      setCountryError(result.error ?? "No fue posible eliminar el país");
+      if (result.statusCode === 409) {
+        showCrudWarning(setCountryError, result.error ?? "No se puede eliminar el país porque tiene registros relacionados");
+        return;
+      }
+      showCrudError(setCountryError, result.error ?? "No fue posible eliminar el país");
       return;
     }
 
-    setGlobalMessage("País eliminado");
+    showCrudSuccess("País eliminado");
     await loadCountries();
     await loadCountryOptions();
   }
@@ -1723,11 +1764,11 @@ export default function ConfiguracionForestalPage() {
     });
 
     if (!result.success) {
-      setRegionError(result.error ?? "No fue posible crear la región");
+      showCrudError(setRegionError, result.error ?? "No fue posible crear la región");
       return;
     }
 
-    setGlobalMessage("Región creada");
+    showCrudSuccess("Región creada");
     setRegionForm((prev) => ({
       countryId: prev.countryId,
       code: "",
@@ -1754,11 +1795,11 @@ export default function ConfiguracionForestalPage() {
     });
 
     if (!result.success) {
-      setRegionError(result.error ?? "No fue posible actualizar la región");
+      showCrudError(setRegionError, result.error ?? "No fue posible actualizar la región");
       return;
     }
 
-    setGlobalMessage("Región actualizada");
+    showCrudSuccess("Región actualizada");
     setEditingRegion(null);
     await loadRegions();
   }
@@ -1770,11 +1811,11 @@ export default function ConfiguracionForestalPage() {
     });
 
     if (!result.success) {
-      setRegionError(result.error ?? "No fue posible eliminar la región");
+      showCrudError(setRegionError, result.error ?? "No fue posible eliminar la región");
       return;
     }
 
-    setGlobalMessage("Región eliminada");
+    showCrudSuccess("Región eliminada");
     await loadRegions();
   }
 
@@ -1788,11 +1829,11 @@ export default function ConfiguracionForestalPage() {
     });
 
     if (!result.success) {
-      setStateDepartmentError(result.error ?? "No fue posible crear el estado/departamento");
+      showCrudError(setStateDepartmentError, result.error ?? "No fue posible crear el estado/departamento");
       return;
     }
 
-    setGlobalMessage("Estado/departamento creado");
+    showCrudSuccess("Estado/departamento creado");
     setStateDepartmentForm((prev) => ({
       countryId: prev.countryId,
       code: "",
@@ -1820,11 +1861,11 @@ export default function ConfiguracionForestalPage() {
     });
 
     if (!result.success) {
-      setStateDepartmentError(result.error ?? "No fue posible actualizar el estado/departamento");
+      showCrudError(setStateDepartmentError, result.error ?? "No fue posible actualizar el estado/departamento");
       return;
     }
 
-    setGlobalMessage("Estado/departamento actualizado");
+    showCrudSuccess("Estado/departamento actualizado");
     setEditingStateDepartment(null);
     await loadStateDepartments();
     await loadStateOptions();
@@ -1837,11 +1878,11 @@ export default function ConfiguracionForestalPage() {
     });
 
     if (!result.success) {
-      setStateDepartmentError(result.error ?? "No fue posible eliminar el estado/departamento");
+      showCrudError(setStateDepartmentError, result.error ?? "No fue posible eliminar el estado/departamento");
       return;
     }
 
-    setGlobalMessage("Estado/departamento eliminado");
+    showCrudSuccess("Estado/departamento eliminado");
     await loadStateDepartments();
     await loadStateOptions();
   }
@@ -1856,11 +1897,11 @@ export default function ConfiguracionForestalPage() {
     });
 
     if (!result.success) {
-      setMunicipalityError(result.error ?? "No fue posible crear el municipio/distrito");
+      showCrudError(setMunicipalityError, result.error ?? "No fue posible crear el municipio/distrito");
       return;
     }
 
-    setGlobalMessage("Municipio/distrito creado");
+    showCrudSuccess("Municipio/distrito creado");
     setMunicipalityForm((prev) => ({
       stateId: prev.stateId,
       code: "",
@@ -1888,11 +1929,11 @@ export default function ConfiguracionForestalPage() {
     });
 
     if (!result.success) {
-      setMunicipalityError(result.error ?? "No fue posible actualizar el municipio/distrito");
+      showCrudError(setMunicipalityError, result.error ?? "No fue posible actualizar el municipio/distrito");
       return;
     }
 
-    setGlobalMessage("Municipio/distrito actualizado");
+    showCrudSuccess("Municipio/distrito actualizado");
     setEditingMunicipality(null);
     await loadMunicipalities();
     await loadMunicipalityOptions();
@@ -1905,11 +1946,11 @@ export default function ConfiguracionForestalPage() {
     });
 
     if (!result.success) {
-      setMunicipalityError(result.error ?? "No fue posible eliminar el municipio/distrito");
+      showCrudError(setMunicipalityError, result.error ?? "No fue posible eliminar el municipio/distrito");
       return;
     }
 
-    setGlobalMessage("Municipio/distrito eliminado");
+    showCrudSuccess("Municipio/distrito eliminado");
     await loadMunicipalities();
     await loadMunicipalityOptions();
   }
@@ -1924,11 +1965,11 @@ export default function ConfiguracionForestalPage() {
     });
 
     if (!result.success) {
-      setCityError(result.error ?? "No fue posible crear la ciudad");
+      showCrudError(setCityError, result.error ?? "No fue posible crear la ciudad");
       return;
     }
 
-    setGlobalMessage("Ciudad creada");
+    showCrudSuccess("Ciudad creada");
     setCityForm((prev) => ({
       municipalityId: prev.municipalityId,
       code: "",
@@ -1956,11 +1997,11 @@ export default function ConfiguracionForestalPage() {
     });
 
     if (!result.success) {
-      setCityError(result.error ?? "No fue posible actualizar la ciudad");
+      showCrudError(setCityError, result.error ?? "No fue posible actualizar la ciudad");
       return;
     }
 
-    setGlobalMessage("Ciudad actualizada");
+    showCrudSuccess("Ciudad actualizada");
     setEditingCity(null);
     await loadCities();
     await loadCityOptions();
@@ -1973,11 +2014,11 @@ export default function ConfiguracionForestalPage() {
     });
 
     if (!result.success) {
-      setCityError(result.error ?? "No fue posible eliminar la ciudad");
+      showCrudError(setCityError, result.error ?? "No fue posible eliminar la ciudad");
       return;
     }
 
-    setGlobalMessage("Ciudad eliminada");
+    showCrudSuccess("Ciudad eliminada");
     await loadCities();
     await loadCityOptions();
   }
@@ -1992,11 +2033,11 @@ export default function ConfiguracionForestalPage() {
     });
 
     if (!result.success) {
-      setCommunityError(result.error ?? "No fue posible crear el desarrollo local");
+      showCrudError(setCommunityError, result.error ?? "No fue posible crear el desarrollo local");
       return;
     }
 
-    setGlobalMessage("Desarrollo local creado");
+    showCrudSuccess("Desarrollo local creado");
     setCommunityForm((prev) => ({
       cityId: prev.cityId,
       code: "",
@@ -2025,11 +2066,11 @@ export default function ConfiguracionForestalPage() {
     });
 
     if (!result.success) {
-      setCommunityError(result.error ?? "No fue posible actualizar el desarrollo local");
+      showCrudError(setCommunityError, result.error ?? "No fue posible actualizar el desarrollo local");
       return;
     }
 
-    setGlobalMessage("Desarrollo local actualizado");
+    showCrudSuccess("Desarrollo local actualizado");
     setEditingCommunity(null);
     await loadCommunityTerritories();
   }
@@ -2041,11 +2082,11 @@ export default function ConfiguracionForestalPage() {
     });
 
     if (!result.success) {
-      setCommunityError(result.error ?? "No fue posible eliminar el desarrollo local");
+      showCrudError(setCommunityError, result.error ?? "No fue posible eliminar el desarrollo local");
       return;
     }
 
-    setGlobalMessage("Desarrollo local eliminado");
+    showCrudSuccess("Desarrollo local eliminado");
     await loadCommunityTerritories();
   }
 
@@ -2065,11 +2106,11 @@ export default function ConfiguracionForestalPage() {
     });
 
     if (!result.success) {
-      setSpacingError(result.error ?? "No fue posible crear el espaciamiento");
+      showCrudError(setSpacingError, result.error ?? "No fue posible crear el espaciamiento");
       return;
     }
 
-    setGlobalMessage("Espaciamiento creado");
+    showCrudSuccess("Espaciamiento creado");
     setSpacingForm({
       code: "",
       name: "",
@@ -2102,11 +2143,11 @@ export default function ConfiguracionForestalPage() {
     });
 
     if (!result.success) {
-      setSpacingError(result.error ?? "No fue posible actualizar el espaciamiento");
+      showCrudError(setSpacingError, result.error ?? "No fue posible actualizar el espaciamiento");
       return;
     }
 
-    setGlobalMessage("Espaciamiento actualizado");
+    showCrudSuccess("Espaciamiento actualizado");
     setEditingSpacing(null);
     await loadSpacings();
   }
@@ -2118,11 +2159,11 @@ export default function ConfiguracionForestalPage() {
     });
 
     if (!result.success) {
-      setSpacingError(result.error ?? "No fue posible eliminar el espaciamiento");
+      showCrudError(setSpacingError, result.error ?? "No fue posible eliminar el espaciamiento");
       return;
     }
 
-    setGlobalMessage("Espaciamiento eliminado");
+    showCrudSuccess("Espaciamiento eliminado");
     await loadSpacings();
   }
 
@@ -2133,6 +2174,10 @@ export default function ConfiguracionForestalPage() {
     const plantationAreaHa = toNumberOrNull(level4CostForm.plantationAreaHa);
     if (plantationAreaHa === null) {
       setLevel4CostError("Área de plantación inválida");
+      sileo.warning({
+        title: "Datos inválidos",
+        description: "Área de plantación inválida.",
+      });
       return;
     }
 
@@ -2149,11 +2194,11 @@ export default function ConfiguracionForestalPage() {
     });
 
     if (!result.success) {
-      setLevel4CostError(result.error ?? "No fue posible crear el costo nivel 4");
+      showCrudError(setLevel4CostError, result.error ?? "No fue posible crear el costo nivel 4");
       return;
     }
 
-    setGlobalMessage("Costo nivel 4 creado");
+    showCrudSuccess("Costo nivel 4 creado");
     setLevel4CostForm((prev) => ({
       level4Id: prev.level4Id,
       code: "",
@@ -2173,6 +2218,10 @@ export default function ConfiguracionForestalPage() {
     const plantationAreaHa = toNumberOrNull(String(editingLevel4Cost.plantationAreaHa));
     if (plantationAreaHa === null) {
       setLevel4CostError("Área de plantación inválida");
+      sileo.warning({
+        title: "Datos inválidos",
+        description: "Área de plantación inválida.",
+      });
       return;
     }
 
@@ -2190,11 +2239,11 @@ export default function ConfiguracionForestalPage() {
     });
 
     if (!result.success) {
-      setLevel4CostError(result.error ?? "No fue posible actualizar el costo nivel 4");
+      showCrudError(setLevel4CostError, result.error ?? "No fue posible actualizar el costo nivel 4");
       return;
     }
 
-    setGlobalMessage("Costo nivel 4 actualizado");
+    showCrudSuccess("Costo nivel 4 actualizado");
     setEditingLevel4Cost(null);
     await loadLevel4Costs();
   }
@@ -2206,11 +2255,11 @@ export default function ConfiguracionForestalPage() {
     });
 
     if (!result.success) {
-      setLevel4CostError(result.error ?? "No fue posible eliminar el costo nivel 4");
+      showCrudError(setLevel4CostError, result.error ?? "No fue posible eliminar el costo nivel 4");
       return;
     }
 
-    setGlobalMessage("Costo nivel 4 eliminado");
+    showCrudSuccess("Costo nivel 4 eliminado");
     await loadLevel4Costs();
   }
 
@@ -2233,11 +2282,11 @@ export default function ConfiguracionForestalPage() {
     });
 
     if (!result.success) {
-      setProductTypeError(result.error ?? "No fue posible crear el tipo de producto");
+      showCrudError(setProductTypeError, result.error ?? "No fue posible crear el tipo de producto");
       return;
     }
 
-    setGlobalMessage("Tipo de producto creado");
+    showCrudSuccess("Tipo de producto creado");
     setProductTypeForm({
       code: "",
       name: "",
@@ -2278,11 +2327,11 @@ export default function ConfiguracionForestalPage() {
     });
 
     if (!result.success) {
-      setProductTypeError(result.error ?? "No fue posible actualizar el tipo de producto");
+      showCrudError(setProductTypeError, result.error ?? "No fue posible actualizar el tipo de producto");
       return;
     }
 
-    setGlobalMessage("Tipo de producto actualizado");
+    showCrudSuccess("Tipo de producto actualizado");
     setEditingProductType(null);
     await loadProductTypes();
   }
@@ -2294,11 +2343,11 @@ export default function ConfiguracionForestalPage() {
     });
 
     if (!result.success) {
-      setProductTypeError(result.error ?? "No fue posible eliminar el tipo de producto");
+      showCrudError(setProductTypeError, result.error ?? "No fue posible eliminar el tipo de producto");
       return;
     }
 
-    setGlobalMessage("Tipo de producto eliminado");
+    showCrudSuccess("Tipo de producto eliminado");
     await loadProductTypes();
   }
 
@@ -2315,11 +2364,11 @@ export default function ConfiguracionForestalPage() {
     });
 
     if (!result.success) {
-      setLandUseError(result.error ?? "No fue posible crear el uso de suelos");
+      showCrudError(setLandUseError, result.error ?? "No fue posible crear el uso de suelos");
       return;
     }
 
-    setGlobalMessage("Uso de suelos creado");
+    showCrudSuccess("Uso de suelos creado");
     setLandUseForm((prev) => ({
       continentId: prev.continentId,
       code: "",
@@ -2348,11 +2397,11 @@ export default function ConfiguracionForestalPage() {
     });
 
     if (!result.success) {
-      setLandUseError(result.error ?? "No fue posible actualizar el uso de suelos");
+      showCrudError(setLandUseError, result.error ?? "No fue posible actualizar el uso de suelos");
       return;
     }
 
-    setGlobalMessage("Uso de suelos actualizado");
+    showCrudSuccess("Uso de suelos actualizado");
     setEditingLandUse(null);
     await loadLandUseTypes();
   }
@@ -2364,11 +2413,11 @@ export default function ConfiguracionForestalPage() {
     });
 
     if (!result.success) {
-      setLandUseError(result.error ?? "No fue posible eliminar el uso de suelos");
+      showCrudError(setLandUseError, result.error ?? "No fue posible eliminar el uso de suelos");
       return;
     }
 
-    setGlobalMessage("Uso de suelos eliminado");
+    showCrudSuccess("Uso de suelos eliminado");
     await loadLandUseTypes();
   }
 

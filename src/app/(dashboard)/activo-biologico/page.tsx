@@ -512,8 +512,17 @@ export default function ActivoBiologicoPage() {
       setSearch("");
       setPage(1);
       await loadAssets(selectedLevel4Id, "", 1, limit);
+      sileo.success({
+        title: isEditing ? "Activo actualizado" : "Activo creado",
+        description: isEditing ? "Se actualizó el activo biológico." : "Se creó el activo biológico.",
+      });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "No fue posible guardar");
+      const message = err instanceof Error ? err.message : "No fue posible guardar";
+      setError(message);
+      sileo.error({
+        title: "No se pudo guardar",
+        description: message,
+      });
     } finally {
       setSubmitting(false);
     }
