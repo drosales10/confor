@@ -137,25 +137,29 @@ export default function LoginPage() {
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-md items-center p-6">
       <form onSubmit={onSubmit} className="w-full rounded-xl border p-6">
-        <div className="mb-4 flex items-center gap-3">
-          <div className="h-12 w-12 overflow-hidden rounded-md border bg-white">
+        <div className="mb-8 flex flex-col items-center gap-4">
+          <div className="flex h-16 w-32 items-center justify-center overflow-hidden rounded-lg border bg-white p-2 shadow-sm">
             {branding?.organization?.logoUrl ? (
               <Image
                 alt={branding.organization.name ?? "Logo"}
-                className="h-full w-full object-cover"
-                height={48}
+                className="h-full w-full object-contain"
+                height={64}
                 src={branding.organization.logoUrl}
-                width={48}
+                width={128}
               />
             ) : (
-              <div className="flex h-full w-full items-center justify-center text-xs text-muted-foreground">Logo</div>
+              <div className="flex h-full w-full items-center justify-center text-xs font-bold uppercase tracking-wider text-muted-foreground/60">
+                {branding?.organization?.name ?? "Confor"}
+              </div>
             )}
           </div>
-          <div>
+          <div className="text-center">
             {branding?.appTitle ? (
-              <div className="text-lg font-semibold">{branding.appTitle}</div>
+              <div className="text-xl font-bold tracking-tight text-primary-foreground bg-primary/50 px-3 py-1 rounded-full mb-1">
+                {branding.appTitle}
+              </div>
             ) : null}
-            <div className="text-2xl font-semibold">Iniciar sesión</div>
+            <div className="text-2xl font-semibold tracking-tight">Iniciar sesión</div>
           </div>
         </div>
         <div className="mt-4 space-y-3">

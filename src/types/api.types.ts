@@ -3,6 +3,7 @@ export type ApiResponse<T> = {
   data?: T;
   error?: string;
   details?: unknown;
+  statusCode?: number;
 };
 
 export type PaginationMeta = {

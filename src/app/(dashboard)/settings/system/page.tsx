@@ -293,10 +293,10 @@ export default function SystemSettingsPage() {
               {organization?.logoUrl ? (
                 <Image
                   alt={organization?.name ?? "Logo"}
-                  className="h-full w-full object-cover"
+                  className="h-full w-full object-contain"
                   height={48}
                   src={organization.logoUrl}
-                  width={48}
+                  width={128}
                 />
               ) : (
                 <div className="flex h-full w-full items-center justify-center text-xs text-muted-foreground">Sin logo</div>

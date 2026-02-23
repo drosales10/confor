@@ -9,6 +9,9 @@ import StatusBar from "@/components/StatusBar";
 import { buildAbilityFromPermissions } from "@/lib/ability";
 import { prisma } from "@/lib/prisma";
 import { getUserRolesAndPermissions } from "@/lib/permissions";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { DashboardNav } from "@/components/DashboardNav";
 
 const nav = [
   { href: "/dashboard", label: "Inicio", module: "dashboard" },
@@ -80,10 +83,10 @@ export default async function DashboardLayout({ children }: { children: React.Re
               {orgFromSession?.logoUrl ? (
                 <Image
                   alt={orgFromSession.name}
-                  className="h-full w-full object-cover"
-                  height={36}
+                  className="h-full w-full object-contain"
+                  height={64}
                   src={orgFromSession.logoUrl}
-                  width={36}
+                  width={128}
                 />
               ) : (
                 <div className="flex h-full w-full items-center justify-center text-[10px] text-muted-foreground">Logo</div>
@@ -105,23 +108,21 @@ export default async function DashboardLayout({ children }: { children: React.Re
               redirect("/login");
             }}
           >
-            <button className="rounded-md border px-3 py-1.5 text-sm" type="submit">
+            <Button variant="outline" size="sm" type="submit">
               Cerrar sesión
-            </button>
+            </Button>
           </form>
         </div>
       </header>
       <div className="mx-auto grid w-full max-w-6xl grid-cols-1 gap-4 p-4 md:grid-cols-[240px_1fr]">
-        <aside className="rounded-xl border p-3">
-          <nav className="space-y-1">
-            {visibleNav.map((item) => (
-              <Link className="block rounded-md px-3 py-2 text-sm hover:bg-accent" href={item.href} key={item.href}>
-                {item.label}
-              </Link>
-            ))}
-          </nav>
-        </aside>
-        <main className="rounded-xl border p-4">{children}</main>
+        <Card>
+          <CardContent className="p-3">
+            <DashboardNav nav={visibleNav} />
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">{children}</CardContent>
+        </Card>
       </div>
       <StatusBar />
     </div>
