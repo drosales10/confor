@@ -184,6 +184,7 @@ model Organization {
   systemConfigurations SystemConfiguration[]
   auditLogs            AuditLog[]
   fileUploads          FileUpload[]
+  forestPatrimonyLevel2Units ForestPatrimonyLevel2[]
 }
 
 model Role {
@@ -489,6 +490,7 @@ model FileUpload {
 
 model ForestPatrimonyLevel2 {
   id                   String                 @id @default(uuid()) @db.Uuid
+  organizationId       String?                @db.Uuid
   code                 String                 @unique @db.VarChar(80)
   name                 String                 @db.VarChar(255)
   type                 PatrimonyLevel2Type
@@ -505,8 +507,11 @@ model ForestPatrimonyLevel2 {
   isActive             Boolean                @default(true)
   createdAt            DateTime               @default(now())
   updatedAt            DateTime               @updatedAt
+  organization         Organization?          @relation(fields: [organizationId], references: [id], onDelete: Restrict)
   neighbors            ForestPatrimonyNeighbor[]
   level3Units          ForestPatrimonyLevel3[]
+
+  @@index([organizationId])
 }
 
 model ForestPatrimonyNeighbor {

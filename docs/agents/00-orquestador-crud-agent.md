@@ -27,20 +27,22 @@ Implementar un módulo completo para una tabla nueva siguiendo el patrón ya apl
    - para `GET`: permitir acceso si el usuario tiene `READ` o cualquier permiso de escritura (`CREATE/UPDATE/DELETE`) del mismo `moduleSlug`
    - respuesta uniforme `ok/fail`
    - auditoría en `auditLog`
-4. Implementar UI en `src/app/(dashboard)/<ruta>/page.tsx` con:
+4. Aplicar seguridad multiorganización usando `docs/agents/05-seguridad-multiorganizacion-agent.md`.
+5. Implementar UI en `src/app/(dashboard)/<ruta>/page.tsx` con:
    - formulario
    - búsqueda con `useDebounce`
    - paginación (page/limit)
    - total de resultados
    - edición inline + eliminación
-5. Agregar entrada de navegación en `src/app/(dashboard)/layout.tsx` si aplica.
-6. Validar con:
+6. Agregar entrada de navegación en `src/app/(dashboard)/layout.tsx` si aplica.
+7. Validar con:
    - `npm run lint`
    - `npx tsc --noEmit`
    - `npm run build`
 
 ## Criterios de aceptación
 - CRUD funcional end-to-end
+- Seguridad multiorganización aplicada (filtro por organización + ownership checks)
 - Sin errores de lint/types/build
 - UX consistente con `patrimonio-forestal`
 - Sin hardcode de permisos fuera de `moduleSlug`

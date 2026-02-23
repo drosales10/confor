@@ -48,6 +48,23 @@ function decimalValue(value: number | null | undefined) {
   return new Prisma.Decimal(value);
 }
 
+async function resolveOrganizationId(sessionUser: { id?: string; organizationId?: string | null }) {
+  if (sessionUser.organizationId !== undefined) {
+    return sessionUser.organizationId;
+  }
+
+  if (!sessionUser.id) {
+    return null;
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { id: sessionUser.id },
+    select: { organizationId: true },
+  });
+
+  return user?.organizationId ?? null;
+}
+
 export async function GET(req: NextRequest) {
   const authResult = await requireAuth();
   if ("error" in authResult) return authResult.error;
@@ -78,9 +95,18 @@ export async function GET(req: NextRequest) {
   }
 
   const { level4Id, search, page, limit } = queryResult.data;
+  const organizationId = await resolveOrganizationId({
+    id: authResult.session.user.id,
+    organizationId: authResult.session.user.organizationId,
+  });
+
+  if (!isSuperAdmin && !organizationId) {
+    return fail("El usuario no tiene una organización asociada", 403);
+  }
 
   const where: Prisma.ForestBiologicalAssetLevel6WhereInput = {
     ...(level4Id ? { level4Id } : {}),
+    ...(!isSuperAdmin ? { level4: { level3: { level2: { organizationId: organizationId ?? "" } } } } : {}),
     ...(search
       ? {
           OR: [
@@ -123,7 +149,21 @@ export async function POST(req: NextRequest) {
     return fail("Datos inválidos", 400, parsed.error.flatten());
   }
 
-  const parent = await prisma.forestPatrimonyLevel4.findUnique({ where: { id: parsed.data.level4Id } });
+  const organizationId = await resolveOrganizationId({
+    id: authResult.session.user.id,
+    organizationId: authResult.session.user.organizationId,
+  });
+
+  if (!isSuperAdmin && !organizationId) {
+    return fail("El usuario no tiene una organización asociada", 403);
+  }
+
+  const parent = await prisma.forestPatrimonyLevel4.findFirst({
+    where: {
+      id: parsed.data.level4Id,
+      ...(!isSuperAdmin ? { level3: { level2: { organizationId: organizationId ?? "" } } } : {}),
+    },
+  });
   if (!parent) {
     return fail("Nivel 4 no encontrado", 404);
   }
@@ -198,6 +238,27 @@ export async function PATCH(req: NextRequest) {
   const parsed = updateBiologicalAssetSchema.safeParse(body);
   if (!parsed.success) {
     return fail("Datos inválidos", 400, parsed.error.flatten());
+  }
+
+  const organizationId = await resolveOrganizationId({
+    id: authResult.session.user.id,
+    organizationId: authResult.session.user.organizationId,
+  });
+
+  if (!isSuperAdmin && !organizationId) {
+    return fail("El usuario no tiene una organización asociada", 403);
+  }
+
+  const current = await prisma.forestBiologicalAssetLevel6.findFirst({
+    where: {
+      id: parsed.data.id,
+      ...(!isSuperAdmin ? { level4: { level3: { level2: { organizationId: organizationId ?? "" } } } } : {}),
+    },
+    select: { id: true },
+  });
+
+  if (!current) {
+    return fail("Activo biológico no encontrado", 404);
   }
 
   const dataToUpdate: Prisma.ForestBiologicalAssetLevel6UpdateInput = {
@@ -280,6 +341,27 @@ export async function DELETE(req: NextRequest) {
   const parsed = deleteBiologicalAssetSchema.safeParse(body);
   if (!parsed.success) {
     return fail("Datos inválidos", 400, parsed.error.flatten());
+  }
+
+  const organizationId = await resolveOrganizationId({
+    id: authResult.session.user.id,
+    organizationId: authResult.session.user.organizationId,
+  });
+
+  if (!isSuperAdmin && !organizationId) {
+    return fail("El usuario no tiene una organización asociada", 403);
+  }
+
+  const current = await prisma.forestBiologicalAssetLevel6.findFirst({
+    where: {
+      id: parsed.data.id,
+      ...(!isSuperAdmin ? { level4: { level3: { level2: { organizationId: organizationId ?? "" } } } } : {}),
+    },
+    select: { id: true },
+  });
+
+  if (!current) {
+    return fail("Activo biológico no encontrado", 404);
   }
 
   await prisma.forestBiologicalAssetLevel6.delete({ where: { id: parsed.data.id } });

@@ -5,3 +5,4 @@
 - Para confirmaciones de acciones sensibles (por ejemplo eliminar), usar `sileo.action` con botón explícito.
 - Para éxito/error/advertencia, usar `sileo.success`, `sileo.error` y `sileo.warning`.
 - Mantener mensajes breves y en español.
+- Para cualquier implementación o ajuste de API CRUD, aplicar el estándar de seguridad multiorganización definido en `docs/agents/05-seguridad-multiorganizacion-agent.md`.

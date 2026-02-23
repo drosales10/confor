@@ -31,6 +31,23 @@ function mapCreateError(error: unknown) {
   return fail("No fue posible crear el registro", 500);
 }
 
+async function resolveOrganizationId(sessionUser: { id?: string; organizationId?: string | null }) {
+  if (sessionUser.organizationId !== undefined) {
+    return sessionUser.organizationId;
+  }
+
+  if (!sessionUser.id) {
+    return null;
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { id: sessionUser.id },
+    select: { organizationId: true },
+  });
+
+  return user?.organizationId ?? null;
+}
+
 export async function GET(req: NextRequest) {
   const authResult = await requireAuth();
   if ("error" in authResult) return authResult.error;
@@ -63,9 +80,14 @@ export async function GET(req: NextRequest) {
   }
 
   const { level, page, limit, parentId, search } = queryResult.data;
+  const organizationId = await resolveOrganizationId({
+    id: authResult.session.user.id,
+    organizationId: authResult.session.user.organizationId,
+  });
 
   if (level === "2") {
-    const where = {
+    const where: Prisma.ForestPatrimonyLevel2WhereInput = {
+      ...(!isSuperAdmin ? { organizationId: organizationId ?? "" } : {}),
       ...(search
         ? {
             OR: [
@@ -90,8 +112,9 @@ export async function GET(req: NextRequest) {
   }
 
   if (level === "3") {
-    const where = {
+    const where: Prisma.ForestPatrimonyLevel3WhereInput = {
       ...(parentId ? { level2Id: parentId } : {}),
+      ...(!isSuperAdmin ? { level2: { organizationId: organizationId ?? "" } } : {}),
       ...(search
         ? {
             OR: [
@@ -117,8 +140,9 @@ export async function GET(req: NextRequest) {
   }
 
   if (level === "4") {
-    const where = {
+    const where: Prisma.ForestPatrimonyLevel4WhereInput = {
       ...(parentId ? { level3Id: parentId } : {}),
+      ...(!isSuperAdmin ? { level3: { level2: { organizationId: organizationId ?? "" } } } : {}),
       ...(search
         ? {
             OR: [
@@ -146,8 +170,9 @@ export async function GET(req: NextRequest) {
     return ok({ items, pagination: { total, page, limit, totalPages: Math.ceil(total / limit) } });
   }
 
-  const where = {
+  const where: Prisma.ForestPatrimonyLevel5WhereInput = {
     ...(parentId ? { level4Id: parentId } : {}),
+    ...(!isSuperAdmin ? { level4: { level3: { level2: { organizationId: organizationId ?? "" } } } } : {}),
     ...(search
       ? {
           OR: [
@@ -188,10 +213,22 @@ export async function POST(req: NextRequest) {
     return fail("Datos inválidos", 400, parsed.error.flatten());
   }
 
+  const organizationId = await resolveOrganizationId({
+    id: authResult.session.user.id,
+    organizationId: authResult.session.user.organizationId,
+  });
+
+  if (!isSuperAdmin && !organizationId) {
+    return fail("El usuario no tiene una organización asociada", 403);
+  }
+
   if (parsed.data.level === "2") {
     try {
       const created = await prisma.forestPatrimonyLevel2.create({
-        data: parsed.data.data,
+        data: {
+          ...parsed.data.data,
+          ...(!isSuperAdmin ? { organizationId: organizationId ?? undefined } : {}),
+        },
       });
 
       await safeAuditLog({
@@ -209,7 +246,12 @@ export async function POST(req: NextRequest) {
   }
 
   if (parsed.data.level === "3") {
-    const parent = await prisma.forestPatrimonyLevel2.findUnique({ where: { id: parsed.data.data.level2Id } });
+    const parent = await prisma.forestPatrimonyLevel2.findFirst({
+      where: {
+        id: parsed.data.data.level2Id,
+        ...(!isSuperAdmin ? { organizationId: organizationId ?? "" } : {}),
+      },
+    });
     if (!parent) {
       return fail("Nivel 2 no encontrado", 404);
     }
@@ -231,7 +273,12 @@ export async function POST(req: NextRequest) {
   }
 
   if (parsed.data.level === "4") {
-    const parent = await prisma.forestPatrimonyLevel3.findUnique({ where: { id: parsed.data.data.level3Id } });
+    const parent = await prisma.forestPatrimonyLevel3.findFirst({
+      where: {
+        id: parsed.data.data.level3Id,
+        ...(!isSuperAdmin ? { level2: { organizationId: organizationId ?? "" } } : {}),
+      },
+    });
     if (!parent) {
       return fail("Nivel 3 no encontrado", 404);
     }
@@ -257,7 +304,12 @@ export async function POST(req: NextRequest) {
     return fail("No se pudo calcular el área del nivel 5 con las dimensiones proporcionadas", 400);
   }
 
-  const parent = await prisma.forestPatrimonyLevel4.findUnique({ where: { id: parsed.data.data.level4Id } });
+  const parent = await prisma.forestPatrimonyLevel4.findFirst({
+    where: {
+      id: parsed.data.data.level4Id,
+      ...(!isSuperAdmin ? { level3: { level2: { organizationId: organizationId ?? "" } } } : {}),
+    },
+  });
   if (!parent) {
     return fail("Nivel 4 no encontrado", 404);
   }
@@ -300,7 +352,27 @@ export async function PATCH(req: NextRequest) {
     return fail("Datos inválidos", 400, parsed.error.flatten());
   }
 
+  const organizationId = await resolveOrganizationId({
+    id: authResult.session.user.id,
+    organizationId: authResult.session.user.organizationId,
+  });
+
+  if (!isSuperAdmin && !organizationId) {
+    return fail("El usuario no tiene una organización asociada", 403);
+  }
+
   if (parsed.data.level === "2") {
+    const current = await prisma.forestPatrimonyLevel2.findFirst({
+      where: {
+        id: parsed.data.id,
+        ...(!isSuperAdmin ? { organizationId: organizationId ?? "" } : {}),
+      },
+      select: { id: true },
+    });
+    if (!current) {
+      return fail("Nivel 2 no encontrado", 404);
+    }
+
     const updated = await prisma.forestPatrimonyLevel2.update({
       where: { id: parsed.data.id },
       data: parsed.data.data,
@@ -318,6 +390,17 @@ export async function PATCH(req: NextRequest) {
   }
 
   if (parsed.data.level === "3") {
+    const current = await prisma.forestPatrimonyLevel3.findFirst({
+      where: {
+        id: parsed.data.id,
+        ...(!isSuperAdmin ? { level2: { organizationId: organizationId ?? "" } } : {}),
+      },
+      select: { id: true },
+    });
+    if (!current) {
+      return fail("Nivel 3 no encontrado", 404);
+    }
+
     const updated = await prisma.forestPatrimonyLevel3.update({
       where: { id: parsed.data.id },
       data: parsed.data.data,
@@ -336,6 +419,17 @@ export async function PATCH(req: NextRequest) {
   }
 
   if (parsed.data.level === "4") {
+    const current = await prisma.forestPatrimonyLevel4.findFirst({
+      where: {
+        id: parsed.data.id,
+        ...(!isSuperAdmin ? { level3: { level2: { organizationId: organizationId ?? "" } } } : {}),
+      },
+      select: { id: true },
+    });
+    if (!current) {
+      return fail("Nivel 4 no encontrado", 404);
+    }
+
     const updated = await prisma.forestPatrimonyLevel4.update({
       where: { id: parsed.data.id },
       data: parsed.data.data,
@@ -361,7 +455,12 @@ export async function PATCH(req: NextRequest) {
     parsed.data.data.dimension3M !== undefined ||
     parsed.data.data.dimension4M !== undefined
   ) {
-    const current = await prisma.forestPatrimonyLevel5.findUnique({ where: { id: parsed.data.id } });
+    const current = await prisma.forestPatrimonyLevel5.findFirst({
+      where: {
+        id: parsed.data.id,
+        ...(!isSuperAdmin ? { level4: { level3: { level2: { organizationId: organizationId ?? "" } } } } : {}),
+      },
+    });
     if (!current) {
       return fail("Nivel 5 no encontrado", 404);
     }
@@ -387,6 +486,19 @@ export async function PATCH(req: NextRequest) {
     }
 
     dataToUpdate.areaM2 = areaM2;
+  }
+
+  if (parsed.data.level === "5") {
+    const current = await prisma.forestPatrimonyLevel5.findFirst({
+      where: {
+        id: parsed.data.id,
+        ...(!isSuperAdmin ? { level4: { level3: { level2: { organizationId: organizationId ?? "" } } } } : {}),
+      },
+      select: { id: true },
+    });
+    if (!current) {
+      return fail("Nivel 5 no encontrado", 404);
+    }
   }
 
   const updated = await prisma.forestPatrimonyLevel5.update({
@@ -422,7 +534,27 @@ export async function DELETE(req: NextRequest) {
     return fail("Datos inválidos", 400, parsed.error.flatten());
   }
 
+  const organizationId = await resolveOrganizationId({
+    id: authResult.session.user.id,
+    organizationId: authResult.session.user.organizationId,
+  });
+
+  if (!isSuperAdmin && !organizationId) {
+    return fail("El usuario no tiene una organización asociada", 403);
+  }
+
   if (parsed.data.level === "2") {
+    const current = await prisma.forestPatrimonyLevel2.findFirst({
+      where: {
+        id: parsed.data.id,
+        ...(!isSuperAdmin ? { organizationId: organizationId ?? "" } : {}),
+      },
+      select: { id: true },
+    });
+    if (!current) {
+      return fail("Nivel 2 no encontrado", 404);
+    }
+
     const childrenCount = await prisma.forestPatrimonyLevel3.count({ where: { level2Id: parsed.data.id } });
     if (childrenCount > 0) {
       return fail("No se puede eliminar el nivel 2 porque tiene niveles 3 relacionados", 409);
@@ -441,6 +573,17 @@ export async function DELETE(req: NextRequest) {
   }
 
   if (parsed.data.level === "3") {
+    const current = await prisma.forestPatrimonyLevel3.findFirst({
+      where: {
+        id: parsed.data.id,
+        ...(!isSuperAdmin ? { level2: { organizationId: organizationId ?? "" } } : {}),
+      },
+      select: { id: true },
+    });
+    if (!current) {
+      return fail("Nivel 3 no encontrado", 404);
+    }
+
     const childrenCount = await prisma.forestPatrimonyLevel4.count({ where: { level3Id: parsed.data.id } });
     if (childrenCount > 0) {
       return fail("No se puede eliminar el nivel 3 porque tiene niveles 4 relacionados", 409);
@@ -459,6 +602,17 @@ export async function DELETE(req: NextRequest) {
   }
 
   if (parsed.data.level === "4") {
+    const current = await prisma.forestPatrimonyLevel4.findFirst({
+      where: {
+        id: parsed.data.id,
+        ...(!isSuperAdmin ? { level3: { level2: { organizationId: organizationId ?? "" } } } : {}),
+      },
+      select: { id: true },
+    });
+    if (!current) {
+      return fail("Nivel 4 no encontrado", 404);
+    }
+
     const childrenCount = await prisma.forestPatrimonyLevel5.count({ where: { level4Id: parsed.data.id } });
     if (childrenCount > 0) {
       return fail("No se puede eliminar el nivel 4 porque tiene niveles 5 relacionados", 409);
@@ -474,6 +628,17 @@ export async function DELETE(req: NextRequest) {
     });
 
     return ok({ message: "Nivel 4 eliminado" });
+  }
+
+  const current = await prisma.forestPatrimonyLevel5.findFirst({
+    where: {
+      id: parsed.data.id,
+      ...(!isSuperAdmin ? { level4: { level3: { level2: { organizationId: organizationId ?? "" } } } } : {}),
+    },
+    select: { id: true },
+  });
+  if (!current) {
+    return fail("Nivel 5 no encontrado", 404);
   }
 
   await prisma.forestPatrimonyLevel5.delete({ where: { id: parsed.data.id } });

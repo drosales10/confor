@@ -33,6 +33,23 @@ function mapNeighborError(error: unknown, fallbackMessage: string) {
   return fail(fallbackMessage, 500);
 }
 
+async function resolveOrganizationId(sessionUser: { id?: string; organizationId?: string | null }) {
+  if (sessionUser.organizationId !== undefined) {
+    return sessionUser.organizationId;
+  }
+
+  if (!sessionUser.id) {
+    return null;
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { id: sessionUser.id },
+    select: { organizationId: true },
+  });
+
+  return user?.organizationId ?? null;
+}
+
 export async function GET(req: NextRequest) {
   const authResult = await requireAuth();
   if ("error" in authResult) return authResult.error;
@@ -48,9 +65,21 @@ export async function GET(req: NextRequest) {
     return fail("Parámetro level2Id inválido", 400, level2IdResult.error.flatten());
   }
 
+  const organizationId = await resolveOrganizationId({
+    id: authResult.session.user.id,
+    organizationId: authResult.session.user.organizationId,
+  });
+
+  if (!isSuperAdmin && !organizationId) {
+    return fail("El usuario no tiene una organización asociada", 403);
+  }
+
   try {
     const items = await prisma.forestPatrimonyNeighbor.findMany({
-      where: { level2Id: level2IdResult.data },
+      where: {
+        level2Id: level2IdResult.data,
+        ...(!isSuperAdmin ? { level2: { organizationId: organizationId ?? "" } } : {}),
+      },
       orderBy: [{ createdAt: "desc" }],
     });
 
@@ -76,7 +105,21 @@ export async function POST(req: NextRequest) {
     return fail("Datos inválidos", 400, parsed.error.flatten());
   }
 
-  const parent = await prisma.forestPatrimonyLevel2.findUnique({ where: { id: parsed.data.level2Id } });
+  const organizationId = await resolveOrganizationId({
+    id: authResult.session.user.id,
+    organizationId: authResult.session.user.organizationId,
+  });
+
+  if (!isSuperAdmin && !organizationId) {
+    return fail("El usuario no tiene una organización asociada", 403);
+  }
+
+  const parent = await prisma.forestPatrimonyLevel2.findFirst({
+    where: {
+      id: parsed.data.level2Id,
+      ...(!isSuperAdmin ? { organizationId: organizationId ?? "" } : {}),
+    },
+  });
   if (!parent) {
     return fail("Nivel 2 no encontrado", 404);
   }
@@ -114,6 +157,26 @@ export async function PATCH(req: NextRequest) {
   const parsed = updateNeighborSchema.safeParse(body);
   if (!parsed.success) {
     return fail("Datos inválidos", 400, parsed.error.flatten());
+  }
+
+  const organizationId = await resolveOrganizationId({
+    id: authResult.session.user.id,
+    organizationId: authResult.session.user.organizationId,
+  });
+
+  if (!isSuperAdmin && !organizationId) {
+    return fail("El usuario no tiene una organización asociada", 403);
+  }
+
+  const current = await prisma.forestPatrimonyNeighbor.findFirst({
+    where: {
+      id: parsed.data.id,
+      ...(!isSuperAdmin ? { level2: { organizationId: organizationId ?? "" } } : {}),
+    },
+    select: { id: true },
+  });
+  if (!current) {
+    return fail("Registro no encontrado", 404);
   }
 
   try {
@@ -154,6 +217,26 @@ export async function DELETE(req: NextRequest) {
   const parsed = deleteNeighborSchema.safeParse(body);
   if (!parsed.success) {
     return fail("Datos inválidos", 400, parsed.error.flatten());
+  }
+
+  const organizationId = await resolveOrganizationId({
+    id: authResult.session.user.id,
+    organizationId: authResult.session.user.organizationId,
+  });
+
+  if (!isSuperAdmin && !organizationId) {
+    return fail("El usuario no tiene una organización asociada", 403);
+  }
+
+  const current = await prisma.forestPatrimonyNeighbor.findFirst({
+    where: {
+      id: parsed.data.id,
+      ...(!isSuperAdmin ? { level2: { organizationId: organizationId ?? "" } } : {}),
+    },
+    select: { id: true },
+  });
+  if (!current) {
+    return fail("Registro no encontrado", 404);
   }
 
   try {
