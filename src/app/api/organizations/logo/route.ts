@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import path from "path";
 import { promises as fs } from "fs";
-import { fail, ok, requireAuth } from "@/lib/api-helpers";
+import { fail, ok, requireAuth, requirePermission } from "@/lib/api-helpers";
 import { prisma } from "@/lib/prisma";
 
 export const runtime = "nodejs";
@@ -23,7 +23,8 @@ export async function POST(req: NextRequest) {
 
   const roles = authResult.session.user.roles ?? [];
   if (!canManageOrganizations(roles)) {
-    return fail("Forbidden", 403);
+    const permissionError = requirePermission(authResult.session.user.permissions ?? [], "organizations", "UPDATE");
+    if (permissionError) return permissionError;
   }
 
   const organizationId = authResult.session.user.organizationId ?? null;

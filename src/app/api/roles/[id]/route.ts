@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { fail, ok, requireAuth } from "@/lib/api-helpers";
+import { fail, ok, requireAuth, requirePermission } from "@/lib/api-helpers";
 import { prisma } from "@/lib/prisma";
 
 function canManageRoles(roles: string[]) {
@@ -16,7 +16,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   const rolesFromSession = authResult.session.user.roles ?? [];
   if (!canManageRoles(rolesFromSession)) {
-    return fail("Forbidden", 403);
+    const permissionError = requirePermission(authResult.session.user.permissions ?? [], "users", "UPDATE");
+    if (permissionError) return permissionError;
   }
 
   const { id } = await params;
@@ -80,7 +81,8 @@ export async function DELETE(_: NextRequest, { params }: { params: Promise<{ id:
 
   const rolesFromSession = authResult.session.user.roles ?? [];
   if (!canManageRoles(rolesFromSession)) {
-    return fail("Forbidden", 403);
+    const permissionError = requirePermission(authResult.session.user.permissions ?? [], "users", "DELETE");
+    if (permissionError) return permissionError;
   }
 
   const { id } = await params;

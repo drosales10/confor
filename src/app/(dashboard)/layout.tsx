@@ -4,10 +4,11 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { signOut } from "@/lib/auth";
 import { auth } from "@/lib/auth";
-import { canAccessOrganizations, canAccessUsers, getRolePermissions, normalizeRole } from "@/lib/rbac";
+import { getRolePermissions, normalizeRole } from "@/lib/rbac";
 import StatusBar from "@/components/StatusBar";
 import { buildAbilityFromPermissions } from "@/lib/ability";
 import { prisma } from "@/lib/prisma";
+import { getUserRolesAndPermissions } from "@/lib/permissions";
 
 const nav = [
   { href: "/dashboard", label: "Inicio", module: "dashboard" },
@@ -26,8 +27,8 @@ const nav = [
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();
   const cookieStore = await cookies();
-  const roleFromCookie = normalizeRole(cookieStore.get("RolUsuario")?.value ?? null);
-  const roleFromSession = normalizeRole(session?.user?.roles?.[0] ?? null);
+  const roleFromCookie = cookieStore.get("RolUsuario")?.value ?? null;
+  const roleFromSession = session?.user?.roles?.[0] ?? null;
   const rolUsuario = roleFromCookie ?? roleFromSession;
   const orgNameFromCookie = cookieStore.get("OrgName")?.value ?? null;
   const orgIdFromSession = session?.user?.organizationId ?? null;
@@ -54,20 +55,21 @@ export default async function DashboardLayout({ children }: { children: React.Re
     : null;
 
   const appName = siteNameConfig?.value?.trim() || fallbackConfig?.value?.trim() || "Modular Enterprise App";
-  const permissions = session?.user?.permissions?.length
-    ? session.user.permissions
-    : getRolePermissions(rolUsuario);
+  const livePermissionInfo = session?.user?.id
+    ? await getUserRolesAndPermissions(session.user.id)
+    : null;
+  const permissions = livePermissionInfo?.permissions?.length
+    ? livePermissionInfo.permissions
+    : session?.user?.permissions?.length
+      ? session.user.permissions
+      : getRolePermissions(normalizeRole(rolUsuario));
   const ability = buildAbilityFromPermissions(permissions ?? []);
 
   if (!session?.user?.id && !rolUsuario) {
     redirect("/login");
   }
 
-  const visibleNav = nav.filter((item) => {
-    if (item.onlyAdmin && !canAccessOrganizations(rolUsuario)) return false;
-    if (item.adminOrGerente && !canAccessUsers(rolUsuario)) return false;
-    return ability.can("read", item.module);
-  });
+  const visibleNav = nav.filter((item) => ability.can("read", item.module));
 
   return (
     <div className="min-h-screen pb-12">

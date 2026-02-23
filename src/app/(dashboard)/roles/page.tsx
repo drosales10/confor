@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { canAccessOrganizations, normalizeRole } from "@/lib/rbac";
 import { sileo } from "sileo";
 
 const CRUD_ACTIONS = ["CREATE", "READ", "UPDATE", "DELETE"] as const;
@@ -20,6 +19,7 @@ type RoleItem = {
   slug: string;
   description?: string | null;
   organizationId: string | null;
+  organizationName?: string | null;
   isSystemRole: boolean;
   permissions: PermissionRef[];
 };
@@ -36,9 +36,16 @@ type ModuleItem = {
   actions: ModuleAction[];
 };
 
+type OrganizationItem = {
+  id: string;
+  name: string;
+};
+
 export default function RolesPage() {
   const router = useRouter();
-  const rolUsuario = normalizeRole(typeof window !== "undefined" ? sessionStorage.getItem("RolUsuario") : null);
+  const [permissions, setPermissions] = useState<string[]>([]);
+  const [organizations, setOrganizations] = useState<OrganizationItem[]>([]);
+  const [selectedOrganizationId, setSelectedOrganizationId] = useState("");
   const [roles, setRoles] = useState<RoleItem[]>([]);
   const [modules, setModules] = useState<ModuleItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -51,17 +58,46 @@ export default function RolesPage() {
   const [selectedPermissionIds, setSelectedPermissionIds] = useState<string[]>([]);
   const [editingRoleMetaId, setEditingRoleMetaId] = useState<string | null>(null);
   const [roleForm, setRoleForm] = useState({ name: "", slug: "", description: "" });
+  const canReadUsers = permissions.includes("users:READ") || permissions.includes("users:ADMIN");
+  const canCreateRole = permissions.includes("users:CREATE") || permissions.includes("users:ADMIN");
+  const canUpdateRole = permissions.includes("users:UPDATE") || permissions.includes("users:ADMIN");
+  const canDeleteRole = permissions.includes("users:DELETE") || permissions.includes("users:ADMIN");
+  const activeOrganization = useMemo(
+    () => organizations.find((organization) => organization.id === selectedOrganizationId) ?? null,
+    [organizations, selectedOrganizationId],
+  );
 
   useEffect(() => {
-    if (!canAccessOrganizations(rolUsuario)) {
-      router.replace("/unauthorized");
-      return;
-    }
-
     const load = async () => {
       try {
+        const sessionResponse = await fetch("/api/auth/session");
+        const sessionPayload = sessionResponse.ok ? await sessionResponse.json().catch(() => null) : null;
+        const sessionPermissions = (sessionPayload?.user?.permissions ?? []) as string[];
+        setPermissions(sessionPermissions);
+
+        const hasReadUsers = sessionPermissions.includes("users:READ") || sessionPermissions.includes("users:ADMIN");
+        if (!hasReadUsers) {
+          router.replace("/unauthorized");
+          return;
+        }
+
+        const orgResponse = await fetch("/api/organizations");
+        if (!orgResponse.ok) {
+          throw new Error("No fue posible cargar organizaciones");
+        }
+        const orgPayload = await orgResponse.json().catch(() => null);
+        const orgItems = (orgPayload?.data?.items ?? []) as OrganizationItem[];
+        setOrganizations(orgItems);
+
+        const sessionOrgId = sessionPayload?.user?.organizationId ?? "";
+        const initialOrgId = sessionOrgId || orgItems[0]?.id || "";
+        if (initialOrgId) {
+          setSelectedOrganizationId(initialOrgId);
+        }
+
         setLoading(true);
-        const response = await fetch("/api/roles");
+        const query = initialOrgId ? `?organizationId=${encodeURIComponent(initialOrgId)}` : "";
+        const response = await fetch(`/api/roles${query}`);
 
         if (!response.ok) {
           const payload = await response.json().catch(() => null);
@@ -83,7 +119,7 @@ export default function RolesPage() {
     };
 
     void load();
-  }, [rolUsuario, router]);
+  }, [router]);
 
   const editingRole = useMemo(
     () => roles.find((role) => role.id === editingRoleId) ?? null,
@@ -99,6 +135,13 @@ export default function RolesPage() {
   }, [deletableRoleIds]);
 
   function openModal(role: RoleItem) {
+    if (!canUpdateRole) {
+      sileo.warning({
+        title: "Sin permisos",
+        description: "No tienes permisos para actualizar roles.",
+      });
+      return;
+    }
     setEditingRoleId(role.id);
     setSelectedPermissionIds(role.permissions.map((permission) => permission.permissionId));
     sileo.info({
@@ -108,11 +151,25 @@ export default function RolesPage() {
   }
 
   function openCreateRoleForm() {
+    if (!canCreateRole) {
+      sileo.warning({
+        title: "Sin permisos",
+        description: "No tienes permisos para crear roles.",
+      });
+      return;
+    }
     setEditingRoleMetaId(null);
     setRoleForm({ name: "", slug: "", description: "" });
   }
 
   function openEditRoleForm(role: RoleItem) {
+    if (!canUpdateRole) {
+      sileo.warning({
+        title: "Sin permisos",
+        description: "No tienes permisos para editar roles.",
+      });
+      return;
+    }
     setEditingRoleMetaId(role.id);
     setRoleForm({
       name: role.name,
@@ -122,6 +179,16 @@ export default function RolesPage() {
   }
 
   async function onSaveRole() {
+    if (editingRoleMetaId ? !canUpdateRole : !canCreateRole) {
+      sileo.warning({
+        title: "Sin permisos",
+        description: editingRoleMetaId
+          ? "No tienes permisos para actualizar roles."
+          : "No tienes permisos para crear roles.",
+      });
+      return;
+    }
+
     const payload = {
       name: roleForm.name.trim(),
       slug: roleForm.slug.trim(),
@@ -173,6 +240,14 @@ export default function RolesPage() {
   }
 
   async function executeDeleteRole(role: RoleItem) {
+    if (!canDeleteRole) {
+      sileo.warning({
+        title: "Sin permisos",
+        description: "No tienes permisos para eliminar roles.",
+      });
+      return;
+    }
+
     if (role.isSystemRole) {
       sileo.warning({
         title: "Rol protegido",
@@ -210,6 +285,14 @@ export default function RolesPage() {
   }
 
   function onDeleteRole(role: RoleItem) {
+    if (!canDeleteRole) {
+      sileo.warning({
+        title: "Sin permisos",
+        description: "No tienes permisos para eliminar roles.",
+      });
+      return;
+    }
+
     if (role.isSystemRole) {
       sileo.warning({
         title: "Rol protegido",
@@ -252,6 +335,14 @@ export default function RolesPage() {
   }
 
   async function executeDeleteSelectedRoles(roleIds: string[]) {
+    if (!canDeleteRole) {
+      sileo.warning({
+        title: "Sin permisos",
+        description: "No tienes permisos para eliminar roles.",
+      });
+      return;
+    }
+
     if (roleIds.length === 0) {
       sileo.warning({
         title: "Sin selección",
@@ -378,6 +469,13 @@ export default function RolesPage() {
 
   async function onSavePermissions() {
     if (!editingRole) return;
+    if (!canUpdateRole) {
+      sileo.warning({
+        title: "Sin permisos",
+        description: "No tienes permisos para actualizar roles.",
+      });
+      return;
+    }
 
     if (selectedPermissionIds.length === 0) {
       sileo.warning({
@@ -441,7 +539,7 @@ export default function RolesPage() {
     }
   }
 
-  if (!rolUsuario || !canAccessOrganizations(rolUsuario)) {
+  if (loading && !canReadUsers) {
     return <p className="text-sm">Validando permisos...</p>;
   }
 
@@ -452,12 +550,39 @@ export default function RolesPage() {
         <p className="text-sm text-muted-foreground">Gestiona permisos por módulo y acciones CRUD para cada rol.</p>
       </div>
 
+      <div className="rounded-lg border p-3">
+        <label className="text-sm font-semibold" htmlFor="organization-select">
+          Organización activa
+        </label>
+        <div className="mt-2 flex flex-wrap items-center gap-2">
+          <select
+            className="min-w-60 rounded-md border px-3 py-2 text-sm"
+            id="organization-select"
+            onChange={(event) => setSelectedOrganizationId(event.target.value)}
+            value={selectedOrganizationId}
+            disabled
+          >
+            {organizations.length === 0 ? <option value="">Sin organizaciones</option> : null}
+            {organizations.map((organization) => (
+              <option key={organization.id} value={organization.id}>
+                {organization.name}
+              </option>
+            ))}
+          </select>
+          {activeOrganization ? (
+            <span className="rounded-full border px-3 py-1 text-xs">Org activa: {activeOrganization.name}</span>
+          ) : null}
+        </div>
+      </div>
+
       <div className="space-y-3 rounded-lg border p-4">
         <div className="flex items-center justify-between gap-2">
           <h2 className="text-lg font-semibold">CRUD de roles</h2>
-          <button className="rounded-md border px-3 py-1.5 text-sm" onClick={openCreateRoleForm} type="button">
-            Nuevo rol
-          </button>
+          {canCreateRole ? (
+            <button className="rounded-md border px-3 py-1.5 text-sm" onClick={openCreateRoleForm} type="button">
+              Nuevo rol
+            </button>
+          ) : null}
         </div>
 
         <div className="grid gap-2 md:grid-cols-3">
@@ -484,7 +609,7 @@ export default function RolesPage() {
         <div className="flex gap-2">
           <button
             className="rounded-md border px-3 py-1.5 text-sm disabled:opacity-60"
-            disabled={savingRole}
+            disabled={savingRole || (editingRoleMetaId ? !canUpdateRole : !canCreateRole)}
             onClick={() => void onSaveRole()}
             type="button"
           >
@@ -520,6 +645,7 @@ export default function RolesPage() {
               </th>
               <th className="px-3 py-2">Rol</th>
               <th className="px-3 py-2">Slug</th>
+              <th className="px-3 py-2">Organización</th>
               <th className="px-3 py-2">Sistema</th>
               <th className="px-3 py-2">Permisos</th>
               <th className="px-3 py-2">Acción</th>
@@ -538,19 +664,30 @@ export default function RolesPage() {
                 </td>
                 <td className="px-3 py-2">{role.name}</td>
                 <td className="px-3 py-2">{role.slug}</td>
+                <td className="px-3 py-2">{role.organizationName ?? "Global"}</td>
                 <td className="px-3 py-2">{role.isSystemRole ? "Sí" : "No"}</td>
                 <td className="px-3 py-2">{role.permissions.length}</td>
                 <td className="px-3 py-2">
                   <div className="flex flex-wrap gap-2">
-                    <button className="rounded-md border px-3 py-1.5" onClick={() => openModal(role)} type="button">
+                    <button
+                      className="rounded-md border px-3 py-1.5 disabled:opacity-60"
+                      disabled={!canUpdateRole}
+                      onClick={() => openModal(role)}
+                      type="button"
+                    >
                       Permisos
                     </button>
-                    <button className="rounded-md border px-3 py-1.5" onClick={() => openEditRoleForm(role)} type="button">
+                    <button
+                      className="rounded-md border px-3 py-1.5 disabled:opacity-60"
+                      disabled={!canUpdateRole}
+                      onClick={() => openEditRoleForm(role)}
+                      type="button"
+                    >
                       Editar
                     </button>
                     <button
                       className="rounded-md border px-3 py-1.5 disabled:opacity-60"
-                      disabled={deletingRoleId === role.id || role.isSystemRole}
+                      disabled={!canDeleteRole || deletingRoleId === role.id || role.isSystemRole}
                       onClick={() => onDeleteRole(role)}
                       type="button"
                     >
@@ -562,7 +699,7 @@ export default function RolesPage() {
             ))}
             {!loading && roles.length === 0 ? (
               <tr>
-                <td className="px-3 py-3 text-sm text-muted-foreground" colSpan={6}>
+                <td className="px-3 py-3 text-sm text-muted-foreground" colSpan={7}>
                   No hay roles disponibles.
                 </td>
               </tr>
@@ -574,7 +711,7 @@ export default function RolesPage() {
       <div className="flex items-center gap-2">
         <button
           className="rounded-md border px-3 py-1.5 text-sm disabled:opacity-60"
-          disabled={selectedRoleIds.length === 0 || deletingSelected}
+          disabled={!canDeleteRole || selectedRoleIds.length === 0 || deletingSelected}
           onClick={() => onDeleteSelectedRoles()}
           type="button"
         >
@@ -662,7 +799,7 @@ export default function RolesPage() {
             <div className="mt-4 flex gap-2">
               <button
                 className="rounded-md border px-3 py-2 text-sm disabled:opacity-60"
-                disabled={saving}
+                disabled={saving || !canUpdateRole}
                 onClick={() => void onSavePermissions()}
                 type="button"
               >

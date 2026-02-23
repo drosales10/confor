@@ -28,26 +28,39 @@ const ROLE_PERMISSIONS: Record<string, Array<{ module: string; actions: string[]
 };
 
 export async function ensureRoleWithPermissions(roleSlug: string, organizationId: string) {
-  const role = await prisma.role.upsert({
+  const normalizedRoleSlug = roleSlug.trim().toUpperCase();
+  const isPredefinedRole = Object.prototype.hasOwnProperty.call(ROLE_PERMISSIONS, normalizedRoleSlug);
+
+  const existingRole = await prisma.role.findUnique({
     where: {
       organizationId_slug: {
         organizationId,
-        slug: roleSlug,
+        slug: normalizedRoleSlug,
       },
-    },
-    update: {
-      name: ROLE_NAMES[roleSlug] ?? roleSlug,
-    },
-    create: {
-      organizationId,
-      slug: roleSlug,
-      name: ROLE_NAMES[roleSlug] ?? roleSlug,
-      isSystemRole: true,
-      isActive: true,
     },
   });
 
-  const permissionSpec = ROLE_PERMISSIONS[roleSlug] ?? ROLE_PERMISSIONS.USER;
+  if (existingRole && !isPredefinedRole) {
+    return existingRole;
+  }
+
+  const role = existingRole
+    ? existingRole
+    : await prisma.role.create({
+        data: {
+          organizationId,
+          slug: normalizedRoleSlug,
+          name: ROLE_NAMES[normalizedRoleSlug] ?? normalizedRoleSlug,
+          isSystemRole: isPredefinedRole,
+          isActive: true,
+        },
+      });
+
+  if (!isPredefinedRole) {
+    return role;
+  }
+
+  const permissionSpec = ROLE_PERMISSIONS[normalizedRoleSlug];
   let permissions = [] as { id: string }[];
 
   if (permissionSpec === "ALL") {

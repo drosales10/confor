@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { fail, ok, requireAuth } from "@/lib/api-helpers";
+import { fail, ok, requireAuth, requirePermission } from "@/lib/api-helpers";
 import { prisma } from "@/lib/prisma";
 
 function canManageRoles(roles: string[]) {
@@ -27,29 +27,49 @@ async function resolveOrganizationId(sessionUser: { id?: string; organizationId?
   return user?.organizationId ?? null;
 }
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   const authResult = await requireAuth();
   if ("error" in authResult) return authResult.error;
 
   const rolesFromSession = authResult.session.user.roles ?? [];
   if (!canManageRoles(rolesFromSession)) {
-    return fail("Forbidden", 403);
+    const permissionError = requirePermission(authResult.session.user.permissions ?? [], "users", "READ");
+    if (permissionError) return permissionError;
   }
+
+  const requestedOrganizationId = req.nextUrl.searchParams.get("organizationId");
 
   const currentOrganizationId = await resolveOrganizationId({
     id: authResult.session.user.id,
     organizationId: authResult.session.user.organizationId,
   });
 
-  const roleScope = currentOrganizationId
-    ? { OR: [{ organizationId: currentOrganizationId }, { organizationId: null }] }
-    : { organizationId: null as string | null };
+  if (
+    requestedOrganizationId &&
+    currentOrganizationId &&
+    requestedOrganizationId !== currentOrganizationId &&
+    !canManageRoles(rolesFromSession)
+  ) {
+    const permissionError = requirePermission(authResult.session.user.permissions ?? [], "organizations", "READ");
+    if (permissionError) return permissionError;
+  }
+
+  const roleScope = requestedOrganizationId
+    ? { OR: [{ organizationId: requestedOrganizationId }, { organizationId: null }] }
+    : currentOrganizationId
+      ? { OR: [{ organizationId: currentOrganizationId }, { organizationId: null }] }
+      : { organizationId: null as string | null };
 
   const [roles, modules] = await Promise.all([
     prisma.role.findMany({
       where: { isActive: true, ...roleScope },
       orderBy: [{ isSystemRole: "desc" }, { name: "asc" }],
       include: {
+        organization: {
+          select: {
+            name: true,
+          },
+        },
         rolePermissions: {
           include: {
             permission: {
@@ -96,6 +116,7 @@ export async function GET() {
       slug: role.slug,
       description: role.description,
       organizationId: role.organizationId,
+      organizationName: role.organization?.name ?? null,
       isSystemRole: role.isSystemRole,
       permissions: role.rolePermissions.map((item) => ({
         permissionId: item.permissionId,
@@ -121,7 +142,8 @@ export async function POST(req: NextRequest) {
 
   const rolesFromSession = authResult.session.user.roles ?? [];
   if (!canManageRoles(rolesFromSession)) {
-    return fail("Forbidden", 403);
+    const permissionError = requirePermission(authResult.session.user.permissions ?? [], "users", "CREATE");
+    if (permissionError) return permissionError;
   }
 
   const body = await req.json().catch(() => null);
@@ -181,12 +203,13 @@ export async function PATCH(req: NextRequest) {
 
   const rolesFromSession = authResult.session.user.roles ?? [];
   if (!canManageRoles(rolesFromSession)) {
-    return fail("Forbidden", 403);
+    const permissionError = requirePermission(authResult.session.user.permissions ?? [], "users", "UPDATE");
+    if (permissionError) return permissionError;
   }
 
   const body = await req.json().catch(() => null);
   const roleId = typeof body?.roleId === "string" ? body.roleId : "";
-  const permissionIds = Array.isArray(body?.permissionIds)
+  const permissionIds: string[] = Array.isArray(body?.permissionIds)
     ? body.permissionIds.filter((value: unknown): value is string => typeof value === "string")
     : [];
 

@@ -2,7 +2,6 @@
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { APP_ROLES, canAccessUsers, normalizeRole } from "@/lib/rbac";
 
 type OrganizationItem = {
   id: string;
@@ -38,11 +37,18 @@ type ApiUser = {
   } | null;
 };
 
+type RoleOption = {
+  id: string;
+  slug: string;
+  name: string;
+};
+
 export default function UsersPage() {
   const router = useRouter();
-  const rolUsuario = normalizeRole(typeof window !== "undefined" ? sessionStorage.getItem("RolUsuario") : null);
   const [organizations, setOrganizations] = useState<OrganizationItem[]>([]);
+  const [roleOptions, setRoleOptions] = useState<RoleOption[]>([]);
   const [users, setUsers] = useState<InvitedUser[]>([]);
+  const [permissions, setPermissions] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showInviteForm, setShowInviteForm] = useState(false);
@@ -54,23 +60,43 @@ export default function UsersPage() {
     organizationId: "",
     temporaryPassword: "",
   });
+  const permissionSet = useMemo(() => new Set(permissions), [permissions]);
+  const hasUsersAdmin = permissionSet.has("users:ADMIN");
+  const canReadUsers = hasUsersAdmin || permissionSet.has("users:READ");
+  const canInvite = hasUsersAdmin || permissionSet.has("users:CREATE");
+  const canApprove = hasUsersAdmin || permissionSet.has("users:UPDATE");
+  const canManage = hasUsersAdmin || permissionSet.has("users:UPDATE") || permissionSet.has("users:DELETE");
 
   useEffect(() => {
-    if (!canAccessUsers(rolUsuario)) {
-      router.replace("/unauthorized");
-      return;
-    }
     const load = async () => {
       try {
         setError(null);
         setLoading(true);
-        const [orgResponse, usersResponse] = await Promise.all([
-          fetch("/api/organizations"),
-          fetch("/api/users"),
-        ]);
+        const sessionResponse = await fetch("/api/auth/session");
+        const sessionPayload = sessionResponse.ok ? await sessionResponse.json().catch(() => null) : null;
+        const sessionPermissions = (sessionPayload?.user?.permissions ?? []) as string[];
+        const sessionPermissionSet = new Set(sessionPermissions);
+        const canCreateUsersNow = sessionPermissionSet.has("users:ADMIN") || sessionPermissionSet.has("users:CREATE");
+        const canUpdateUsersNow = sessionPermissionSet.has("users:ADMIN") || sessionPermissionSet.has("users:UPDATE");
+        const canDeleteUsersNow = sessionPermissionSet.has("users:ADMIN") || sessionPermissionSet.has("users:DELETE");
+        const canReadRolesNow = sessionPermissionSet.has("users:ADMIN") || sessionPermissionSet.has("users:READ");
+
+        setPermissions(sessionPermissions);
+
+        const requests = [fetch("/api/organizations"), fetch("/api/users")];
+        if (canCreateUsersNow || canUpdateUsersNow || canDeleteUsersNow || canReadRolesNow) {
+          requests.push(fetch("/api/roles"));
+        }
+
+        const [orgResponse, usersResponse, rolesResponse] = await Promise.all(requests);
 
         if (!orgResponse.ok) {
           throw new Error("No fue posible cargar organizaciones");
+        }
+
+        if (usersResponse.status === 403) {
+          router.replace("/unauthorized");
+          return;
         }
 
         if (!usersResponse.ok) {
@@ -79,8 +105,23 @@ export default function UsersPage() {
 
         const orgPayload = await orgResponse.json();
         const usersPayload = await usersResponse.json();
+        const rolesPayload = rolesResponse?.ok ? await rolesResponse.json() : null;
 
         setOrganizations(orgPayload?.data?.items ?? []);
+        const dynamicRoles = rolesResponse?.ok
+          ? ((rolesPayload?.data?.roles ?? []) as Array<{ id: string; slug: string; name: string }>).map((role) => ({
+              id: role.id,
+              slug: role.slug,
+              name: role.name,
+            }))
+          : [];
+        setRoleOptions(dynamicRoles);
+
+        const fallbackRole =
+          dynamicRoles.find((role) => role.slug === "USER")?.slug ??
+          dynamicRoles[0]?.slug ??
+          "USER";
+
         const items = (usersPayload?.data?.items ?? []) as ApiUser[];
         const mapped = items.map((user) => ({
           id: user.id,
@@ -94,7 +135,12 @@ export default function UsersPage() {
         setUsers(mapped);
         setForm((prev) => ({
           ...prev,
+          role: dynamicRoles.some((role) => role.slug === prev.role) ? prev.role : fallbackRole,
           organizationId: prev.organizationId || orgPayload?.data?.items?.[0]?.id || "",
+        }));
+        setEditForm((prev) => ({
+          ...prev,
+          role: dynamicRoles.some((role) => role.slug === prev.role) ? prev.role : fallbackRole,
         }));
       } catch (err) {
         setError(err instanceof Error ? err.message : "Error desconocido");
@@ -104,12 +150,15 @@ export default function UsersPage() {
     };
 
     void load();
-  }, [rolUsuario, router]);
-
-  const canInvite = useMemo(() => rolUsuario === "ADMIN" || rolUsuario === "SUPER_ADMIN", [rolUsuario]);
+  }, [router]);
 
   function onSubmitInvite(event: FormEvent) {
     event.preventDefault();
+
+    if (!form.role) {
+      setError("No hay roles disponibles para asignar");
+      return;
+    }
 
     const submit = async () => {
       try {
@@ -145,7 +194,7 @@ export default function UsersPage() {
         setUsers((prev) => [nextUser, ...prev]);
         setForm({
           email: "",
-          role: "USER",
+          role: roleOptions.find((role) => role.slug === "USER")?.slug ?? roleOptions[0]?.slug ?? "",
           organizationId: organizations[0]?.id ?? "",
           temporaryPassword: "",
         });
@@ -158,12 +207,9 @@ export default function UsersPage() {
     void submit();
   }
 
-  if (!rolUsuario || !canAccessUsers(rolUsuario)) {
+  if (loading && !canReadUsers) {
     return <p className="text-sm">Validando permisos...</p>;
   }
-
-  const canApprove = rolUsuario === "ADMIN" || rolUsuario === "SUPER_ADMIN";
-  const canManage = rolUsuario === "ADMIN" || rolUsuario === "SUPER_ADMIN";
 
   async function onApprove(userId: string) {
     try {
@@ -186,8 +232,14 @@ export default function UsersPage() {
   }
 
   function onEdit(user: InvitedUser) {
+    const fallbackRole =
+      roleOptions.find((role) => role.slug === "USER")?.slug ??
+      roleOptions[0]?.slug ??
+      "";
+    const currentRole = user.role === "-" ? "" : user.role;
+
     setEditForm({
-      role: user.role === "-" ? "USER" : user.role,
+      role: roleOptions.some((role) => role.slug === currentRole) ? currentRole : fallbackRole,
       organizationId: user.organizationId ?? "",
       status: user.status === "-" ? "PENDING_VERIFICATION" : user.status,
     });
@@ -197,6 +249,10 @@ export default function UsersPage() {
   async function onSaveEdit(event: FormEvent) {
     event.preventDefault();
     if (!editingUser) return;
+    if (!editForm.role) {
+      setError("No hay roles disponibles para asignar");
+      return;
+    }
     if (!editForm.organizationId) {
       setError("La organización es obligatoria para actualizar el usuario");
       return;
@@ -296,12 +352,14 @@ export default function UsersPage() {
           />
           <select
             className="w-full rounded-md border px-3 py-2"
+            disabled={roleOptions.length === 0}
             onChange={(event) => setForm((prev) => ({ ...prev, role: event.target.value }))}
             value={form.role}
           >
-            {APP_ROLES.map((role) => (
-              <option key={role} value={role}>
-                {role}
+            {roleOptions.length === 0 ? <option value="">Sin roles disponibles</option> : null}
+            {roleOptions.map((role) => (
+              <option key={role.id} value={role.slug}>
+                {role.name}
               </option>
             ))}
           </select>
@@ -322,7 +380,7 @@ export default function UsersPage() {
           <div className="flex gap-2">
             <button
               className="rounded-md border px-3 py-2 text-sm disabled:opacity-60"
-              disabled={organizations.length === 0}
+              disabled={organizations.length === 0 || roleOptions.length === 0}
               type="submit"
             >
               Guardar invitación
@@ -339,12 +397,14 @@ export default function UsersPage() {
           <div className="text-sm font-semibold">Editar usuario: {editingUser.email}</div>
           <select
             className="w-full rounded-md border px-3 py-2"
+            disabled={roleOptions.length === 0}
             onChange={(event) => setEditForm((prev) => ({ ...prev, role: event.target.value }))}
             value={editForm.role}
           >
-            {APP_ROLES.map((role) => (
-              <option key={role} value={role}>
-                {role}
+            {roleOptions.length === 0 ? <option value="">Sin roles disponibles</option> : null}
+            {roleOptions.map((role) => (
+              <option key={role.id} value={role.slug}>
+                {role.name}
               </option>
             ))}
           </select>

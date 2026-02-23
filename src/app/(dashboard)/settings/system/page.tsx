@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { sileo } from "sileo";
-import { canAccessOrganizations, normalizeRole } from "@/lib/rbac";
 import Link from "next/link";
 
 type SystemConfigItem = {
@@ -34,7 +33,7 @@ type OrganizationInfo = {
 
 export default function SystemSettingsPage() {
   const router = useRouter();
-  const [rolUsuario, setRolUsuario] = useState<ReturnType<typeof normalizeRole>>(null);
+  const [permissions, setPermissions] = useState<string[]>([]);
   const [isClient, setIsClient] = useState(false);
   const [loading, setLoading] = useState(true);
   const [savingConfig, setSavingConfig] = useState(false);
@@ -52,22 +51,30 @@ export default function SystemSettingsPage() {
   const [moduleSlug, setModuleSlug] = useState("");
   const [routePath, setRoutePath] = useState("");
   const [displayOrder, setDisplayOrder] = useState(0);
+  const canReadSettings = permissions.includes("settings:READ") || permissions.includes("settings:ADMIN");
+  const canUpdateSettings = permissions.includes("settings:UPDATE") || permissions.includes("settings:ADMIN");
+  const canUpdateOrganization = permissions.includes("organizations:UPDATE") || permissions.includes("organizations:ADMIN");
 
   useEffect(() => {
     setIsClient(true);
-    const roleValue = normalizeRole(sessionStorage.getItem("RolUsuario"));
-    setRolUsuario(roleValue);
   }, []);
 
   useEffect(() => {
     if (!isClient) return;
-    if (!canAccessOrganizations(rolUsuario)) {
-      router.replace("/unauthorized");
-      return;
-    }
 
     const load = async () => {
       try {
+        const sessionResponse = await fetch("/api/auth/session");
+        const sessionPayload = sessionResponse.ok ? await sessionResponse.json().catch(() => null) : null;
+        const sessionPermissions = (sessionPayload?.user?.permissions ?? []) as string[];
+        setPermissions(sessionPermissions);
+
+        const hasReadSettings = sessionPermissions.includes("settings:READ") || sessionPermissions.includes("settings:ADMIN");
+        if (!hasReadSettings) {
+          router.replace("/unauthorized");
+          return;
+        }
+
         setLoading(true);
         const [configResponse, modulesResponse, profileResponse] = await Promise.all([
           fetch("/api/config"),
@@ -116,7 +123,7 @@ export default function SystemSettingsPage() {
     };
 
     void load();
-  }, [isClient, rolUsuario, router]);
+  }, [isClient, router]);
 
   const selectedConfig = useMemo(
     () => configs.find((item) => item.category === category && item.key === keyName) ?? null,
@@ -135,6 +142,11 @@ export default function SystemSettingsPage() {
   }, [selectedConfig]);
 
   async function onSave() {
+    if (!canUpdateSettings) {
+      sileo.warning({ title: "Sin permisos", description: "No tienes permisos para actualizar configuración." });
+      return;
+    }
+
     try {
       setSavingConfig(true);
       const response = await fetch("/api/config", {
@@ -167,6 +179,11 @@ export default function SystemSettingsPage() {
   }
 
   async function onCreateModule() {
+    if (!canUpdateSettings) {
+      sileo.warning({ title: "Sin permisos", description: "No tienes permisos para gestionar módulos." });
+      return;
+    }
+
     try {
       setSavingModule(true);
       const response = await fetch("/api/modules", {
@@ -210,6 +227,11 @@ export default function SystemSettingsPage() {
   }
 
   async function onUploadLogo() {
+    if (!canUpdateOrganization) {
+      sileo.warning({ title: "Sin permisos", description: "No tienes permisos para actualizar el logo." });
+      return;
+    }
+
     if (!logoFile) {
       sileo.warning({ title: "Archivo requerido", description: "Selecciona un logo para continuar." });
       return;
@@ -253,7 +275,7 @@ export default function SystemSettingsPage() {
     return <p className="text-sm">Cargando...</p>;
   }
 
-  if (!rolUsuario || !canAccessOrganizations(rolUsuario)) {
+  if (loading && !canReadSettings) {
     return <p className="text-sm">Validando permisos...</p>;
   }
 
@@ -295,7 +317,7 @@ export default function SystemSettingsPage() {
             />
             <button
               className="rounded-md border px-3 py-1.5 text-sm disabled:opacity-60"
-              disabled={savingLogo || !logoFile}
+              disabled={savingLogo || !logoFile || !canUpdateOrganization}
               onClick={() => void onUploadLogo()}
               type="button"
             >
@@ -335,7 +357,7 @@ export default function SystemSettingsPage() {
           rows={4}
           value={value}
         />
-        <button className="rounded-md border px-4 py-2 text-sm disabled:opacity-60" disabled={savingConfig} onClick={() => void onSave()} type="button">
+        <button className="rounded-md border px-4 py-2 text-sm disabled:opacity-60" disabled={savingConfig || !canUpdateSettings} onClick={() => void onSave()} type="button">
           {savingConfig ? "Guardando..." : "Guardar configuración"}
         </button>
       </section>
@@ -370,7 +392,7 @@ export default function SystemSettingsPage() {
             value={displayOrder}
           />
         </div>
-        <button className="rounded-md border px-4 py-2 text-sm disabled:opacity-60" disabled={savingModule} onClick={() => void onCreateModule()} type="button">
+        <button className="rounded-md border px-4 py-2 text-sm disabled:opacity-60" disabled={savingModule || !canUpdateSettings} onClick={() => void onCreateModule()} type="button">
           {savingModule ? "Guardando..." : "Crear/actualizar módulo"}
         </button>
 

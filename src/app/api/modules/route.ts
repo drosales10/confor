@@ -1,6 +1,6 @@
 import { PermissionAction } from "@prisma/client";
 import { NextRequest } from "next/server";
-import { fail, ok, requireAuth } from "@/lib/api-helpers";
+import { fail, ok, requireAuth, requirePermission } from "@/lib/api-helpers";
 import { prisma } from "@/lib/prisma";
 import { upsertModuleSchema } from "@/validations/config.schema";
 
@@ -16,7 +16,8 @@ export async function GET() {
 
   const roles = authResult.session.user.roles ?? [];
   if (!canManageModules(roles)) {
-    return fail("Forbidden", 403);
+    const permissionError = requirePermission(authResult.session.user.permissions ?? [], "settings", "READ");
+    if (permissionError) return permissionError;
   }
 
   const modules = await prisma.module.findMany({
@@ -50,7 +51,8 @@ export async function POST(req: NextRequest) {
 
   const roles = authResult.session.user.roles ?? [];
   if (!canManageModules(roles)) {
-    return fail("Forbidden", 403);
+    const permissionError = requirePermission(authResult.session.user.permissions ?? [], "settings", "UPDATE");
+    if (permissionError) return permissionError;
   }
 
   const body = await req.json().catch(() => null);

@@ -59,9 +59,10 @@ export default async function proxy(req: NextRequest) {
   const permissions = permissionsFromToken.length > 0
     ? permissionsFromToken
     : getRolePermissions(roleFromToken ?? roleFromCookie);
+  const hasPermissionSnapshot = permissions.length > 0;
   const ability = buildAbilityFromPermissions(permissions ?? []);
   const moduleSlug = routeModuleMap.find((item) => pathname.startsWith(item.prefix))?.module ?? null;
-  if (moduleSlug && !ability.can("read", moduleSlug)) {
+  if (moduleSlug && hasPermissionSnapshot && !ability.can("read", moduleSlug)) {
     console.info("[RBAC] access denied", {
       pathname,
       moduleSlug,
