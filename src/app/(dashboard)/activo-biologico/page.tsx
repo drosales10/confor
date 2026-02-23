@@ -2,6 +2,7 @@
 
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { useDebounce } from "@/hooks/useDebounce";
+import { sileo } from "sileo";
 
 type Level2Item = { id: string; code: string; name: string };
 type Level3Item = { id: string; code: string; name: string };
@@ -564,10 +565,7 @@ export default function ActivoBiologicoPage() {
     });
   }
 
-  async function handleDelete(id: string) {
-    const confirmed = window.confirm("¿Deseas eliminar este activo biológico?");
-    if (!confirmed) return;
-
+  async function executeDelete(id: string) {
     setSubmitting(true);
     setError(null);
 
@@ -588,11 +586,34 @@ export default function ActivoBiologicoPage() {
       }
 
       await refreshAssets();
+      sileo.success({
+        title: "Activo eliminado",
+        description: "Se eliminó el activo biológico.",
+      });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "No fue posible eliminar");
+      const message = err instanceof Error ? err.message : "No fue posible eliminar";
+      setError(message);
+      sileo.error({
+        title: "No se pudo eliminar",
+        description: message,
+      });
     } finally {
       setSubmitting(false);
     }
+  }
+
+  function handleDelete(id: string) {
+    sileo.action({
+      title: "Confirmar eliminación",
+      description: "Se eliminará este activo biológico.",
+      duration: 6000,
+      button: {
+        title: "Eliminar",
+        onClick: () => {
+          void executeDelete(id);
+        },
+      },
+    });
   }
 
   return (

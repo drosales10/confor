@@ -2,6 +2,7 @@
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { sileo } from "sileo";
 
 type OrganizationItem = {
   id: string;
@@ -156,7 +157,12 @@ export default function UsersPage() {
     event.preventDefault();
 
     if (!form.role) {
-      setError("No hay roles disponibles para asignar");
+      const message = "No hay roles disponibles para asignar";
+      setError(message);
+      sileo.warning({
+        title: "Datos incompletos",
+        description: message,
+      });
       return;
     }
 
@@ -199,8 +205,17 @@ export default function UsersPage() {
           temporaryPassword: "",
         });
         setShowInviteForm(false);
+        sileo.success({
+          title: "Usuario invitado",
+          description: `Se invitó al usuario ${nextUser.email}.`,
+        });
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Error desconocido");
+        const message = err instanceof Error ? err.message : "Error desconocido";
+        setError(message);
+        sileo.error({
+          title: "No se pudo invitar",
+          description: message,
+        });
       }
     };
 
@@ -226,8 +241,17 @@ export default function UsersPage() {
       }
 
       setUsers((prev) => prev.map((user) => (user.id === userId ? { ...user, status: "ACTIVE" } : user)));
+      sileo.success({
+        title: "Usuario aprobado",
+        description: "El usuario fue activado correctamente.",
+      });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Error desconocido");
+      const message = err instanceof Error ? err.message : "Error desconocido";
+      setError(message);
+      sileo.error({
+        title: "No se pudo aprobar",
+        description: message,
+      });
     }
   }
 
@@ -250,11 +274,21 @@ export default function UsersPage() {
     event.preventDefault();
     if (!editingUser) return;
     if (!editForm.role) {
-      setError("No hay roles disponibles para asignar");
+      const message = "No hay roles disponibles para asignar";
+      setError(message);
+      sileo.warning({
+        title: "Datos incompletos",
+        description: message,
+      });
       return;
     }
     if (!editForm.organizationId) {
-      setError("La organización es obligatoria para actualizar el usuario");
+      const message = "La organización es obligatoria para actualizar el usuario";
+      setError(message);
+      sileo.warning({
+        title: "Datos incompletos",
+        description: message,
+      });
       return;
     }
 
@@ -291,13 +325,21 @@ export default function UsersPage() {
         ),
       );
       setEditingUser(null);
+      sileo.success({
+        title: "Usuario actualizado",
+        description: "Los cambios del usuario se guardaron correctamente.",
+      });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Error desconocido");
+      const message = err instanceof Error ? err.message : "Error desconocido";
+      setError(message);
+      sileo.error({
+        title: "No se pudo actualizar",
+        description: message,
+      });
     }
   }
 
-  async function onDelete(user: InvitedUser) {
-    if (!window.confirm(`Eliminar usuario ${user.email}?`)) return;
+  async function executeDeleteUser(user: InvitedUser) {
     try {
       setError(null);
       const response = await fetch(`/api/users/${user.id}`, {
@@ -310,9 +352,32 @@ export default function UsersPage() {
       }
 
       setUsers((prev) => prev.filter((item) => item.id !== user.id));
+      sileo.success({
+        title: "Usuario eliminado",
+        description: `Se eliminó el usuario ${user.email}.`,
+      });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Error desconocido");
+      const message = err instanceof Error ? err.message : "Error desconocido";
+      setError(message);
+      sileo.error({
+        title: "No se pudo eliminar",
+        description: message,
+      });
     }
+  }
+
+  function onDelete(user: InvitedUser) {
+    sileo.action({
+      title: "Confirmar eliminación",
+      description: `Se eliminará el usuario ${user.email}.`,
+      duration: 6000,
+      button: {
+        title: "Eliminar",
+        onClick: () => {
+          void executeDeleteUser(user);
+        },
+      },
+    });
   }
 
   return (
