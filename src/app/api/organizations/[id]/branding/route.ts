@@ -5,7 +5,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
   const { id } = await params;
   const organization = await prisma.organization.findUnique({
     where: { id, isActive: true },
-    select: { id: true, name: true, logoUrl: true },
+    select: { id: true, name: true, logoUrl: true, country: { select: { flagUrl: true } } } as any,
   });
 
   if (!organization) {
@@ -14,7 +14,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
 
   const config = await prisma.systemConfiguration.findFirst({
     where: {
-      organizationId: organization.id,
+      organizationId: (organization as any).id,
       category: "general",
       key: "site_name",
     },

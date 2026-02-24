@@ -341,7 +341,7 @@ function CatalogHeader({ title, subtitle }: { title: string; subtitle: string })
   );
 }
 
-export default function ConfiguracionForestalPage() {
+export default function ConfiguracionGeneralPage() {
   const [globalMessage, setGlobalMessage] = useState<string | null>(null);
 
   const [schemeItems, setSchemeItems] = useState<SimpleItem[]>([]);
@@ -631,7 +631,7 @@ export default function ConfiguracionForestalPage() {
   }, []);
 
   const loadSpeciesOptions = useCallback(async () => {
-    const allItems = await fetchAllPages<SpeciesItem>("/api/forest/config/species");
+    const allItems = await fetchAllPages<SpeciesItem>("/api/general-config/species");
     const options = allItems.filter((item) => item.isActive);
     setSpeciesOptions(options);
     if (options.length === 0) return;
@@ -639,7 +639,7 @@ export default function ConfiguracionForestalPage() {
   }, []);
 
   const loadProvenanceOptions = useCallback(async () => {
-    const allItems = await fetchAllPages<ProvenanceItem>("/api/forest/config/provenances");
+    const allItems = await fetchAllPages<ProvenanceItem>("/api/general-config/provenances");
     const options = allItems.filter((item) => item.isActive);
     setProvenanceOptions(options);
   }, []);
@@ -785,7 +785,7 @@ export default function ConfiguracionForestalPage() {
     setSpacingError(null);
 
     const result = await requestJson<PaginatedResponse<SpacingItem>>(
-      `/api/forest/config/spacings?page=${spacingPage}&limit=${spacingPagination.limit}${debouncedSpacingSearch ? `&search=${encodeURIComponent(debouncedSpacingSearch)}` : ""}`,
+      `/api/general-config/spacings?page=${spacingPage}&limit=${spacingPagination.limit}${debouncedSpacingSearch ? `&search=${encodeURIComponent(debouncedSpacingSearch)}` : ""}`,
     );
 
     if (!result.success || !result.data) {
@@ -804,7 +804,7 @@ export default function ConfiguracionForestalPage() {
     setLevel4CostError(null);
 
     const result = await requestJson<PaginatedResponse<Level4AdministrativeCostItem>>(
-      `/api/forest/config/level4-costs?page=${level4CostPage}&limit=${level4CostPagination.limit}${debouncedLevel4CostSearch ? `&search=${encodeURIComponent(debouncedLevel4CostSearch)}` : ""}`,
+      `/api/general-config/level4-costs?page=${level4CostPage}&limit=${level4CostPagination.limit}${debouncedLevel4CostSearch ? `&search=${encodeURIComponent(debouncedLevel4CostSearch)}` : ""}`,
     );
 
     if (!result.success || !result.data) {
@@ -823,7 +823,7 @@ export default function ConfiguracionForestalPage() {
     setProductTypeError(null);
 
     const result = await requestJson<PaginatedResponse<ProductTypeItem>>(
-      `/api/forest/config/product-types?page=${productTypePage}&limit=${productTypePagination.limit}${debouncedProductTypeSearch ? `&search=${encodeURIComponent(debouncedProductTypeSearch)}` : ""}`,
+      `/api/general-config/product-types?page=${productTypePage}&limit=${productTypePagination.limit}${debouncedProductTypeSearch ? `&search=${encodeURIComponent(debouncedProductTypeSearch)}` : ""}`,
     );
 
     if (!result.success || !result.data) {
@@ -842,7 +842,7 @@ export default function ConfiguracionForestalPage() {
     setLandUseError(null);
 
     const result = await requestJson<PaginatedResponse<LandUseTypeItem>>(
-      `/api/forest/config/land-use-types?page=${landUsePage}&limit=${landUsePagination.limit}${debouncedLandUseSearch ? `&search=${encodeURIComponent(debouncedLandUseSearch)}` : ""}`,
+      `/api/general-config/land-use-types?page=${landUsePage}&limit=${landUsePagination.limit}${debouncedLandUseSearch ? `&search=${encodeURIComponent(debouncedLandUseSearch)}` : ""}`,
     );
 
     if (!result.success || !result.data) {
@@ -861,7 +861,7 @@ export default function ConfiguracionForestalPage() {
     setSchemeError(null);
 
     const result = await requestJson<PaginatedResponse<SimpleItem>>(
-      `/api/forest/config/management-schemes?page=${schemePage}&limit=${schemePagination.limit}${debouncedSchemeSearch ? `&search=${encodeURIComponent(debouncedSchemeSearch)}` : ""}`,
+      `/api/general-config/management-schemes?page=${schemePage}&limit=${schemePagination.limit}${debouncedSchemeSearch ? `&search=${encodeURIComponent(debouncedSchemeSearch)}` : ""}`,
     );
 
     if (!result.success || !result.data) {
@@ -880,7 +880,7 @@ export default function ConfiguracionForestalPage() {
     setInventoryError(null);
 
     const result = await requestJson<PaginatedResponse<SimpleItem>>(
-      `/api/forest/config/inventory-types?page=${inventoryPage}&limit=${inventoryPagination.limit}${debouncedInventorySearch ? `&search=${encodeURIComponent(debouncedInventorySearch)}` : ""}`,
+      `/api/general-config/inventory-types?page=${inventoryPage}&limit=${inventoryPagination.limit}${debouncedInventorySearch ? `&search=${encodeURIComponent(debouncedInventorySearch)}` : ""}`,
     );
 
     if (!result.success || !result.data) {
@@ -899,7 +899,7 @@ export default function ConfiguracionForestalPage() {
     setImaError(null);
 
     const result = await requestJson<PaginatedResponse<ImaItem>>(
-      `/api/forest/config/ima-classes?page=${imaPage}&limit=${imaPagination.limit}${debouncedImaSearch ? `&search=${encodeURIComponent(debouncedImaSearch)}` : ""}`,
+      `/api/general-config/ima-classes?page=${imaPage}&limit=${imaPagination.limit}${debouncedImaSearch ? `&search=${encodeURIComponent(debouncedImaSearch)}` : ""}`,
     );
 
     if (!result.success || !result.data) {
@@ -918,7 +918,7 @@ export default function ConfiguracionForestalPage() {
     setSpeciesError(null);
 
     const result = await requestJson<PaginatedResponse<SpeciesItem>>(
-      `/api/forest/config/species?page=${speciesPage}&limit=${speciesPagination.limit}${debouncedSpeciesSearch ? `&search=${encodeURIComponent(debouncedSpeciesSearch)}` : ""}`,
+      `/api/general-config/species?page=${speciesPage}&limit=${speciesPagination.limit}${debouncedSpeciesSearch ? `&search=${encodeURIComponent(debouncedSpeciesSearch)}` : ""}`,
     );
 
     if (!result.success || !result.data) {
@@ -937,7 +937,7 @@ export default function ConfiguracionForestalPage() {
     setProvenanceError(null);
 
     const result = await requestJson<PaginatedResponse<ProvenanceItem>>(
-      `/api/forest/config/provenances?page=${provenancePage}&limit=${provenancePagination.limit}${debouncedProvenanceSearch ? `&search=${encodeURIComponent(debouncedProvenanceSearch)}` : ""}`,
+      `/api/general-config/provenances?page=${provenancePage}&limit=${provenancePagination.limit}${debouncedProvenanceSearch ? `&search=${encodeURIComponent(debouncedProvenanceSearch)}` : ""}`,
     );
 
     if (!result.success || !result.data) {
@@ -956,7 +956,7 @@ export default function ConfiguracionForestalPage() {
     setMaterialError(null);
 
     const result = await requestJson<PaginatedResponse<VegetalMaterialItem>>(
-      `/api/forest/config/vegetal-materials?page=${materialPage}&limit=${materialPagination.limit}${debouncedMaterialSearch ? `&search=${encodeURIComponent(debouncedMaterialSearch)}` : ""}`,
+      `/api/general-config/vegetal-materials?page=${materialPage}&limit=${materialPagination.limit}${debouncedMaterialSearch ? `&search=${encodeURIComponent(debouncedMaterialSearch)}` : ""}`,
     );
 
     if (!result.success || !result.data) {
@@ -1234,7 +1234,7 @@ export default function ConfiguracionForestalPage() {
     event.preventDefault();
     if (!canCreateScheme) return;
 
-    const result = await requestJson<SimpleItem>("/api/forest/config/management-schemes", {
+    const result = await requestJson<SimpleItem>("/api/general-config/management-schemes", {
       method: "POST",
       body: JSON.stringify(schemeForm),
     });
@@ -1254,7 +1254,7 @@ export default function ConfiguracionForestalPage() {
     event.preventDefault();
     if (!editingScheme) return;
 
-    const result = await requestJson<SimpleItem>("/api/forest/config/management-schemes", {
+    const result = await requestJson<SimpleItem>("/api/general-config/management-schemes", {
       method: "PATCH",
       body: JSON.stringify(editingScheme),
     });
@@ -1270,7 +1270,7 @@ export default function ConfiguracionForestalPage() {
   }
 
   async function deleteScheme(id: string) {
-    const result = await requestJson<{ id: string }>("/api/forest/config/management-schemes", {
+    const result = await requestJson<{ id: string }>("/api/general-config/management-schemes", {
       method: "DELETE",
       body: JSON.stringify({ id }),
     });
@@ -1288,7 +1288,7 @@ export default function ConfiguracionForestalPage() {
     event.preventDefault();
     if (!canCreateInventory) return;
 
-    const result = await requestJson<SimpleItem>("/api/forest/config/inventory-types", {
+    const result = await requestJson<SimpleItem>("/api/general-config/inventory-types", {
       method: "POST",
       body: JSON.stringify(inventoryForm),
     });
@@ -1308,7 +1308,7 @@ export default function ConfiguracionForestalPage() {
     event.preventDefault();
     if (!editingInventory) return;
 
-    const result = await requestJson<SimpleItem>("/api/forest/config/inventory-types", {
+    const result = await requestJson<SimpleItem>("/api/general-config/inventory-types", {
       method: "PATCH",
       body: JSON.stringify(editingInventory),
     });
@@ -1324,7 +1324,7 @@ export default function ConfiguracionForestalPage() {
   }
 
   async function deleteInventoryType(id: string) {
-    const result = await requestJson<{ id: string }>("/api/forest/config/inventory-types", {
+    const result = await requestJson<{ id: string }>("/api/general-config/inventory-types", {
       method: "DELETE",
       body: JSON.stringify({ id }),
     });
@@ -1342,7 +1342,7 @@ export default function ConfiguracionForestalPage() {
     event.preventDefault();
     if (!canCreateIma) return;
 
-    const result = await requestJson<ImaItem>("/api/forest/config/ima-classes", {
+    const result = await requestJson<ImaItem>("/api/general-config/ima-classes", {
       method: "POST",
       body: JSON.stringify({
         ...imaForm,
@@ -1374,7 +1374,7 @@ export default function ConfiguracionForestalPage() {
     event.preventDefault();
     if (!editingIma) return;
 
-    const result = await requestJson<ImaItem>("/api/forest/config/ima-classes", {
+    const result = await requestJson<ImaItem>("/api/general-config/ima-classes", {
       method: "PATCH",
       body: JSON.stringify({
         ...editingIma,
@@ -1394,7 +1394,7 @@ export default function ConfiguracionForestalPage() {
   }
 
   async function deleteImaClass(id: string) {
-    const result = await requestJson<{ id: string }>("/api/forest/config/ima-classes", {
+    const result = await requestJson<{ id: string }>("/api/general-config/ima-classes", {
       method: "DELETE",
       body: JSON.stringify({ id }),
     });
@@ -1412,7 +1412,7 @@ export default function ConfiguracionForestalPage() {
     event.preventDefault();
     if (!canCreateSpecies) return;
 
-    const result = await requestJson<SpeciesItem>("/api/forest/config/species", {
+    const result = await requestJson<SpeciesItem>("/api/general-config/species", {
       method: "POST",
       body: JSON.stringify({
         ...speciesForm,
@@ -1447,7 +1447,7 @@ export default function ConfiguracionForestalPage() {
     event.preventDefault();
     if (!editingSpecies) return;
 
-    const result = await requestJson<SpeciesItem>("/api/forest/config/species", {
+    const result = await requestJson<SpeciesItem>("/api/general-config/species", {
       method: "PATCH",
       body: JSON.stringify({
         ...editingSpecies,
@@ -1470,7 +1470,7 @@ export default function ConfiguracionForestalPage() {
   }
 
   async function deleteSpecies(id: string) {
-    const result = await requestJson<{ id: string }>("/api/forest/config/species", {
+    const result = await requestJson<{ id: string }>("/api/general-config/species", {
       method: "DELETE",
       body: JSON.stringify({ id }),
     });
@@ -1489,7 +1489,7 @@ export default function ConfiguracionForestalPage() {
     event.preventDefault();
     if (!canCreateProvenance) return;
 
-    const result = await requestJson<ProvenanceItem>("/api/forest/config/provenances", {
+    const result = await requestJson<ProvenanceItem>("/api/general-config/provenances", {
       method: "POST",
       body: JSON.stringify(provenanceForm),
     });
@@ -1515,7 +1515,7 @@ export default function ConfiguracionForestalPage() {
     event.preventDefault();
     if (!editingProvenance) return;
 
-    const result = await requestJson<ProvenanceItem>("/api/forest/config/provenances", {
+    const result = await requestJson<ProvenanceItem>("/api/general-config/provenances", {
       method: "PATCH",
       body: JSON.stringify({
         id: editingProvenance.id,
@@ -1538,7 +1538,7 @@ export default function ConfiguracionForestalPage() {
   }
 
   async function deleteProvenance(id: string) {
-    const result = await requestJson<{ id: string }>("/api/forest/config/provenances", {
+    const result = await requestJson<{ id: string }>("/api/general-config/provenances", {
       method: "DELETE",
       body: JSON.stringify({ id }),
     });
@@ -1557,7 +1557,7 @@ export default function ConfiguracionForestalPage() {
     event.preventDefault();
     if (!canCreateMaterial) return;
 
-    const result = await requestJson<VegetalMaterialItem>("/api/forest/config/vegetal-materials", {
+    const result = await requestJson<VegetalMaterialItem>("/api/general-config/vegetal-materials", {
       method: "POST",
       body: JSON.stringify({
         ...materialForm,
@@ -1589,7 +1589,7 @@ export default function ConfiguracionForestalPage() {
     event.preventDefault();
     if (!editingMaterial) return;
 
-    const result = await requestJson<VegetalMaterialItem>("/api/forest/config/vegetal-materials", {
+    const result = await requestJson<VegetalMaterialItem>("/api/general-config/vegetal-materials", {
       method: "PATCH",
       body: JSON.stringify({
         id: editingMaterial.id,
@@ -1615,7 +1615,7 @@ export default function ConfiguracionForestalPage() {
   }
 
   async function deleteMaterial(id: string) {
-    const result = await requestJson<{ id: string }>("/api/forest/config/vegetal-materials", {
+    const result = await requestJson<{ id: string }>("/api/general-config/vegetal-materials", {
       method: "DELETE",
       body: JSON.stringify({ id }),
     });
@@ -2095,7 +2095,7 @@ export default function ConfiguracionForestalPage() {
     event.preventDefault();
     if (!canCreateSpacing) return;
 
-    const result = await requestJson<SpacingItem>("/api/forest/config/spacings", {
+    const result = await requestJson<SpacingItem>("/api/general-config/spacings", {
       method: "POST",
       body: JSON.stringify({
         ...spacingForm,
@@ -2129,7 +2129,7 @@ export default function ConfiguracionForestalPage() {
     event.preventDefault();
     if (!editingSpacing) return;
 
-    const result = await requestJson<SpacingItem>("/api/forest/config/spacings", {
+    const result = await requestJson<SpacingItem>("/api/general-config/spacings", {
       method: "PATCH",
       body: JSON.stringify({
         id: editingSpacing.id,
@@ -2154,7 +2154,7 @@ export default function ConfiguracionForestalPage() {
   }
 
   async function deleteSpacing(id: string) {
-    const result = await requestJson<{ id: string }>("/api/forest/config/spacings", {
+    const result = await requestJson<{ id: string }>("/api/general-config/spacings", {
       method: "DELETE",
       body: JSON.stringify({ id }),
     });
@@ -2182,7 +2182,7 @@ export default function ConfiguracionForestalPage() {
       return;
     }
 
-    const result = await requestJson<Level4AdministrativeCostItem>("/api/forest/config/level4-costs", {
+    const result = await requestJson<Level4AdministrativeCostItem>("/api/general-config/level4-costs", {
       method: "POST",
       body: JSON.stringify({
         level4Id: level4CostForm.level4Id,
@@ -2226,7 +2226,7 @@ export default function ConfiguracionForestalPage() {
       return;
     }
 
-    const result = await requestJson<Level4AdministrativeCostItem>("/api/forest/config/level4-costs", {
+    const result = await requestJson<Level4AdministrativeCostItem>("/api/general-config/level4-costs", {
       method: "PATCH",
       body: JSON.stringify({
         id: editingLevel4Cost.id,
@@ -2250,7 +2250,7 @@ export default function ConfiguracionForestalPage() {
   }
 
   async function deleteLevel4Cost(id: string) {
-    const result = await requestJson<{ id: string }>("/api/forest/config/level4-costs", {
+    const result = await requestJson<{ id: string }>("/api/general-config/level4-costs", {
       method: "DELETE",
       body: JSON.stringify({ id }),
     });
@@ -2268,7 +2268,7 @@ export default function ConfiguracionForestalPage() {
     event.preventDefault();
     if (!canCreateProductType) return;
 
-    const result = await requestJson<ProductTypeItem>("/api/forest/config/product-types", {
+    const result = await requestJson<ProductTypeItem>("/api/general-config/product-types", {
       method: "POST",
       body: JSON.stringify({
         code: productTypeForm.code,
@@ -2306,7 +2306,7 @@ export default function ConfiguracionForestalPage() {
     event.preventDefault();
     if (!editingProductType) return;
 
-    const result = await requestJson<ProductTypeItem>("/api/forest/config/product-types", {
+    const result = await requestJson<ProductTypeItem>("/api/general-config/product-types", {
       method: "PATCH",
       body: JSON.stringify({
         id: editingProductType.id,
@@ -2338,7 +2338,7 @@ export default function ConfiguracionForestalPage() {
   }
 
   async function deleteProductType(id: string) {
-    const result = await requestJson<{ id: string }>("/api/forest/config/product-types", {
+    const result = await requestJson<{ id: string }>("/api/general-config/product-types", {
       method: "DELETE",
       body: JSON.stringify({ id }),
     });
@@ -2356,7 +2356,7 @@ export default function ConfiguracionForestalPage() {
     event.preventDefault();
     if (!canCreateLandUse) return;
 
-    const result = await requestJson<LandUseTypeItem>("/api/forest/config/land-use-types", {
+    const result = await requestJson<LandUseTypeItem>("/api/general-config/land-use-types", {
       method: "POST",
       body: JSON.stringify({
         ...landUseForm,
@@ -2385,7 +2385,7 @@ export default function ConfiguracionForestalPage() {
     event.preventDefault();
     if (!editingLandUse) return;
 
-    const result = await requestJson<LandUseTypeItem>("/api/forest/config/land-use-types", {
+    const result = await requestJson<LandUseTypeItem>("/api/general-config/land-use-types", {
       method: "PATCH",
       body: JSON.stringify({
         id: editingLandUse.id,
@@ -2408,7 +2408,7 @@ export default function ConfiguracionForestalPage() {
   }
 
   async function deleteLandUseType(id: string) {
-    const result = await requestJson<{ id: string }>("/api/forest/config/land-use-types", {
+    const result = await requestJson<{ id: string }>("/api/general-config/land-use-types", {
       method: "DELETE",
       body: JSON.stringify({ id }),
     });
@@ -2425,29 +2425,29 @@ export default function ConfiguracionForestalPage() {
   return (
     <div className="space-y-8">
       <div className="space-y-1">
-        <h1 className="text-2xl font-semibold">Configuración forestal</h1>
+        <h1 className="text-2xl font-semibold">Configuración general</h1>
         <p className="text-sm text-muted-foreground">Catálogos base para manejo, inventario, IMA, continentes, países, regiones, estados, municipios, ciudades, desarrollo local, espaciamiento, costos nivel 4, tipos de productos, uso de suelos, especies vegetales, procedencias y materiales vegetales.</p>
       </div>
 
       {globalMessage ? <p className="rounded-md border px-3 py-2 text-sm">{globalMessage}</p> : null}
 
       <section className="space-y-4 rounded-xl border p-4">
-        <CatalogHeader title="Esquemas de manejo" subtitle="CRUD de catálogo ManagementScheme" />
-        <form className="grid gap-3 md:grid-cols-4" onSubmit={createScheme}>
-          <input className="rounded-md border px-3 py-2" placeholder="Código" value={schemeForm.code} onChange={(event) => setSchemeForm((prev) => ({ ...prev, code: event.target.value }))} />
-          <input className="rounded-md border px-3 py-2 md:col-span-2" placeholder="Nombre" value={schemeForm.name} onChange={(event) => setSchemeForm((prev) => ({ ...prev, name: event.target.value }))} />
+        <CatalogHeader title="Continentes" subtitle="CRUD de catálogo Continent" />
+        <form className="grid gap-3 md:grid-cols-4" onSubmit={createContinent}>
+          <input className="rounded-md border px-3 py-2" placeholder="Código" value={continentForm.code} onChange={(event) => setContinentForm((prev) => ({ ...prev, code: event.target.value }))} />
+          <input className="rounded-md border px-3 py-2 md:col-span-2" placeholder="Nombre" value={continentForm.name} onChange={(event) => setContinentForm((prev) => ({ ...prev, name: event.target.value }))} />
           <label className="flex items-center gap-2 rounded-md border px-3 py-2 text-sm">
-            <input checked={schemeForm.isActive} onChange={(event) => setSchemeForm((prev) => ({ ...prev, isActive: event.target.checked }))} type="checkbox" />
+            <input checked={continentForm.isActive} onChange={(event) => setContinentForm((prev) => ({ ...prev, isActive: event.target.checked }))} type="checkbox" />
             Activo
           </label>
-          <button className="rounded-md border px-3 py-2 text-sm" disabled={!canCreateScheme} type="submit">
-            Crear esquema
+          <button className="rounded-md border px-3 py-2 text-sm" disabled={!canCreateContinent} type="submit">
+            Crear continente
           </button>
         </form>
 
-        <input className="w-full rounded-md border px-3 py-2" placeholder="Buscar por código o nombre" value={schemeSearch} onChange={(event) => setSchemeSearch(event.target.value)} />
-        {schemeError ? <p className="text-sm text-red-600">{schemeError}</p> : null}
-        {schemeLoading ? <p className="text-sm">Cargando...</p> : null}
+        <input className="w-full rounded-md border px-3 py-2" placeholder="Buscar por código o nombre" value={continentSearch} onChange={(event) => setContinentSearch(event.target.value)} />
+        {continentError ? <p className="text-sm text-red-600">{continentError}</p> : null}
+        {continentLoading ? <p className="text-sm">Cargando...</p> : null}
 
         <div className="overflow-auto rounded-md border">
           <table className="min-w-full text-sm">
@@ -2460,15 +2460,15 @@ export default function ConfiguracionForestalPage() {
               </tr>
             </thead>
             <tbody>
-              {schemeItems.map((item) => (
+              {continentItems.map((item) => (
                 <tr className="border-b" key={item.id}>
                   <td className="px-3 py-2">{item.code}</td>
                   <td className="px-3 py-2">{item.name}</td>
                   <td className="px-3 py-2">{item.isActive ? "Sí" : "No"}</td>
                   <td className="px-3 py-2">
                     <div className="flex gap-2">
-                      <button className="rounded border px-2 py-1" onClick={() => setEditingScheme(item)} type="button">Editar</button>
-                      <button className="rounded border px-2 py-1" onClick={() => void deleteScheme(item.id)} type="button">Eliminar</button>
+                      <button className="rounded border px-2 py-1" onClick={() => setEditingContinent(item)} type="button">Editar</button>
+                      <button className="rounded border px-2 py-1" onClick={() => void deleteContinent(item.id)} type="button">Eliminar</button>
                     </div>
                   </td>
                 </tr>
@@ -2478,522 +2478,59 @@ export default function ConfiguracionForestalPage() {
         </div>
 
         <div className="flex items-center justify-between text-sm">
-          <span>Total: {schemePagination.total}</span>
+          <span>Total: {continentPagination.total}</span>
           <div className="flex items-center gap-2">
-            <button className="rounded border px-2 py-1" disabled={schemePagination.page <= 1} onClick={() => setSchemePage((prev) => Math.max(1, prev - 1))} type="button">Anterior</button>
+            <button className="rounded border px-2 py-1" disabled={continentPagination.page <= 1} onClick={() => setContinentPage((prev) => Math.max(1, prev - 1))} type="button">Anterior</button>
             <span>
-              Página {schemePagination.page} de {Math.max(1, schemePagination.totalPages)}
+              Página {continentPagination.page} de {Math.max(1, continentPagination.totalPages)}
             </span>
-            <button className="rounded border px-2 py-1" disabled={schemePagination.page >= schemePagination.totalPages} onClick={() => setSchemePage((prev) => prev + 1)} type="button">Siguiente</button>
+            <button className="rounded border px-2 py-1" disabled={continentPagination.page >= continentPagination.totalPages} onClick={() => setContinentPage((prev) => prev + 1)} type="button">Siguiente</button>
           </div>
         </div>
 
-        {editingScheme ? (
-          <form className="grid gap-3 rounded-lg border p-3 md:grid-cols-4" onSubmit={updateScheme}>
-            <input className="rounded-md border px-3 py-2" value={editingScheme.code} onChange={(event) => setEditingScheme((prev) => (prev ? { ...prev, code: event.target.value } : prev))} />
-            <input className="rounded-md border px-3 py-2 md:col-span-2" value={editingScheme.name} onChange={(event) => setEditingScheme((prev) => (prev ? { ...prev, name: event.target.value } : prev))} />
+        {editingContinent ? (
+          <form className="grid gap-3 rounded-lg border p-3 md:grid-cols-4" onSubmit={updateContinent}>
+            <input className="rounded-md border px-3 py-2" value={editingContinent.code} onChange={(event) => setEditingContinent((prev) => (prev ? { ...prev, code: event.target.value } : prev))} />
+            <input className="rounded-md border px-3 py-2 md:col-span-2" value={editingContinent.name} onChange={(event) => setEditingContinent((prev) => (prev ? { ...prev, name: event.target.value } : prev))} />
             <label className="flex items-center gap-2 rounded-md border px-3 py-2 text-sm">
-              <input checked={editingScheme.isActive} onChange={(event) => setEditingScheme((prev) => (prev ? { ...prev, isActive: event.target.checked } : prev))} type="checkbox" />
+              <input checked={editingContinent.isActive} onChange={(event) => setEditingContinent((prev) => (prev ? { ...prev, isActive: event.target.checked } : prev))} type="checkbox" />
               Activo
             </label>
             <div className="flex gap-2">
               <button className="rounded-md border px-3 py-2 text-sm" type="submit">Guardar</button>
-              <button className="rounded-md border px-3 py-2 text-sm" onClick={() => setEditingScheme(null)} type="button">Cancelar</button>
+              <button className="rounded-md border px-3 py-2 text-sm" onClick={() => setEditingContinent(null)} type="button">Cancelar</button>
             </div>
           </form>
         ) : null}
       </section>
 
       <section className="space-y-4 rounded-xl border p-4">
-        <CatalogHeader title="Tipos de inventario" subtitle="CRUD de catálogo ForestInventoryTypeCatalog" />
-        <form className="grid gap-3 md:grid-cols-4" onSubmit={createInventoryType}>
-          <input className="rounded-md border px-3 py-2" placeholder="Código" value={inventoryForm.code} onChange={(event) => setInventoryForm((prev) => ({ ...prev, code: event.target.value }))} />
-          <input className="rounded-md border px-3 py-2 md:col-span-2" placeholder="Nombre" value={inventoryForm.name} onChange={(event) => setInventoryForm((prev) => ({ ...prev, name: event.target.value }))} />
-          <label className="flex items-center gap-2 rounded-md border px-3 py-2 text-sm">
-            <input checked={inventoryForm.isActive} onChange={(event) => setInventoryForm((prev) => ({ ...prev, isActive: event.target.checked }))} type="checkbox" />
-            Activo
-          </label>
-          <button className="rounded-md border px-3 py-2 text-sm" disabled={!canCreateInventory} type="submit">
-            Crear tipo
-          </button>
-        </form>
-
-        <input className="w-full rounded-md border px-3 py-2" placeholder="Buscar por código o nombre" value={inventorySearch} onChange={(event) => setInventorySearch(event.target.value)} />
-        {inventoryError ? <p className="text-sm text-red-600">{inventoryError}</p> : null}
-        {inventoryLoading ? <p className="text-sm">Cargando...</p> : null}
-
-        <div className="overflow-auto rounded-md border">
-          <table className="min-w-full text-sm">
-            <thead className="border-b">
-              <tr>
-                <th className="px-3 py-2 text-left">Código</th>
-                <th className="px-3 py-2 text-left">Nombre</th>
-                <th className="px-3 py-2 text-left">Activo</th>
-                <th className="px-3 py-2 text-left">Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              {inventoryItems.map((item) => (
-                <tr className="border-b" key={item.id}>
-                  <td className="px-3 py-2">{item.code}</td>
-                  <td className="px-3 py-2">{item.name}</td>
-                  <td className="px-3 py-2">{item.isActive ? "Sí" : "No"}</td>
-                  <td className="px-3 py-2">
-                    <div className="flex gap-2">
-                      <button className="rounded border px-2 py-1" onClick={() => setEditingInventory(item)} type="button">Editar</button>
-                      <button className="rounded border px-2 py-1" onClick={() => void deleteInventoryType(item.id)} type="button">Eliminar</button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        <div className="flex items-center justify-between text-sm">
-          <span>Total: {inventoryPagination.total}</span>
-          <div className="flex items-center gap-2">
-            <button className="rounded border px-2 py-1" disabled={inventoryPagination.page <= 1} onClick={() => setInventoryPage((prev) => Math.max(1, prev - 1))} type="button">Anterior</button>
-            <span>
-              Página {inventoryPagination.page} de {Math.max(1, inventoryPagination.totalPages)}
-            </span>
-            <button className="rounded border px-2 py-1" disabled={inventoryPagination.page >= inventoryPagination.totalPages} onClick={() => setInventoryPage((prev) => prev + 1)} type="button">Siguiente</button>
-          </div>
-        </div>
-
-        {editingInventory ? (
-          <form className="grid gap-3 rounded-lg border p-3 md:grid-cols-4" onSubmit={updateInventoryType}>
-            <input className="rounded-md border px-3 py-2" value={editingInventory.code} onChange={(event) => setEditingInventory((prev) => (prev ? { ...prev, code: event.target.value } : prev))} />
-            <input className="rounded-md border px-3 py-2 md:col-span-2" value={editingInventory.name} onChange={(event) => setEditingInventory((prev) => (prev ? { ...prev, name: event.target.value } : prev))} />
-            <label className="flex items-center gap-2 rounded-md border px-3 py-2 text-sm">
-              <input checked={editingInventory.isActive} onChange={(event) => setEditingInventory((prev) => (prev ? { ...prev, isActive: event.target.checked } : prev))} type="checkbox" />
-              Activo
-            </label>
-            <div className="flex gap-2">
-              <button className="rounded-md border px-3 py-2 text-sm" type="submit">Guardar</button>
-              <button className="rounded-md border px-3 py-2 text-sm" onClick={() => setEditingInventory(null)} type="button">Cancelar</button>
-            </div>
-          </form>
-        ) : null}
-      </section>
-
-      <section className="space-y-4 rounded-xl border p-4">
-        <CatalogHeader title="Clases IMA" subtitle="CRUD de catálogo ImaClass" />
-        <form className="grid gap-3 md:grid-cols-6" onSubmit={createImaClass}>
-          <input className="rounded-md border px-3 py-2" placeholder="Código" value={imaForm.code} onChange={(event) => setImaForm((prev) => ({ ...prev, code: event.target.value }))} />
-          <select className="rounded-md border px-3 py-2" value={imaForm.classification} onChange={(event) => setImaForm((prev) => ({ ...prev, classification: event.target.value as ImaClassification }))}>
-            <option value="I">I</option>
-            <option value="II">II</option>
-            <option value="III">III</option>
-            <option value="IV">IV</option>
-            <option value="V">V</option>
-          </select>
-          <input className="rounded-md border px-3 py-2 md:col-span-2" placeholder="Nombre" value={imaForm.name} onChange={(event) => setImaForm((prev) => ({ ...prev, name: event.target.value }))} />
-          <input className="rounded-md border px-3 py-2" placeholder="Rango mínimo" value={imaForm.rangeMin} onChange={(event) => setImaForm((prev) => ({ ...prev, rangeMin: event.target.value }))} />
-          <input className="rounded-md border px-3 py-2" placeholder="Rango máximo" value={imaForm.rangeMax} onChange={(event) => setImaForm((prev) => ({ ...prev, rangeMax: event.target.value }))} />
-          <textarea className="rounded-md border px-3 py-2 md:col-span-5" placeholder="Descripción" value={imaForm.description} onChange={(event) => setImaForm((prev) => ({ ...prev, description: event.target.value }))} />
-          <label className="flex items-center gap-2 rounded-md border px-3 py-2 text-sm">
-            <input checked={imaForm.isActive} onChange={(event) => setImaForm((prev) => ({ ...prev, isActive: event.target.checked }))} type="checkbox" />
-            Activo
-          </label>
-          <button className="rounded-md border px-3 py-2 text-sm" disabled={!canCreateIma} type="submit">
-            Crear clase IMA
-          </button>
-        </form>
-
-        <input className="w-full rounded-md border px-3 py-2" placeholder="Buscar por código, nombre o descripción" value={imaSearch} onChange={(event) => setImaSearch(event.target.value)} />
-        {imaError ? <p className="text-sm text-red-600">{imaError}</p> : null}
-        {imaLoading ? <p className="text-sm">Cargando...</p> : null}
-
-        <div className="overflow-auto rounded-md border">
-          <table className="min-w-full text-sm">
-            <thead className="border-b">
-              <tr>
-                <th className="px-3 py-2 text-left">Código</th>
-                <th className="px-3 py-2 text-left">Clase</th>
-                <th className="px-3 py-2 text-left">Nombre</th>
-                <th className="px-3 py-2 text-left">Rango</th>
-                <th className="px-3 py-2 text-left">Activo</th>
-                <th className="px-3 py-2 text-left">Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              {imaItems.map((item) => (
-                <tr className="border-b" key={item.id}>
-                  <td className="px-3 py-2">{item.code}</td>
-                  <td className="px-3 py-2">{item.classification}</td>
-                  <td className="px-3 py-2">{item.name}</td>
-                  <td className="px-3 py-2">
-                    {item.rangeMin ?? "-"} / {item.rangeMax ?? "-"}
-                  </td>
-                  <td className="px-3 py-2">{item.isActive ? "Sí" : "No"}</td>
-                  <td className="px-3 py-2">
-                    <div className="flex gap-2">
-                      <button className="rounded border px-2 py-1" onClick={() => setEditingIma(item)} type="button">Editar</button>
-                      <button className="rounded border px-2 py-1" onClick={() => void deleteImaClass(item.id)} type="button">Eliminar</button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        <div className="flex items-center justify-between text-sm">
-          <span>Total: {imaPagination.total}</span>
-          <div className="flex items-center gap-2">
-            <button className="rounded border px-2 py-1" disabled={imaPagination.page <= 1} onClick={() => setImaPage((prev) => Math.max(1, prev - 1))} type="button">Anterior</button>
-            <span>
-              Página {imaPagination.page} de {Math.max(1, imaPagination.totalPages)}
-            </span>
-            <button className="rounded border px-2 py-1" disabled={imaPagination.page >= imaPagination.totalPages} onClick={() => setImaPage((prev) => prev + 1)} type="button">Siguiente</button>
-          </div>
-        </div>
-
-        {editingIma ? (
-          <form className="grid gap-3 rounded-lg border p-3 md:grid-cols-6" onSubmit={updateImaClass}>
-            <input className="rounded-md border px-3 py-2" value={editingIma.code} onChange={(event) => setEditingIma((prev) => (prev ? { ...prev, code: event.target.value } : prev))} />
-            <select className="rounded-md border px-3 py-2" value={editingIma.classification} onChange={(event) => setEditingIma((prev) => (prev ? { ...prev, classification: event.target.value as ImaClassification } : prev))}>
-              <option value="I">I</option>
-              <option value="II">II</option>
-              <option value="III">III</option>
-              <option value="IV">IV</option>
-              <option value="V">V</option>
-            </select>
-            <input className="rounded-md border px-3 py-2 md:col-span-2" value={editingIma.name} onChange={(event) => setEditingIma((prev) => (prev ? { ...prev, name: event.target.value } : prev))} />
-            <input className="rounded-md border px-3 py-2" value={editingIma.rangeMin ?? ""} onChange={(event) => setEditingIma((prev) => (prev ? { ...prev, rangeMin: event.target.value } : prev))} />
-            <input className="rounded-md border px-3 py-2" value={editingIma.rangeMax ?? ""} onChange={(event) => setEditingIma((prev) => (prev ? { ...prev, rangeMax: event.target.value } : prev))} />
-            <textarea className="rounded-md border px-3 py-2 md:col-span-5" value={editingIma.description ?? ""} onChange={(event) => setEditingIma((prev) => (prev ? { ...prev, description: event.target.value } : prev))} />
-            <label className="flex items-center gap-2 rounded-md border px-3 py-2 text-sm">
-              <input checked={editingIma.isActive} onChange={(event) => setEditingIma((prev) => (prev ? { ...prev, isActive: event.target.checked } : prev))} type="checkbox" />
-              Activo
-            </label>
-            <div className="flex gap-2">
-              <button className="rounded-md border px-3 py-2 text-sm" type="submit">Guardar</button>
-              <button className="rounded-md border px-3 py-2 text-sm" onClick={() => setEditingIma(null)} type="button">Cancelar</button>
-            </div>
-          </form>
-        ) : null}
-      </section>
-
-      <section className="space-y-4 rounded-xl border p-4">
-        <CatalogHeader title="Espaciamientos" subtitle="CRUD de catálogo Spacing" />
-        <form className="grid gap-3 md:grid-cols-6" onSubmit={createSpacing}>
-          <input className="rounded-md border px-3 py-2" placeholder="Código" value={spacingForm.code} onChange={(event) => setSpacingForm((prev) => ({ ...prev, code: event.target.value }))} />
-          <input className="rounded-md border px-3 py-2" placeholder="Nombre" value={spacingForm.name} onChange={(event) => setSpacingForm((prev) => ({ ...prev, name: event.target.value }))} />
-          <input className="rounded-md border px-3 py-2" placeholder="Entre filas (m)" value={spacingForm.betweenRowsM} onChange={(event) => setSpacingForm((prev) => ({ ...prev, betweenRowsM: event.target.value }))} />
-          <input className="rounded-md border px-3 py-2" placeholder="Entre plantas (m)" value={spacingForm.betweenTreesM} onChange={(event) => setSpacingForm((prev) => ({ ...prev, betweenTreesM: event.target.value }))} />
-          <input className="rounded-md border px-3 py-2" placeholder="Densidad/ha" value={spacingForm.treeDensityPerHa} onChange={(event) => setSpacingForm((prev) => ({ ...prev, treeDensityPerHa: event.target.value }))} />
-          <input className="rounded-md border px-3 py-2 md:col-span-4" placeholder="Descripción" value={spacingForm.description} onChange={(event) => setSpacingForm((prev) => ({ ...prev, description: event.target.value }))} />
-          <label className="flex items-center gap-2 rounded-md border px-3 py-2 text-sm">
-            <input checked={spacingForm.isActive} onChange={(event) => setSpacingForm((prev) => ({ ...prev, isActive: event.target.checked }))} type="checkbox" />
-            Activo
-          </label>
-          <button className="rounded-md border px-3 py-2 text-sm" disabled={!canCreateSpacing} type="submit">
-            Crear espaciamiento
-          </button>
-        </form>
-
-        <input className="w-full rounded-md border px-3 py-2" placeholder="Buscar por código o nombre" value={spacingSearch} onChange={(event) => setSpacingSearch(event.target.value)} />
-        {spacingError ? <p className="text-sm text-red-600">{spacingError}</p> : null}
-        {spacingLoading ? <p className="text-sm">Cargando...</p> : null}
-
-        <div className="overflow-auto rounded-md border">
-          <table className="min-w-full text-sm">
-            <thead className="border-b">
-              <tr>
-                <th className="px-3 py-2 text-left">Código</th>
-                <th className="px-3 py-2 text-left">Nombre</th>
-                <th className="px-3 py-2 text-left">Entre filas</th>
-                <th className="px-3 py-2 text-left">Entre plantas</th>
-                <th className="px-3 py-2 text-left">Densidad/ha</th>
-                <th className="px-3 py-2 text-left">Activo</th>
-                <th className="px-3 py-2 text-left">Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              {spacingItems.map((item) => (
-                <tr className="border-b" key={item.id}>
-                  <td className="px-3 py-2">{item.code}</td>
-                  <td className="px-3 py-2">{item.name}</td>
-                  <td className="px-3 py-2">{item.betweenRowsM ?? "-"}</td>
-                  <td className="px-3 py-2">{item.betweenTreesM ?? "-"}</td>
-                  <td className="px-3 py-2">{item.treeDensityPerHa ?? "-"}</td>
-                  <td className="px-3 py-2">{item.isActive ? "Sí" : "No"}</td>
-                  <td className="px-3 py-2">
-                    <div className="flex gap-2">
-                      <button className="rounded border px-2 py-1" onClick={() => setEditingSpacing(item)} type="button">Editar</button>
-                      <button className="rounded border px-2 py-1" onClick={() => void deleteSpacing(item.id)} type="button">Eliminar</button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        <div className="flex items-center justify-between text-sm">
-          <span>Total: {spacingPagination.total}</span>
-          <div className="flex items-center gap-2">
-            <button className="rounded border px-2 py-1" disabled={spacingPagination.page <= 1} onClick={() => setSpacingPage((prev) => Math.max(1, prev - 1))} type="button">Anterior</button>
-            <span>
-              Página {spacingPagination.page} de {Math.max(1, spacingPagination.totalPages)}
-            </span>
-            <button className="rounded border px-2 py-1" disabled={spacingPagination.page >= spacingPagination.totalPages} onClick={() => setSpacingPage((prev) => prev + 1)} type="button">Siguiente</button>
-          </div>
-        </div>
-
-        {editingSpacing ? (
-          <form className="grid gap-3 rounded-lg border p-3 md:grid-cols-6" onSubmit={updateSpacing}>
-            <input className="rounded-md border px-3 py-2" value={editingSpacing.code} onChange={(event) => setEditingSpacing((prev) => (prev ? { ...prev, code: event.target.value } : prev))} />
-            <input className="rounded-md border px-3 py-2" value={editingSpacing.name} onChange={(event) => setEditingSpacing((prev) => (prev ? { ...prev, name: event.target.value } : prev))} />
-            <input className="rounded-md border px-3 py-2" value={editingSpacing.betweenRowsM ?? ""} onChange={(event) => setEditingSpacing((prev) => (prev ? { ...prev, betweenRowsM: event.target.value } : prev))} />
-            <input className="rounded-md border px-3 py-2" value={editingSpacing.betweenTreesM ?? ""} onChange={(event) => setEditingSpacing((prev) => (prev ? { ...prev, betweenTreesM: event.target.value } : prev))} />
-            <input className="rounded-md border px-3 py-2" value={editingSpacing.treeDensityPerHa ?? ""} onChange={(event) => setEditingSpacing((prev) => (prev ? { ...prev, treeDensityPerHa: event.target.value } : prev))} />
-            <input className="rounded-md border px-3 py-2 md:col-span-4" value={editingSpacing.description ?? ""} onChange={(event) => setEditingSpacing((prev) => (prev ? { ...prev, description: event.target.value } : prev))} />
-            <label className="flex items-center gap-2 rounded-md border px-3 py-2 text-sm">
-              <input checked={editingSpacing.isActive} onChange={(event) => setEditingSpacing((prev) => (prev ? { ...prev, isActive: event.target.checked } : prev))} type="checkbox" />
-              Activo
-            </label>
-            <div className="flex gap-2">
-              <button className="rounded-md border px-3 py-2 text-sm" type="submit">Guardar</button>
-              <button className="rounded-md border px-3 py-2 text-sm" onClick={() => setEditingSpacing(null)} type="button">Cancelar</button>
-            </div>
-          </form>
-        ) : null}
-      </section>
-
-      <section className="space-y-4 rounded-xl border p-4">
-        <CatalogHeader title="Costos nivel 4" subtitle="CRUD de catálogo Level4AdministrativeCost" />
-        <form className="grid gap-3 md:grid-cols-6" onSubmit={createLevel4Cost}>
-          <select className="rounded-md border px-3 py-2" value={level4CostForm.level4Id} onChange={(event) => setLevel4CostForm((prev) => ({ ...prev, level4Id: event.target.value }))}>
-            <option value="">Seleccione unidad nivel 4</option>
-            {level4Options.map((item) => (
-              <option key={item.id} value={item.id}>
-                {item.code} - {item.name}
-              </option>
-            ))}
-          </select>
-          <input className="rounded-md border px-3 py-2" placeholder="Código" value={level4CostForm.code} onChange={(event) => setLevel4CostForm((prev) => ({ ...prev, code: event.target.value }))} />
-          <input className="rounded-md border px-3 py-2" placeholder="Área plantación (ha)" value={level4CostForm.plantationAreaHa} onChange={(event) => setLevel4CostForm((prev) => ({ ...prev, plantationAreaHa: event.target.value }))} />
-          <input className="rounded-md border px-3 py-2" placeholder="Fase de rotación" value={level4CostForm.rotationPhase} onChange={(event) => setLevel4CostForm((prev) => ({ ...prev, rotationPhase: event.target.value }))} />
-          <input className="rounded-md border px-3 py-2" placeholder="Documento contable (UUID)" value={level4CostForm.accountingDocumentId} onChange={(event) => setLevel4CostForm((prev) => ({ ...prev, accountingDocumentId: event.target.value }))} />
-          <label className="flex items-center gap-2 rounded-md border px-3 py-2 text-sm">
-            <input checked={level4CostForm.isActive} onChange={(event) => setLevel4CostForm((prev) => ({ ...prev, isActive: event.target.checked }))} type="checkbox" />
-            Activo
-          </label>
-          <button className="rounded-md border px-3 py-2 text-sm" disabled={!canCreateLevel4Cost} type="submit">
-            Crear costo
-          </button>
-        </form>
-
-        {level4Options.length === 0 ? <p className="text-xs text-muted-foreground">No hay unidades nivel 4 cargadas. Debes cargar unidades para registrar costos.</p> : null}
-
-        <input className="w-full rounded-md border px-3 py-2" placeholder="Buscar por código, fase o unidad" value={level4CostSearch} onChange={(event) => setLevel4CostSearch(event.target.value)} />
-        {level4CostError ? <p className="text-sm text-red-600">{level4CostError}</p> : null}
-        {level4CostLoading ? <p className="text-sm">Cargando...</p> : null}
-
-        <div className="overflow-auto rounded-md border">
-          <table className="min-w-full text-sm">
-            <thead className="border-b">
-              <tr>
-                <th className="px-3 py-2 text-left">Unidad nivel 4</th>
-                <th className="px-3 py-2 text-left">Código</th>
-                <th className="px-3 py-2 text-left">Área (ha)</th>
-                <th className="px-3 py-2 text-left">Fase</th>
-                <th className="px-3 py-2 text-left">Documento</th>
-                <th className="px-3 py-2 text-left">Activo</th>
-                <th className="px-3 py-2 text-left">Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              {level4CostItems.map((item) => (
-                <tr className="border-b" key={item.id}>
-                  <td className="px-3 py-2">{item.level4 ? `${item.level4.code} - ${item.level4.name}` : "-"}</td>
-                  <td className="px-3 py-2">{item.code}</td>
-                  <td className="px-3 py-2">{item.plantationAreaHa}</td>
-                  <td className="px-3 py-2">{item.rotationPhase ?? "-"}</td>
-                  <td className="px-3 py-2">
-                    {item.accountingDocument ? `${item.accountingDocument.code} - ${item.accountingDocument.documentNumber}` : "-"}
-                  </td>
-                  <td className="px-3 py-2">{item.isActive ? "Sí" : "No"}</td>
-                  <td className="px-3 py-2">
-                    <div className="flex gap-2">
-                      <button className="rounded border px-2 py-1" onClick={() => setEditingLevel4Cost({ ...item, level4Id: item.level4Id ?? item.level4?.id ?? "" })} type="button">Editar</button>
-                      <button className="rounded border px-2 py-1" onClick={() => void deleteLevel4Cost(item.id)} type="button">Eliminar</button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        <div className="flex items-center justify-between text-sm">
-          <span>Total: {level4CostPagination.total}</span>
-          <div className="flex items-center gap-2">
-            <button className="rounded border px-2 py-1" disabled={level4CostPagination.page <= 1} onClick={() => setLevel4CostPage((prev) => Math.max(1, prev - 1))} type="button">Anterior</button>
-            <span>
-              Página {level4CostPagination.page} de {Math.max(1, level4CostPagination.totalPages)}
-            </span>
-            <button className="rounded border px-2 py-1" disabled={level4CostPagination.page >= level4CostPagination.totalPages} onClick={() => setLevel4CostPage((prev) => prev + 1)} type="button">Siguiente</button>
-          </div>
-        </div>
-
-        {editingLevel4Cost ? (
-          <form className="grid gap-3 rounded-lg border p-3 md:grid-cols-6" onSubmit={updateLevel4Cost}>
-            <select className="rounded-md border px-3 py-2" value={editingLevel4Cost.level4Id ?? editingLevel4Cost.level4?.id ?? ""} onChange={(event) => setEditingLevel4Cost((prev) => (prev ? { ...prev, level4Id: event.target.value } : prev))}>
-              <option value="">Seleccione unidad nivel 4</option>
-              {level4Options.map((item) => (
-                <option key={item.id} value={item.id}>
-                  {item.code} - {item.name}
-                </option>
-              ))}
-            </select>
-            <input className="rounded-md border px-3 py-2" value={editingLevel4Cost.code} onChange={(event) => setEditingLevel4Cost((prev) => (prev ? { ...prev, code: event.target.value } : prev))} />
-            <input className="rounded-md border px-3 py-2" value={editingLevel4Cost.plantationAreaHa} onChange={(event) => setEditingLevel4Cost((prev) => (prev ? { ...prev, plantationAreaHa: event.target.value } : prev))} />
-            <input className="rounded-md border px-3 py-2" value={editingLevel4Cost.rotationPhase ?? ""} onChange={(event) => setEditingLevel4Cost((prev) => (prev ? { ...prev, rotationPhase: event.target.value } : prev))} />
-            <input className="rounded-md border px-3 py-2" value={editingLevel4Cost.accountingDocumentId ?? ""} onChange={(event) => setEditingLevel4Cost((prev) => (prev ? { ...prev, accountingDocumentId: event.target.value || null } : prev))} />
-            <label className="flex items-center gap-2 rounded-md border px-3 py-2 text-sm">
-              <input checked={editingLevel4Cost.isActive} onChange={(event) => setEditingLevel4Cost((prev) => (prev ? { ...prev, isActive: event.target.checked } : prev))} type="checkbox" />
-              Activo
-            </label>
-            <div className="flex gap-2">
-              <button className="rounded-md border px-3 py-2 text-sm" type="submit">Guardar</button>
-              <button className="rounded-md border px-3 py-2 text-sm" onClick={() => setEditingLevel4Cost(null)} type="button">Cancelar</button>
-            </div>
-          </form>
-        ) : null}
-      </section>
-
-      <section className="space-y-4 rounded-xl border p-4">
-        <CatalogHeader title="Tipos de productos" subtitle="CRUD de catálogo ProductType" />
-        <form className="grid gap-3 md:grid-cols-6" onSubmit={createProductType}>
-          <input className="rounded-md border px-3 py-2" placeholder="Código" value={productTypeForm.code} onChange={(event) => setProductTypeForm((prev) => ({ ...prev, code: event.target.value }))} />
-          <input className="rounded-md border px-3 py-2" placeholder="Nombre" value={productTypeForm.name} onChange={(event) => setProductTypeForm((prev) => ({ ...prev, name: event.target.value }))} />
-          <input className="rounded-md border px-3 py-2" placeholder="Longitud mín (m)" value={productTypeForm.minLengthM} onChange={(event) => setProductTypeForm((prev) => ({ ...prev, minLengthM: event.target.value }))} />
-          <input className="rounded-md border px-3 py-2" placeholder="Longitud máx (m)" value={productTypeForm.maxLengthM} onChange={(event) => setProductTypeForm((prev) => ({ ...prev, maxLengthM: event.target.value }))} />
-          <input className="rounded-md border px-3 py-2" placeholder="Diámetro mín (cm)" value={productTypeForm.minSmallEndDiameterCm} onChange={(event) => setProductTypeForm((prev) => ({ ...prev, minSmallEndDiameterCm: event.target.value }))} />
-          <input className="rounded-md border px-3 py-2" placeholder="Diámetro máx (cm)" value={productTypeForm.maxSmallEndDiameterCm} onChange={(event) => setProductTypeForm((prev) => ({ ...prev, maxSmallEndDiameterCm: event.target.value }))} />
-          <select className="rounded-md border px-3 py-2" value={productTypeForm.recommendedHarvestType} onChange={(event) => setProductTypeForm((prev) => ({ ...prev, recommendedHarvestType: event.target.value as RecommendedHarvestType }))}>
-            <option value="MECANIZADA">MECANIZADA</option>
-            <option value="MANUAL">MANUAL</option>
-          </select>
-          <label className="flex items-center gap-2 rounded-md border px-3 py-2 text-sm">
-            <input checked={productTypeForm.isActive} onChange={(event) => setProductTypeForm((prev) => ({ ...prev, isActive: event.target.checked }))} type="checkbox" />
-            Activo
-          </label>
-          <button className="rounded-md border px-3 py-2 text-sm" disabled={!canCreateProductType} type="submit">
-            Crear tipo
-          </button>
-        </form>
-
-        <input className="w-full rounded-md border px-3 py-2" placeholder="Buscar por código o nombre" value={productTypeSearch} onChange={(event) => setProductTypeSearch(event.target.value)} />
-        {productTypeError ? <p className="text-sm text-red-600">{productTypeError}</p> : null}
-        {productTypeLoading ? <p className="text-sm">Cargando...</p> : null}
-
-        <div className="overflow-auto rounded-md border">
-          <table className="min-w-full text-sm">
-            <thead className="border-b">
-              <tr>
-                <th className="px-3 py-2 text-left">Código</th>
-                <th className="px-3 py-2 text-left">Nombre</th>
-                <th className="px-3 py-2 text-left">Longitud</th>
-                <th className="px-3 py-2 text-left">Diámetro</th>
-                <th className="px-3 py-2 text-left">Corte</th>
-                <th className="px-3 py-2 text-left">Activo</th>
-                <th className="px-3 py-2 text-left">Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              {productTypeItems.map((item) => (
-                <tr className="border-b" key={item.id}>
-                  <td className="px-3 py-2">{item.code}</td>
-                  <td className="px-3 py-2">{item.name}</td>
-                  <td className="px-3 py-2">
-                    {(item.minLengthM ?? "-")} / {(item.maxLengthM ?? "-")}
-                  </td>
-                  <td className="px-3 py-2">
-                    {(item.minSmallEndDiameterCm ?? "-")} / {(item.maxSmallEndDiameterCm ?? "-")}
-                  </td>
-                  <td className="px-3 py-2">{item.recommendedHarvestType}</td>
-                  <td className="px-3 py-2">{item.isActive ? "Sí" : "No"}</td>
-                  <td className="px-3 py-2">
-                    <div className="flex gap-2">
-                      <button className="rounded border px-2 py-1" onClick={() => setEditingProductType(item)} type="button">Editar</button>
-                      <button className="rounded border px-2 py-1" onClick={() => void deleteProductType(item.id)} type="button">Eliminar</button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        <div className="flex items-center justify-between text-sm">
-          <span>Total: {productTypePagination.total}</span>
-          <div className="flex items-center gap-2">
-            <button className="rounded border px-2 py-1" disabled={productTypePagination.page <= 1} onClick={() => setProductTypePage((prev) => Math.max(1, prev - 1))} type="button">Anterior</button>
-            <span>
-              Página {productTypePagination.page} de {Math.max(1, productTypePagination.totalPages)}
-            </span>
-            <button className="rounded border px-2 py-1" disabled={productTypePagination.page >= productTypePagination.totalPages} onClick={() => setProductTypePage((prev) => prev + 1)} type="button">Siguiente</button>
-          </div>
-        </div>
-
-        {editingProductType ? (
-          <form className="grid gap-3 rounded-lg border p-3 md:grid-cols-6" onSubmit={updateProductType}>
-            <input className="rounded-md border px-3 py-2" value={editingProductType.code} onChange={(event) => setEditingProductType((prev) => (prev ? { ...prev, code: event.target.value } : prev))} />
-            <input className="rounded-md border px-3 py-2" value={editingProductType.name} onChange={(event) => setEditingProductType((prev) => (prev ? { ...prev, name: event.target.value } : prev))} />
-            <input className="rounded-md border px-3 py-2" value={editingProductType.minLengthM ?? ""} onChange={(event) => setEditingProductType((prev) => (prev ? { ...prev, minLengthM: event.target.value } : prev))} />
-            <input className="rounded-md border px-3 py-2" value={editingProductType.maxLengthM ?? ""} onChange={(event) => setEditingProductType((prev) => (prev ? { ...prev, maxLengthM: event.target.value } : prev))} />
-            <input className="rounded-md border px-3 py-2" value={editingProductType.minSmallEndDiameterCm ?? ""} onChange={(event) => setEditingProductType((prev) => (prev ? { ...prev, minSmallEndDiameterCm: event.target.value } : prev))} />
-            <input className="rounded-md border px-3 py-2" value={editingProductType.maxSmallEndDiameterCm ?? ""} onChange={(event) => setEditingProductType((prev) => (prev ? { ...prev, maxSmallEndDiameterCm: event.target.value } : prev))} />
-            <select className="rounded-md border px-3 py-2" value={editingProductType.recommendedHarvestType} onChange={(event) => setEditingProductType((prev) => (prev ? { ...prev, recommendedHarvestType: event.target.value as RecommendedHarvestType } : prev))}>
-              <option value="MECANIZADA">MECANIZADA</option>
-              <option value="MANUAL">MANUAL</option>
-            </select>
-            <label className="flex items-center gap-2 rounded-md border px-3 py-2 text-sm">
-              <input checked={editingProductType.isActive} onChange={(event) => setEditingProductType((prev) => (prev ? { ...prev, isActive: event.target.checked } : prev))} type="checkbox" />
-              Activo
-            </label>
-            <div className="flex gap-2">
-              <button className="rounded-md border px-3 py-2 text-sm" type="submit">Guardar</button>
-              <button className="rounded-md border px-3 py-2 text-sm" onClick={() => setEditingProductType(null)} type="button">Cancelar</button>
-            </div>
-          </form>
-        ) : null}
-      </section>
-
-      <section className="space-y-4 rounded-xl border p-4">
-        <CatalogHeader title="Uso de suelos" subtitle="CRUD de catálogo LandUseType" />
-        <form className="grid gap-3 md:grid-cols-6" onSubmit={createLandUseType}>
-          <select className="rounded-md border px-3 py-2" value={landUseForm.continentId} onChange={(event) => setLandUseForm((prev) => ({ ...prev, continentId: event.target.value }))}>
-            <option value="">Sin continente</option>
+        <CatalogHeader title="Países" subtitle="CRUD de catálogo Country" />
+        <form className="grid gap-3 md:grid-cols-5" onSubmit={createCountry}>
+          <select className="rounded-md border px-3 py-2" value={countryForm.continentId} onChange={(event) => setCountryForm((prev) => ({ ...prev, continentId: event.target.value }))}>
+            <option value="">Seleccione continente</option>
             {activeContinents.map((continent) => (
               <option key={continent.id} value={continent.id}>
                 {continent.code} - {continent.name}
               </option>
             ))}
           </select>
-          <input className="rounded-md border px-3 py-2" placeholder="Código" value={landUseForm.code} onChange={(event) => setLandUseForm((prev) => ({ ...prev, code: event.target.value }))} />
-          <input className="rounded-md border px-3 py-2" placeholder="Nombre" value={landUseForm.name} onChange={(event) => setLandUseForm((prev) => ({ ...prev, name: event.target.value }))} />
+          <input className="rounded-md border px-3 py-2" placeholder="Código" value={countryForm.code} onChange={(event) => setCountryForm((prev) => ({ ...prev, code: event.target.value }))} />
+          <input className="rounded-md border px-3 py-2" placeholder="Nombre" value={countryForm.name} onChange={(event) => setCountryForm((prev) => ({ ...prev, name: event.target.value }))} />
           <label className="flex items-center gap-2 rounded-md border px-3 py-2 text-sm">
-            <input checked={landUseForm.isProductive} onChange={(event) => setLandUseForm((prev) => ({ ...prev, isProductive: event.target.checked }))} type="checkbox" />
-            Productivo
-          </label>
-          <label className="flex items-center gap-2 rounded-md border px-3 py-2 text-sm">
-            <input checked={landUseForm.isActive} onChange={(event) => setLandUseForm((prev) => ({ ...prev, isActive: event.target.checked }))} type="checkbox" />
+            <input checked={countryForm.isActive} onChange={(event) => setCountryForm((prev) => ({ ...prev, isActive: event.target.checked }))} type="checkbox" />
             Activo
           </label>
-          <button className="rounded-md border px-3 py-2 text-sm" disabled={!canCreateLandUse} type="submit">
-            Crear uso
+          <button className="rounded-md border px-3 py-2 text-sm" disabled={!canCreateCountry} type="submit">
+            Crear país
           </button>
         </form>
 
-        <input className="w-full rounded-md border px-3 py-2" placeholder="Buscar por código o nombre" value={landUseSearch} onChange={(event) => setLandUseSearch(event.target.value)} />
-        {landUseError ? <p className="text-sm text-red-600">{landUseError}</p> : null}
-        {landUseLoading ? <p className="text-sm">Cargando...</p> : null}
+        {activeContinents.length === 0 ? <p className="text-xs text-muted-foreground">No hay continentes activos cargados. Debes cargar continentes para registrar países.</p> : null}
+
+        <input className="w-full rounded-md border px-3 py-2" placeholder="Buscar por código o nombre" value={countrySearch} onChange={(event) => setCountrySearch(event.target.value)} />
+        {countryError ? <p className="text-sm text-red-600">{countryError}</p> : null}
+        {countryLoading ? <p className="text-sm">Cargando...</p> : null}
 
         <div className="overflow-auto rounded-md border">
           <table className="min-w-full text-sm">
@@ -3002,23 +2539,21 @@ export default function ConfiguracionForestalPage() {
                 <th className="px-3 py-2 text-left">Continente</th>
                 <th className="px-3 py-2 text-left">Código</th>
                 <th className="px-3 py-2 text-left">Nombre</th>
-                <th className="px-3 py-2 text-left">Productivo</th>
                 <th className="px-3 py-2 text-left">Activo</th>
                 <th className="px-3 py-2 text-left">Acciones</th>
               </tr>
             </thead>
             <tbody>
-              {landUseItems.map((item) => (
+              {countryItems.map((item) => (
                 <tr className="border-b" key={item.id}>
-                  <td className="px-3 py-2">{item.continent ? `${item.continent.code} - ${item.continent.name}` : "Sin continente"}</td>
+                  <td className="px-3 py-2">{item.continent ? `${item.continent.code} - ${item.continent.name}` : "-"}</td>
                   <td className="px-3 py-2">{item.code}</td>
                   <td className="px-3 py-2">{item.name}</td>
-                  <td className="px-3 py-2">{item.isProductive ? "Sí" : "No"}</td>
                   <td className="px-3 py-2">{item.isActive ? "Sí" : "No"}</td>
                   <td className="px-3 py-2">
                     <div className="flex gap-2">
-                      <button className="rounded border px-2 py-1" onClick={() => setEditingLandUse({ ...item, continentId: item.continentId ?? item.continent?.id ?? "" })} type="button">Editar</button>
-                      <button className="rounded border px-2 py-1" onClick={() => void deleteLandUseType(item.id)} type="button">Eliminar</button>
+                      <button className="rounded border px-2 py-1" onClick={() => setEditingCountry({ ...item, continentId: item.continentId ?? item.continent?.id ?? "" })} type="button">Editar</button>
+                      <button className="rounded border px-2 py-1" onClick={() => void deleteCountry(item.id)} type="button">Eliminar</button>
                     </div>
                   </td>
                 </tr>
@@ -3028,131 +2563,44 @@ export default function ConfiguracionForestalPage() {
         </div>
 
         <div className="flex items-center justify-between text-sm">
-          <span>Total: {landUsePagination.total}</span>
+          <span>Total: {countryPagination.total}</span>
           <div className="flex items-center gap-2">
-            <button className="rounded border px-2 py-1" disabled={landUsePagination.page <= 1} onClick={() => setLandUsePage((prev) => Math.max(1, prev - 1))} type="button">Anterior</button>
+            <button className="rounded border px-2 py-1" disabled={countryPagination.page <= 1} onClick={() => setCountryPage((prev) => Math.max(1, prev - 1))} type="button">Anterior</button>
             <span>
-              Página {landUsePagination.page} de {Math.max(1, landUsePagination.totalPages)}
+              Página {countryPagination.page} de {Math.max(1, countryPagination.totalPages)}
             </span>
-            <button className="rounded border px-2 py-1" disabled={landUsePagination.page >= landUsePagination.totalPages} onClick={() => setLandUsePage((prev) => prev + 1)} type="button">Siguiente</button>
+            <button className="rounded border px-2 py-1" disabled={countryPagination.page >= countryPagination.totalPages} onClick={() => setCountryPage((prev) => prev + 1)} type="button">Siguiente</button>
           </div>
         </div>
 
-        {editingLandUse ? (
-          <form className="grid gap-3 rounded-lg border p-3 md:grid-cols-6" onSubmit={updateLandUseType}>
-            <select className="rounded-md border px-3 py-2" value={editingLandUse.continentId ?? editingLandUse.continent?.id ?? ""} onChange={(event) => setEditingLandUse((prev) => (prev ? { ...prev, continentId: event.target.value } : prev))}>
-              <option value="">Sin continente</option>
+        {editingCountry ? (
+          <form className="grid gap-3 rounded-lg border p-3 md:grid-cols-5" onSubmit={updateCountry}>
+            <select className="rounded-md border px-3 py-2" value={editingCountry.continentId ?? editingCountry.continent?.id ?? ""} onChange={(event) => setEditingCountry((prev) => (prev ? { ...prev, continentId: event.target.value } : prev))}>
+              <option value="">Seleccione continente</option>
               {activeContinents.map((continent) => (
                 <option key={continent.id} value={continent.id}>
                   {continent.code} - {continent.name}
                 </option>
               ))}
             </select>
-            <input className="rounded-md border px-3 py-2" value={editingLandUse.code} onChange={(event) => setEditingLandUse((prev) => (prev ? { ...prev, code: event.target.value } : prev))} />
-            <input className="rounded-md border px-3 py-2" value={editingLandUse.name} onChange={(event) => setEditingLandUse((prev) => (prev ? { ...prev, name: event.target.value } : prev))} />
+            <input className="rounded-md border px-3 py-2" value={editingCountry.code} onChange={(event) => setEditingCountry((prev) => (prev ? { ...prev, code: event.target.value } : prev))} />
+            <input className="rounded-md border px-3 py-2" value={editingCountry.name} onChange={(event) => setEditingCountry((prev) => (prev ? { ...prev, name: event.target.value } : prev))} />
             <label className="flex items-center gap-2 rounded-md border px-3 py-2 text-sm">
-              <input checked={editingLandUse.isProductive} onChange={(event) => setEditingLandUse((prev) => (prev ? { ...prev, isProductive: event.target.checked } : prev))} type="checkbox" />
-              Productivo
-            </label>
-            <label className="flex items-center gap-2 rounded-md border px-3 py-2 text-sm">
-              <input checked={editingLandUse.isActive} onChange={(event) => setEditingLandUse((prev) => (prev ? { ...prev, isActive: event.target.checked } : prev))} type="checkbox" />
+              <input checked={editingCountry.isActive} onChange={(event) => setEditingCountry((prev) => (prev ? { ...prev, isActive: event.target.checked } : prev))} type="checkbox" />
               Activo
             </label>
             <div className="flex gap-2">
               <button className="rounded-md border px-3 py-2 text-sm" type="submit">Guardar</button>
-              <button className="rounded-md border px-3 py-2 text-sm" onClick={() => setEditingLandUse(null)} type="button">Cancelar</button>
+              <button className="rounded-md border px-3 py-2 text-sm" onClick={() => setEditingCountry(null)} type="button">Cancelar</button>
             </div>
           </form>
         ) : null}
       </section>
 
       <section className="space-y-4 rounded-xl border p-4">
-        <CatalogHeader title="Especies vegetales" subtitle="CRUD de catálogo Species" />
-        <form className="grid gap-3 md:grid-cols-4" onSubmit={createSpecies}>
-          <input className="rounded-md border px-3 py-2" placeholder="Código" value={speciesForm.code} onChange={(event) => setSpeciesForm((prev) => ({ ...prev, code: event.target.value }))} />
-          <input className="rounded-md border px-3 py-2 md:col-span-2" placeholder="Nombre científico" value={speciesForm.scientificName} onChange={(event) => setSpeciesForm((prev) => ({ ...prev, scientificName: event.target.value }))} />
-          <label className="flex items-center gap-2 rounded-md border px-3 py-2 text-sm">
-            <input checked={speciesForm.isActive} onChange={(event) => setSpeciesForm((prev) => ({ ...prev, isActive: event.target.checked }))} type="checkbox" />
-            Activo
-          </label>
-          <input className="rounded-md border px-3 py-2" placeholder="Nombre común" value={speciesForm.commonName} onChange={(event) => setSpeciesForm((prev) => ({ ...prev, commonName: event.target.value }))} />
-          <input className="rounded-md border px-3 py-2" placeholder="Género" value={speciesForm.genus} onChange={(event) => setSpeciesForm((prev) => ({ ...prev, genus: event.target.value }))} />
-          <input className="rounded-md border px-3 py-2" placeholder="Familia" value={speciesForm.family} onChange={(event) => setSpeciesForm((prev) => ({ ...prev, family: event.target.value }))} />
-          <input className="rounded-md border px-3 py-2" placeholder="Orden taxonómico" value={speciesForm.taxonomicOrder} onChange={(event) => setSpeciesForm((prev) => ({ ...prev, taxonomicOrder: event.target.value }))} />
-          <button className="rounded-md border px-3 py-2 text-sm" disabled={!canCreateSpecies} type="submit">
-            Crear especie
-          </button>
-        </form>
-
-        <input className="w-full rounded-md border px-3 py-2" placeholder="Buscar por código, nombre científico o común" value={speciesSearch} onChange={(event) => setSpeciesSearch(event.target.value)} />
-        {speciesError ? <p className="text-sm text-red-600">{speciesError}</p> : null}
-        {speciesLoading ? <p className="text-sm">Cargando...</p> : null}
-
-        <div className="overflow-auto rounded-md border">
-          <table className="min-w-full text-sm">
-            <thead className="border-b">
-              <tr>
-                <th className="px-3 py-2 text-left">Código</th>
-                <th className="px-3 py-2 text-left">Nombre científico</th>
-                <th className="px-3 py-2 text-left">Nombre común</th>
-                <th className="px-3 py-2 text-left">Activo</th>
-                <th className="px-3 py-2 text-left">Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              {speciesItems.map((item) => (
-                <tr className="border-b" key={item.id}>
-                  <td className="px-3 py-2">{item.code}</td>
-                  <td className="px-3 py-2">{item.scientificName}</td>
-                  <td className="px-3 py-2">{item.commonName ?? "-"}</td>
-                  <td className="px-3 py-2">{item.isActive ? "Sí" : "No"}</td>
-                  <td className="px-3 py-2">
-                    <div className="flex gap-2">
-                      <button className="rounded border px-2 py-1" onClick={() => setEditingSpecies(item)} type="button">Editar</button>
-                      <button className="rounded border px-2 py-1" onClick={() => void deleteSpecies(item.id)} type="button">Eliminar</button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        <div className="flex items-center justify-between text-sm">
-          <span>Total: {speciesPagination.total}</span>
-          <div className="flex items-center gap-2">
-            <button className="rounded border px-2 py-1" disabled={speciesPagination.page <= 1} onClick={() => setSpeciesPage((prev) => Math.max(1, prev - 1))} type="button">Anterior</button>
-            <span>
-              Página {speciesPagination.page} de {Math.max(1, speciesPagination.totalPages)}
-            </span>
-            <button className="rounded border px-2 py-1" disabled={speciesPagination.page >= speciesPagination.totalPages} onClick={() => setSpeciesPage((prev) => prev + 1)} type="button">Siguiente</button>
-          </div>
-        </div>
-
-        {editingSpecies ? (
-          <form className="grid gap-3 rounded-lg border p-3 md:grid-cols-4" onSubmit={updateSpecies}>
-            <input className="rounded-md border px-3 py-2" value={editingSpecies.code} onChange={(event) => setEditingSpecies((prev) => (prev ? { ...prev, code: event.target.value } : prev))} />
-            <input className="rounded-md border px-3 py-2 md:col-span-2" value={editingSpecies.scientificName} onChange={(event) => setEditingSpecies((prev) => (prev ? { ...prev, scientificName: event.target.value } : prev))} />
-            <label className="flex items-center gap-2 rounded-md border px-3 py-2 text-sm">
-              <input checked={editingSpecies.isActive} onChange={(event) => setEditingSpecies((prev) => (prev ? { ...prev, isActive: event.target.checked } : prev))} type="checkbox" />
-              Activo
-            </label>
-            <input className="rounded-md border px-3 py-2" value={editingSpecies.commonName ?? ""} onChange={(event) => setEditingSpecies((prev) => (prev ? { ...prev, commonName: event.target.value } : prev))} />
-            <input className="rounded-md border px-3 py-2" value={editingSpecies.genus ?? ""} onChange={(event) => setEditingSpecies((prev) => (prev ? { ...prev, genus: event.target.value } : prev))} />
-            <input className="rounded-md border px-3 py-2" value={editingSpecies.family ?? ""} onChange={(event) => setEditingSpecies((prev) => (prev ? { ...prev, family: event.target.value } : prev))} />
-            <input className="rounded-md border px-3 py-2" value={editingSpecies.taxonomicOrder ?? ""} onChange={(event) => setEditingSpecies((prev) => (prev ? { ...prev, taxonomicOrder: event.target.value } : prev))} />
-            <div className="flex gap-2">
-              <button className="rounded-md border px-3 py-2 text-sm" type="submit">Guardar</button>
-              <button className="rounded-md border px-3 py-2 text-sm" onClick={() => setEditingSpecies(null)} type="button">Cancelar</button>
-            </div>
-          </form>
-        ) : null}
-      </section>
-
-      <section className="space-y-4 rounded-xl border p-4">
-        <CatalogHeader title="Procedencias" subtitle="CRUD de catálogo Provenance" />
-        <form className="grid gap-3 md:grid-cols-4" onSubmit={createProvenance}>
-          <select className="rounded-md border px-3 py-2" value={provenanceForm.countryId} onChange={(event) => setProvenanceForm((prev) => ({ ...prev, countryId: event.target.value }))}>
+        <CatalogHeader title="Regiones" subtitle="CRUD de catálogo Region" />
+        <form className="grid gap-3 md:grid-cols-5" onSubmit={createRegion}>
+          <select className="rounded-md border px-3 py-2" value={regionForm.countryId} onChange={(event) => setRegionForm((prev) => ({ ...prev, countryId: event.target.value }))}>
             <option value="">Seleccione país</option>
             {countryOptions.map((country) => (
               <option key={country.id} value={country.id}>
@@ -3160,22 +2608,22 @@ export default function ConfiguracionForestalPage() {
               </option>
             ))}
           </select>
-          <input className="rounded-md border px-3 py-2" placeholder="Código" value={provenanceForm.code} onChange={(event) => setProvenanceForm((prev) => ({ ...prev, code: event.target.value }))} />
-          <input className="rounded-md border px-3 py-2" placeholder="Nombre" value={provenanceForm.name} onChange={(event) => setProvenanceForm((prev) => ({ ...prev, name: event.target.value }))} />
+          <input className="rounded-md border px-3 py-2" placeholder="Código" value={regionForm.code} onChange={(event) => setRegionForm((prev) => ({ ...prev, code: event.target.value }))} />
+          <input className="rounded-md border px-3 py-2" placeholder="Nombre" value={regionForm.name} onChange={(event) => setRegionForm((prev) => ({ ...prev, name: event.target.value }))} />
           <label className="flex items-center gap-2 rounded-md border px-3 py-2 text-sm">
-            <input checked={provenanceForm.isActive} onChange={(event) => setProvenanceForm((prev) => ({ ...prev, isActive: event.target.checked }))} type="checkbox" />
+            <input checked={regionForm.isActive} onChange={(event) => setRegionForm((prev) => ({ ...prev, isActive: event.target.checked }))} type="checkbox" />
             Activo
           </label>
-          <button className="rounded-md border px-3 py-2 text-sm" disabled={!canCreateProvenance} type="submit">
-            Crear procedencia
+          <button className="rounded-md border px-3 py-2 text-sm" disabled={!canCreateRegion} type="submit">
+            Crear región
           </button>
         </form>
 
-        {countryOptions.length === 0 ? <p className="text-xs text-muted-foreground">No hay países activos cargados. Debes cargar países para registrar procedencias.</p> : null}
+        {countryOptions.length === 0 ? <p className="text-xs text-muted-foreground">No hay países activos cargados. Debes cargar países para registrar regiones.</p> : null}
 
-        <input className="w-full rounded-md border px-3 py-2" placeholder="Buscar por código, nombre o país" value={provenanceSearch} onChange={(event) => setProvenanceSearch(event.target.value)} />
-        {provenanceError ? <p className="text-sm text-red-600">{provenanceError}</p> : null}
-        {provenanceLoading ? <p className="text-sm">Cargando...</p> : null}
+        <input className="w-full rounded-md border px-3 py-2" placeholder="Buscar por código o nombre" value={regionSearch} onChange={(event) => setRegionSearch(event.target.value)} />
+        {regionError ? <p className="text-sm text-red-600">{regionError}</p> : null}
+        {regionLoading ? <p className="text-sm">Cargando...</p> : null}
 
         <div className="overflow-auto rounded-md border">
           <table className="min-w-full text-sm">
@@ -3189,7 +2637,7 @@ export default function ConfiguracionForestalPage() {
               </tr>
             </thead>
             <tbody>
-              {provenanceItems.map((item) => (
+              {regionItems.map((item) => (
                 <tr className="border-b" key={item.id}>
                   <td className="px-3 py-2">{item.country ? `${item.country.code} - ${item.country.name}` : "-"}</td>
                   <td className="px-3 py-2">{item.code}</td>
@@ -3197,8 +2645,8 @@ export default function ConfiguracionForestalPage() {
                   <td className="px-3 py-2">{item.isActive ? "Sí" : "No"}</td>
                   <td className="px-3 py-2">
                     <div className="flex gap-2">
-                      <button className="rounded border px-2 py-1" onClick={() => setEditingProvenance(item)} type="button">Editar</button>
-                      <button className="rounded border px-2 py-1" onClick={() => void deleteProvenance(item.id)} type="button">Eliminar</button>
+                      <button className="rounded border px-2 py-1" onClick={() => setEditingRegion({ ...item, countryId: item.countryId ?? item.country?.id ?? "" })} type="button">Editar</button>
+                      <button className="rounded border px-2 py-1" onClick={() => void deleteRegion(item.id)} type="button">Eliminar</button>
                     </div>
                   </td>
                 </tr>
@@ -3208,19 +2656,19 @@ export default function ConfiguracionForestalPage() {
         </div>
 
         <div className="flex items-center justify-between text-sm">
-          <span>Total: {provenancePagination.total}</span>
+          <span>Total: {regionPagination.total}</span>
           <div className="flex items-center gap-2">
-            <button className="rounded border px-2 py-1" disabled={provenancePagination.page <= 1} onClick={() => setProvenancePage((prev) => Math.max(1, prev - 1))} type="button">Anterior</button>
+            <button className="rounded border px-2 py-1" disabled={regionPagination.page <= 1} onClick={() => setRegionPage((prev) => Math.max(1, prev - 1))} type="button">Anterior</button>
             <span>
-              Página {provenancePagination.page} de {Math.max(1, provenancePagination.totalPages)}
+              Página {regionPagination.page} de {Math.max(1, regionPagination.totalPages)}
             </span>
-            <button className="rounded border px-2 py-1" disabled={provenancePagination.page >= provenancePagination.totalPages} onClick={() => setProvenancePage((prev) => prev + 1)} type="button">Siguiente</button>
+            <button className="rounded border px-2 py-1" disabled={regionPagination.page >= regionPagination.totalPages} onClick={() => setRegionPage((prev) => prev + 1)} type="button">Siguiente</button>
           </div>
         </div>
 
-        {editingProvenance ? (
-          <form className="grid gap-3 rounded-lg border p-3 md:grid-cols-4" onSubmit={updateProvenance}>
-            <select className="rounded-md border px-3 py-2" value={editingProvenance.countryId} onChange={(event) => setEditingProvenance((prev) => (prev ? { ...prev, countryId: event.target.value } : prev))}>
+        {editingRegion ? (
+          <form className="grid gap-3 rounded-lg border p-3 md:grid-cols-5" onSubmit={updateRegion}>
+            <select className="rounded-md border px-3 py-2" value={editingRegion.countryId ?? editingRegion.country?.id ?? ""} onChange={(event) => setEditingRegion((prev) => (prev ? { ...prev, countryId: event.target.value } : prev))}>
               <option value="">Seleccione país</option>
               {countryOptions.map((country) => (
                 <option key={country.id} value={country.id}>
@@ -3228,98 +2676,70 @@ export default function ConfiguracionForestalPage() {
                 </option>
               ))}
             </select>
-            <input className="rounded-md border px-3 py-2" value={editingProvenance.code} onChange={(event) => setEditingProvenance((prev) => (prev ? { ...prev, code: event.target.value } : prev))} />
-            <input className="rounded-md border px-3 py-2" value={editingProvenance.name} onChange={(event) => setEditingProvenance((prev) => (prev ? { ...prev, name: event.target.value } : prev))} />
+            <input className="rounded-md border px-3 py-2" value={editingRegion.code} onChange={(event) => setEditingRegion((prev) => (prev ? { ...prev, code: event.target.value } : prev))} />
+            <input className="rounded-md border px-3 py-2" value={editingRegion.name} onChange={(event) => setEditingRegion((prev) => (prev ? { ...prev, name: event.target.value } : prev))} />
             <label className="flex items-center gap-2 rounded-md border px-3 py-2 text-sm">
-              <input checked={editingProvenance.isActive} onChange={(event) => setEditingProvenance((prev) => (prev ? { ...prev, isActive: event.target.checked } : prev))} type="checkbox" />
+              <input checked={editingRegion.isActive} onChange={(event) => setEditingRegion((prev) => (prev ? { ...prev, isActive: event.target.checked } : prev))} type="checkbox" />
               Activo
             </label>
             <div className="flex gap-2">
               <button className="rounded-md border px-3 py-2 text-sm" type="submit">Guardar</button>
-              <button className="rounded-md border px-3 py-2 text-sm" onClick={() => setEditingProvenance(null)} type="button">Cancelar</button>
+              <button className="rounded-md border px-3 py-2 text-sm" onClick={() => setEditingRegion(null)} type="button">Cancelar</button>
             </div>
           </form>
         ) : null}
       </section>
 
       <section className="space-y-4 rounded-xl border p-4">
-        <CatalogHeader title="Material vegetal" subtitle="CRUD de catálogo VegetalMaterial" />
-        <form className="grid gap-3 md:grid-cols-4" onSubmit={createMaterial}>
-          <input className="rounded-md border px-3 py-2" placeholder="Código" value={materialForm.code} onChange={(event) => setMaterialForm((prev) => ({ ...prev, code: event.target.value }))} />
-          <input className="rounded-md border px-3 py-2" placeholder="Nombre" value={materialForm.name} onChange={(event) => setMaterialForm((prev) => ({ ...prev, name: event.target.value }))} />
-          <select className="rounded-md border px-3 py-2" value={materialForm.speciesId} onChange={(event) => setMaterialForm((prev) => ({ ...prev, speciesId: event.target.value }))}>
-            <option value="">Seleccione especie</option>
-            {speciesOptions.map((item) => (
-              <option key={item.id} value={item.id}>
-                {item.code} - {item.scientificName}
+        <CatalogHeader title="Estados / Departamentos" subtitle="CRUD de catálogo StateDepartment" />
+        <form className="grid gap-3 md:grid-cols-5" onSubmit={createStateDepartment}>
+          <select className="rounded-md border px-3 py-2" value={stateDepartmentForm.countryId} onChange={(event) => setStateDepartmentForm((prev) => ({ ...prev, countryId: event.target.value }))}>
+            <option value="">Seleccione país</option>
+            {countryOptions.map((country) => (
+              <option key={country.id} value={country.id}>
+                {country.code} - {country.name}
               </option>
             ))}
           </select>
-          <select className="rounded-md border px-3 py-2" value={materialForm.provenanceId} onChange={(event) => setMaterialForm((prev) => ({ ...prev, provenanceId: event.target.value }))}>
-            <option value="">Sin procedencia</option>
-            {provenanceOptions.map((item) => (
-              <option key={item.id} value={item.id}>
-                {item.code} - {item.name}
-              </option>
-            ))}
-          </select>
-          <select className="rounded-md border px-3 py-2" value={materialForm.materialType} onChange={(event) => setMaterialForm((prev) => ({ ...prev, materialType: event.target.value as VegetalMaterialType }))}>
-            <option value="PURA">PURA</option>
-            <option value="HIBRIDA">HIBRIDA</option>
-          </select>
-          <select className="rounded-md border px-3 py-2" value={materialForm.plantType} onChange={(event) => setMaterialForm((prev) => ({ ...prev, plantType: event.target.value as PlantType }))}>
-            <option value="PROGENIE">PROGENIE</option>
-            <option value="CLON">CLON</option>
-            <option value="INJERTO">INJERTO</option>
-            <option value="IN_VITRO">IN_VITRO</option>
-          </select>
-          <select className="rounded-md border px-3 py-2" value={materialForm.plantOrigin} onChange={(event) => setMaterialForm((prev) => ({ ...prev, plantOrigin: event.target.value as PlantOrigin }))}>
-            <option value="NATIVA">NATIVA</option>
-            <option value="EXOTICA">EXOTICA</option>
-            <option value="NATURALIZADA">NATURALIZADA</option>
-            <option value="INTRODUCIDA">INTRODUCIDA</option>
-            <option value="ENDEMICA">ENDEMICA</option>
-            <option value="CULTIVADA">CULTIVADA</option>
-          </select>
+          <input className="rounded-md border px-3 py-2" placeholder="Código" value={stateDepartmentForm.code} onChange={(event) => setStateDepartmentForm((prev) => ({ ...prev, code: event.target.value }))} />
+          <input className="rounded-md border px-3 py-2" placeholder="Nombre" value={stateDepartmentForm.name} onChange={(event) => setStateDepartmentForm((prev) => ({ ...prev, name: event.target.value }))} />
           <label className="flex items-center gap-2 rounded-md border px-3 py-2 text-sm">
-            <input checked={materialForm.isActive} onChange={(event) => setMaterialForm((prev) => ({ ...prev, isActive: event.target.checked }))} type="checkbox" />
+            <input checked={stateDepartmentForm.isActive} onChange={(event) => setStateDepartmentForm((prev) => ({ ...prev, isActive: event.target.checked }))} type="checkbox" />
             Activo
           </label>
-          <button className="rounded-md border px-3 py-2 text-sm" disabled={!canCreateMaterial} type="submit">
-            Crear material
+          <button className="rounded-md border px-3 py-2 text-sm" disabled={!canCreateStateDepartment} type="submit">
+            Crear estado
           </button>
         </form>
 
-        <input className="w-full rounded-md border px-3 py-2" placeholder="Buscar por código, nombre, especie o procedencia" value={materialSearch} onChange={(event) => setMaterialSearch(event.target.value)} />
-        {materialError ? <p className="text-sm text-red-600">{materialError}</p> : null}
-        {materialLoading ? <p className="text-sm">Cargando...</p> : null}
+        {countryOptions.length === 0 ? <p className="text-xs text-muted-foreground">No hay países activos cargados. Debes cargar países para registrar estados/departamentos.</p> : null}
+
+        <input className="w-full rounded-md border px-3 py-2" placeholder="Buscar por código o nombre" value={stateDepartmentSearch} onChange={(event) => setStateDepartmentSearch(event.target.value)} />
+        {stateDepartmentError ? <p className="text-sm text-red-600">{stateDepartmentError}</p> : null}
+        {stateDepartmentLoading ? <p className="text-sm">Cargando...</p> : null}
 
         <div className="overflow-auto rounded-md border">
           <table className="min-w-full text-sm">
             <thead className="border-b">
               <tr>
+                <th className="px-3 py-2 text-left">País</th>
                 <th className="px-3 py-2 text-left">Código</th>
                 <th className="px-3 py-2 text-left">Nombre</th>
-                <th className="px-3 py-2 text-left">Especie</th>
-                <th className="px-3 py-2 text-left">Procedencia</th>
-                <th className="px-3 py-2 text-left">Tipo</th>
                 <th className="px-3 py-2 text-left">Activo</th>
                 <th className="px-3 py-2 text-left">Acciones</th>
               </tr>
             </thead>
             <tbody>
-              {materialItems.map((item) => (
+              {stateDepartmentItems.map((item) => (
                 <tr className="border-b" key={item.id}>
+                  <td className="px-3 py-2">{item.country ? `${item.country.code} - ${item.country.name}` : "-"}</td>
                   <td className="px-3 py-2">{item.code}</td>
                   <td className="px-3 py-2">{item.name}</td>
-                  <td className="px-3 py-2">{item.species ? `${item.species.code} - ${item.species.scientificName}` : "-"}</td>
-                  <td className="px-3 py-2">{item.provenance ? `${item.provenance.code} - ${item.provenance.name}` : "-"}</td>
-                  <td className="px-3 py-2">{item.materialType}</td>
                   <td className="px-3 py-2">{item.isActive ? "Sí" : "No"}</td>
                   <td className="px-3 py-2">
                     <div className="flex gap-2">
-                      <button className="rounded border px-2 py-1" onClick={() => setEditingMaterial(item)} type="button">Editar</button>
-                      <button className="rounded border px-2 py-1" onClick={() => void deleteMaterial(item.id)} type="button">Eliminar</button>
+                      <button className="rounded border px-2 py-1" onClick={() => setEditingStateDepartment({ ...item, countryId: item.countryId ?? item.country?.id ?? "" })} type="button">Editar</button>
+                      <button className="rounded border px-2 py-1" onClick={() => void deleteStateDepartment(item.id)} type="button">Eliminar</button>
                     </div>
                   </td>
                 </tr>
@@ -3329,65 +2749,342 @@ export default function ConfiguracionForestalPage() {
         </div>
 
         <div className="flex items-center justify-between text-sm">
-          <span>Total: {materialPagination.total}</span>
+          <span>Total: {stateDepartmentPagination.total}</span>
           <div className="flex items-center gap-2">
-            <button className="rounded border px-2 py-1" disabled={materialPagination.page <= 1} onClick={() => setMaterialPage((prev) => Math.max(1, prev - 1))} type="button">Anterior</button>
+            <button className="rounded border px-2 py-1" disabled={stateDepartmentPagination.page <= 1} onClick={() => setStateDepartmentPage((prev) => Math.max(1, prev - 1))} type="button">Anterior</button>
             <span>
-              Página {materialPagination.page} de {Math.max(1, materialPagination.totalPages)}
+              Página {stateDepartmentPagination.page} de {Math.max(1, stateDepartmentPagination.totalPages)}
             </span>
-            <button className="rounded border px-2 py-1" disabled={materialPagination.page >= materialPagination.totalPages} onClick={() => setMaterialPage((prev) => prev + 1)} type="button">Siguiente</button>
+            <button className="rounded border px-2 py-1" disabled={stateDepartmentPagination.page >= stateDepartmentPagination.totalPages} onClick={() => setStateDepartmentPage((prev) => prev + 1)} type="button">Siguiente</button>
           </div>
         </div>
 
-        {editingMaterial ? (
-          <form className="grid gap-3 rounded-lg border p-3 md:grid-cols-4" onSubmit={updateMaterial}>
-            <input className="rounded-md border px-3 py-2" value={editingMaterial.code} onChange={(event) => setEditingMaterial((prev) => (prev ? { ...prev, code: event.target.value } : prev))} />
-            <input className="rounded-md border px-3 py-2" value={editingMaterial.name} onChange={(event) => setEditingMaterial((prev) => (prev ? { ...prev, name: event.target.value } : prev))} />
-            <select className="rounded-md border px-3 py-2" value={editingMaterial.speciesId} onChange={(event) => setEditingMaterial((prev) => (prev ? { ...prev, speciesId: event.target.value } : prev))}>
-              <option value="">Seleccione especie</option>
-              {speciesOptions.map((item) => (
-                <option key={item.id} value={item.id}>
-                  {item.code} - {item.scientificName}
+        {editingStateDepartment ? (
+          <form className="grid gap-3 rounded-lg border p-3 md:grid-cols-5" onSubmit={updateStateDepartment}>
+            <select className="rounded-md border px-3 py-2" value={editingStateDepartment.countryId ?? editingStateDepartment.country?.id ?? ""} onChange={(event) => setEditingStateDepartment((prev) => (prev ? { ...prev, countryId: event.target.value } : prev))}>
+              <option value="">Seleccione país</option>
+              {countryOptions.map((country) => (
+                <option key={country.id} value={country.id}>
+                  {country.code} - {country.name}
                 </option>
               ))}
             </select>
-            <select className="rounded-md border px-3 py-2" value={editingMaterial.provenanceId ?? ""} onChange={(event) => setEditingMaterial((prev) => (prev ? { ...prev, provenanceId: event.target.value || null } : prev))}>
-              <option value="">Sin procedencia</option>
-              {provenanceOptions.map((item) => (
-                <option key={item.id} value={item.id}>
-                  {item.code} - {item.name}
-                </option>
-              ))}
-            </select>
-            <select className="rounded-md border px-3 py-2" value={editingMaterial.materialType} onChange={(event) => setEditingMaterial((prev) => (prev ? { ...prev, materialType: event.target.value as VegetalMaterialType } : prev))}>
-              <option value="PURA">PURA</option>
-              <option value="HIBRIDA">HIBRIDA</option>
-            </select>
-            <select className="rounded-md border px-3 py-2" value={editingMaterial.plantType} onChange={(event) => setEditingMaterial((prev) => (prev ? { ...prev, plantType: event.target.value as PlantType } : prev))}>
-              <option value="PROGENIE">PROGENIE</option>
-              <option value="CLON">CLON</option>
-              <option value="INJERTO">INJERTO</option>
-              <option value="IN_VITRO">IN_VITRO</option>
-            </select>
-            <select className="rounded-md border px-3 py-2" value={editingMaterial.plantOrigin} onChange={(event) => setEditingMaterial((prev) => (prev ? { ...prev, plantOrigin: event.target.value as PlantOrigin } : prev))}>
-              <option value="NATIVA">NATIVA</option>
-              <option value="EXOTICA">EXOTICA</option>
-              <option value="NATURALIZADA">NATURALIZADA</option>
-              <option value="INTRODUCIDA">INTRODUCIDA</option>
-              <option value="ENDEMICA">ENDEMICA</option>
-              <option value="CULTIVADA">CULTIVADA</option>
-            </select>
+            <input className="rounded-md border px-3 py-2" value={editingStateDepartment.code} onChange={(event) => setEditingStateDepartment((prev) => (prev ? { ...prev, code: event.target.value } : prev))} />
+            <input className="rounded-md border px-3 py-2" value={editingStateDepartment.name} onChange={(event) => setEditingStateDepartment((prev) => (prev ? { ...prev, name: event.target.value } : prev))} />
             <label className="flex items-center gap-2 rounded-md border px-3 py-2 text-sm">
-              <input checked={editingMaterial.isActive} onChange={(event) => setEditingMaterial((prev) => (prev ? { ...prev, isActive: event.target.checked } : prev))} type="checkbox" />
+              <input checked={editingStateDepartment.isActive} onChange={(event) => setEditingStateDepartment((prev) => (prev ? { ...prev, isActive: event.target.checked } : prev))} type="checkbox" />
               Activo
             </label>
             <div className="flex gap-2">
               <button className="rounded-md border px-3 py-2 text-sm" type="submit">Guardar</button>
-              <button className="rounded-md border px-3 py-2 text-sm" onClick={() => setEditingMaterial(null)} type="button">Cancelar</button>
+              <button className="rounded-md border px-3 py-2 text-sm" onClick={() => setEditingStateDepartment(null)} type="button">Cancelar</button>
             </div>
           </form>
         ) : null}
       </section>
+
+      <section className="space-y-4 rounded-xl border p-4">
+        <CatalogHeader title="Municipios / Distritos" subtitle="CRUD de catálogo MunicipalityDistrict" />
+        <form className="grid gap-3 md:grid-cols-5" onSubmit={createMunicipality}>
+          <select className="rounded-md border px-3 py-2" value={municipalityForm.stateId} onChange={(event) => setMunicipalityForm((prev) => ({ ...prev, stateId: event.target.value }))}>
+            <option value="">Seleccione estado</option>
+            {stateOptions.map((state) => (
+              <option key={state.id} value={state.id}>
+                {state.code} - {state.name}
+              </option>
+            ))}
+          </select>
+          <input className="rounded-md border px-3 py-2" placeholder="Código" value={municipalityForm.code} onChange={(event) => setMunicipalityForm((prev) => ({ ...prev, code: event.target.value }))} />
+          <input className="rounded-md border px-3 py-2" placeholder="Nombre" value={municipalityForm.name} onChange={(event) => setMunicipalityForm((prev) => ({ ...prev, name: event.target.value }))} />
+          <label className="flex items-center gap-2 rounded-md border px-3 py-2 text-sm">
+            <input checked={municipalityForm.isActive} onChange={(event) => setMunicipalityForm((prev) => ({ ...prev, isActive: event.target.checked }))} type="checkbox" />
+            Activo
+          </label>
+          <button className="rounded-md border px-3 py-2 text-sm" disabled={!canCreateMunicipality} type="submit">
+            Crear municipio
+          </button>
+        </form>
+
+        {stateOptions.length === 0 ? <p className="text-xs text-muted-foreground">No hay estados activos cargados. Debes cargar estados/departamentos para registrar municipios.</p> : null}
+
+        <input className="w-full rounded-md border px-3 py-2" placeholder="Buscar por código o nombre" value={municipalitySearch} onChange={(event) => setMunicipalitySearch(event.target.value)} />
+        {municipalityError ? <p className="text-sm text-red-600">{municipalityError}</p> : null}
+        {municipalityLoading ? <p className="text-sm">Cargando...</p> : null}
+
+        <div className="overflow-auto rounded-md border">
+          <table className="min-w-full text-sm">
+            <thead className="border-b">
+              <tr>
+                <th className="px-3 py-2 text-left">Estado</th>
+                <th className="px-3 py-2 text-left">País</th>
+                <th className="px-3 py-2 text-left">Código</th>
+                <th className="px-3 py-2 text-left">Nombre</th>
+                <th className="px-3 py-2 text-left">Activo</th>
+                <th className="px-3 py-2 text-left">Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              {municipalityItems.map((item) => (
+                <tr className="border-b" key={item.id}>
+                  <td className="px-3 py-2">{item.state ? `${item.state.code} - ${item.state.name}` : "-"}</td>
+                  <td className="px-3 py-2">{item.state?.country ? `${item.state.country.code} - ${item.state.country.name}` : "-"}</td>
+                  <td className="px-3 py-2">{item.code}</td>
+                  <td className="px-3 py-2">{item.name}</td>
+                  <td className="px-3 py-2">{item.isActive ? "Sí" : "No"}</td>
+                  <td className="px-3 py-2">
+                    <div className="flex gap-2">
+                      <button className="rounded border px-2 py-1" onClick={() => setEditingMunicipality({ ...item, stateId: item.stateId ?? item.state?.id ?? "" })} type="button">Editar</button>
+                      <button className="rounded border px-2 py-1" onClick={() => void deleteMunicipality(item.id)} type="button">Eliminar</button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        <div className="flex items-center justify-between text-sm">
+          <span>Total: {municipalityPagination.total}</span>
+          <div className="flex items-center gap-2">
+            <button className="rounded border px-2 py-1" disabled={municipalityPagination.page <= 1} onClick={() => setMunicipalityPage((prev) => Math.max(1, prev - 1))} type="button">Anterior</button>
+            <span>
+              Página {municipalityPagination.page} de {Math.max(1, municipalityPagination.totalPages)}
+            </span>
+            <button className="rounded border px-2 py-1" disabled={municipalityPagination.page >= municipalityPagination.totalPages} onClick={() => setMunicipalityPage((prev) => prev + 1)} type="button">Siguiente</button>
+          </div>
+        </div>
+
+        {editingMunicipality ? (
+          <form className="grid gap-3 rounded-lg border p-3 md:grid-cols-5" onSubmit={updateMunicipality}>
+            <select className="rounded-md border px-3 py-2" value={editingMunicipality.stateId ?? editingMunicipality.state?.id ?? ""} onChange={(event) => setEditingMunicipality((prev) => (prev ? { ...prev, stateId: event.target.value } : prev))}>
+              <option value="">Seleccione estado</option>
+              {stateOptions.map((state) => (
+                <option key={state.id} value={state.id}>
+                  {state.code} - {state.name}
+                </option>
+              ))}
+            </select>
+            <input className="rounded-md border px-3 py-2" value={editingMunicipality.code} onChange={(event) => setEditingMunicipality((prev) => (prev ? { ...prev, code: event.target.value } : prev))} />
+            <input className="rounded-md border px-3 py-2" value={editingMunicipality.name} onChange={(event) => setEditingMunicipality((prev) => (prev ? { ...prev, name: event.target.value } : prev))} />
+            <label className="flex items-center gap-2 rounded-md border px-3 py-2 text-sm">
+              <input checked={editingMunicipality.isActive} onChange={(event) => setEditingMunicipality((prev) => (prev ? { ...prev, isActive: event.target.checked } : prev))} type="checkbox" />
+              Activo
+            </label>
+            <div className="flex gap-2">
+              <button className="rounded-md border px-3 py-2 text-sm" type="submit">Guardar</button>
+              <button className="rounded-md border px-3 py-2 text-sm" onClick={() => setEditingMunicipality(null)} type="button">Cancelar</button>
+            </div>
+          </form>
+        ) : null}
+      </section>
+
+      <section className="space-y-4 rounded-xl border p-4">
+        <CatalogHeader title="Ciudades" subtitle="CRUD de catálogo City" />
+        <form className="grid gap-3 md:grid-cols-5" onSubmit={createCity}>
+          <select className="rounded-md border px-3 py-2" value={cityForm.municipalityId} onChange={(event) => setCityForm((prev) => ({ ...prev, municipalityId: event.target.value }))}>
+            <option value="">Seleccione municipio</option>
+            {municipalityOptions.map((municipality) => (
+              <option key={municipality.id} value={municipality.id}>
+                {municipality.code} - {municipality.name}
+              </option>
+            ))}
+          </select>
+          <input className="rounded-md border px-3 py-2" placeholder="Código" value={cityForm.code} onChange={(event) => setCityForm((prev) => ({ ...prev, code: event.target.value }))} />
+          <input className="rounded-md border px-3 py-2" placeholder="Nombre" value={cityForm.name} onChange={(event) => setCityForm((prev) => ({ ...prev, name: event.target.value }))} />
+          <label className="flex items-center gap-2 rounded-md border px-3 py-2 text-sm">
+            <input checked={cityForm.isActive} onChange={(event) => setCityForm((prev) => ({ ...prev, isActive: event.target.checked }))} type="checkbox" />
+            Activo
+          </label>
+          <button className="rounded-md border px-3 py-2 text-sm" disabled={!canCreateCity} type="submit">
+            Crear ciudad
+          </button>
+        </form>
+
+        {municipalityOptions.length === 0 ? <p className="text-xs text-muted-foreground">No hay municipios activos cargados. Debes cargar municipios para registrar ciudades.</p> : null}
+
+        <input className="w-full rounded-md border px-3 py-2" placeholder="Buscar por código o nombre" value={citySearch} onChange={(event) => setCitySearch(event.target.value)} />
+        {cityError ? <p className="text-sm text-red-600">{cityError}</p> : null}
+        {cityLoading ? <p className="text-sm">Cargando...</p> : null}
+
+        <div className="overflow-auto rounded-md border">
+          <table className="min-w-full text-sm">
+            <thead className="border-b">
+              <tr>
+                <th className="px-3 py-2 text-left">Municipio</th>
+                <th className="px-3 py-2 text-left">Estado</th>
+                <th className="px-3 py-2 text-left">País</th>
+                <th className="px-3 py-2 text-left">Código</th>
+                <th className="px-3 py-2 text-left">Nombre</th>
+                <th className="px-3 py-2 text-left">Activo</th>
+                <th className="px-3 py-2 text-left">Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              {cityItems.map((item) => (
+                <tr className="border-b" key={item.id}>
+                  <td className="px-3 py-2">{item.municipality ? `${item.municipality.code} - ${item.municipality.name}` : "-"}</td>
+                  <td className="px-3 py-2">{item.municipality?.state ? `${item.municipality.state.code} - ${item.municipality.state.name}` : "-"}</td>
+                  <td className="px-3 py-2">{item.municipality?.state?.country ? `${item.municipality.state.country.code} - ${item.municipality.state.country.name}` : "-"}</td>
+                  <td className="px-3 py-2">{item.code}</td>
+                  <td className="px-3 py-2">{item.name}</td>
+                  <td className="px-3 py-2">{item.isActive ? "Sí" : "No"}</td>
+                  <td className="px-3 py-2">
+                    <div className="flex gap-2">
+                      <button className="rounded border px-2 py-1" onClick={() => setEditingCity({ ...item, municipalityId: item.municipalityId ?? item.municipality?.id ?? "" })} type="button">Editar</button>
+                      <button className="rounded border px-2 py-1" onClick={() => void deleteCity(item.id)} type="button">Eliminar</button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        <div className="flex items-center justify-between text-sm">
+          <span>Total: {cityPagination.total}</span>
+          <div className="flex items-center gap-2">
+            <button className="rounded border px-2 py-1" disabled={cityPagination.page <= 1} onClick={() => setCityPage((prev) => Math.max(1, prev - 1))} type="button">Anterior</button>
+            <span>
+              Página {cityPagination.page} de {Math.max(1, cityPagination.totalPages)}
+            </span>
+            <button className="rounded border px-2 py-1" disabled={cityPagination.page >= cityPagination.totalPages} onClick={() => setCityPage((prev) => prev + 1)} type="button">Siguiente</button>
+          </div>
+        </div>
+
+        {editingCity ? (
+          <form className="grid gap-3 rounded-lg border p-3 md:grid-cols-5" onSubmit={updateCity}>
+            <select className="rounded-md border px-3 py-2" value={editingCity.municipalityId ?? editingCity.municipality?.id ?? ""} onChange={(event) => setEditingCity((prev) => (prev ? { ...prev, municipalityId: event.target.value } : prev))}>
+              <option value="">Seleccione municipio</option>
+              {municipalityOptions.map((municipality) => (
+                <option key={municipality.id} value={municipality.id}>
+                  {municipality.code} - {municipality.name}
+                </option>
+              ))}
+            </select>
+            <input className="rounded-md border px-3 py-2" value={editingCity.code} onChange={(event) => setEditingCity((prev) => (prev ? { ...prev, code: event.target.value } : prev))} />
+            <input className="rounded-md border px-3 py-2" value={editingCity.name} onChange={(event) => setEditingCity((prev) => (prev ? { ...prev, name: event.target.value } : prev))} />
+            <label className="flex items-center gap-2 rounded-md border px-3 py-2 text-sm">
+              <input checked={editingCity.isActive} onChange={(event) => setEditingCity((prev) => (prev ? { ...prev, isActive: event.target.checked } : prev))} type="checkbox" />
+              Activo
+            </label>
+            <div className="flex gap-2">
+              <button className="rounded-md border px-3 py-2 text-sm" type="submit">Guardar</button>
+              <button className="rounded-md border px-3 py-2 text-sm" onClick={() => setEditingCity(null)} type="button">Cancelar</button>
+            </div>
+          </form>
+        ) : null}
+      </section>
+
+      <section className="space-y-4 rounded-xl border p-4">
+        <CatalogHeader title="Desarrollo local" subtitle="CRUD de catálogo CommunityTerritory" />
+        <form className="grid gap-3 md:grid-cols-6" onSubmit={createCommunity}>
+          <select className="rounded-md border px-3 py-2" value={communityForm.cityId} onChange={(event) => setCommunityForm((prev) => ({ ...prev, cityId: event.target.value }))}>
+            <option value="">Seleccione ciudad</option>
+            {cityOptions.map((city) => (
+              <option key={city.id} value={city.id}>
+                {city.code} - {city.name}
+              </option>
+            ))}
+          </select>
+          <input className="rounded-md border px-3 py-2" placeholder="Código" value={communityForm.code} onChange={(event) => setCommunityForm((prev) => ({ ...prev, code: event.target.value }))} />
+          <input className="rounded-md border px-3 py-2" placeholder="Nombre" value={communityForm.name} onChange={(event) => setCommunityForm((prev) => ({ ...prev, name: event.target.value }))} />
+          <select className="rounded-md border px-3 py-2" value={communityForm.type} onChange={(event) => setCommunityForm((prev) => ({ ...prev, type: event.target.value as CommunityType }))}>
+            <option value="COMUNA">COMUNA</option>
+            <option value="TERRITORIO_INDIGENA">TERRITORIO_INDIGENA</option>
+            <option value="COMUNIDAD_CRIOLLA">COMUNIDAD_CRIOLLA</option>
+            <option value="PARROQUIA">PARROQUIA</option>
+          </select>
+          <label className="flex items-center gap-2 rounded-md border px-3 py-2 text-sm">
+            <input checked={communityForm.isActive} onChange={(event) => setCommunityForm((prev) => ({ ...prev, isActive: event.target.checked }))} type="checkbox" />
+            Activo
+          </label>
+          <button className="rounded-md border px-3 py-2 text-sm" disabled={!canCreateCommunity} type="submit">
+            Crear desarrollo
+          </button>
+        </form>
+
+        {cityOptions.length === 0 ? <p className="text-xs text-muted-foreground">No hay ciudades activas cargadas. Debes cargar ciudades para registrar desarrollos locales.</p> : null}
+
+        <input className="w-full rounded-md border px-3 py-2" placeholder="Buscar por código o nombre" value={communitySearch} onChange={(event) => setCommunitySearch(event.target.value)} />
+        {communityError ? <p className="text-sm text-red-600">{communityError}</p> : null}
+        {communityLoading ? <p className="text-sm">Cargando...</p> : null}
+
+        <div className="overflow-auto rounded-md border">
+          <table className="min-w-full text-sm">
+            <thead className="border-b">
+              <tr>
+                <th className="px-3 py-2 text-left">Ciudad</th>
+                <th className="px-3 py-2 text-left">Municipio</th>
+                <th className="px-3 py-2 text-left">Tipo</th>
+                <th className="px-3 py-2 text-left">Código</th>
+                <th className="px-3 py-2 text-left">Nombre</th>
+                <th className="px-3 py-2 text-left">Activo</th>
+                <th className="px-3 py-2 text-left">Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              {communityItems.map((item) => (
+                <tr className="border-b" key={item.id}>
+                  <td className="px-3 py-2">{item.city ? `${item.city.code} - ${item.city.name}` : "-"}</td>
+                  <td className="px-3 py-2">{item.city?.municipality ? `${item.city.municipality.code} - ${item.city.municipality.name}` : "-"}</td>
+                  <td className="px-3 py-2">{item.type}</td>
+                  <td className="px-3 py-2">{item.code}</td>
+                  <td className="px-3 py-2">{item.name}</td>
+                  <td className="px-3 py-2">{item.isActive ? "Sí" : "No"}</td>
+                  <td className="px-3 py-2">
+                    <div className="flex gap-2">
+                      <button className="rounded border px-2 py-1" onClick={() => setEditingCommunity({ ...item, cityId: item.cityId ?? item.city?.id ?? "" })} type="button">Editar</button>
+                      <button className="rounded border px-2 py-1" onClick={() => void deleteCommunity(item.id)} type="button">Eliminar</button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        <div className="flex items-center justify-between text-sm">
+          <span>Total: {communityPagination.total}</span>
+          <div className="flex items-center gap-2">
+            <button className="rounded border px-2 py-1" disabled={communityPagination.page <= 1} onClick={() => setCommunityPage((prev) => Math.max(1, prev - 1))} type="button">Anterior</button>
+            <span>
+              Página {communityPagination.page} de {Math.max(1, communityPagination.totalPages)}
+            </span>
+            <button className="rounded border px-2 py-1" disabled={communityPagination.page >= communityPagination.totalPages} onClick={() => setCommunityPage((prev) => prev + 1)} type="button">Siguiente</button>
+          </div>
+        </div>
+
+        {editingCommunity ? (
+          <form className="grid gap-3 rounded-lg border p-3 md:grid-cols-6" onSubmit={updateCommunity}>
+            <select className="rounded-md border px-3 py-2" value={editingCommunity.cityId ?? editingCommunity.city?.id ?? ""} onChange={(event) => setEditingCommunity((prev) => (prev ? { ...prev, cityId: event.target.value } : prev))}>
+              <option value="">Seleccione ciudad</option>
+              {cityOptions.map((city) => (
+                <option key={city.id} value={city.id}>
+                  {city.code} - {city.name}
+                </option>
+              ))}
+            </select>
+            <input className="rounded-md border px-3 py-2" value={editingCommunity.code} onChange={(event) => setEditingCommunity((prev) => (prev ? { ...prev, code: event.target.value } : prev))} />
+            <input className="rounded-md border px-3 py-2" value={editingCommunity.name} onChange={(event) => setEditingCommunity((prev) => (prev ? { ...prev, name: event.target.value } : prev))} />
+            <select className="rounded-md border px-3 py-2" value={editingCommunity.type} onChange={(event) => setEditingCommunity((prev) => (prev ? { ...prev, type: event.target.value as CommunityType } : prev))}>
+              <option value="COMUNA">COMUNA</option>
+              <option value="TERRITORIO_INDIGENA">TERRITORIO_INDIGENA</option>
+              <option value="COMUNIDAD_CRIOLLA">COMUNIDAD_CRIOLLA</option>
+              <option value="PARROQUIA">PARROQUIA</option>
+            </select>
+            <label className="flex items-center gap-2 rounded-md border px-3 py-2 text-sm">
+              <input checked={editingCommunity.isActive} onChange={(event) => setEditingCommunity((prev) => (prev ? { ...prev, isActive: event.target.checked } : prev))} type="checkbox" />
+              Activo
+            </label>
+            <div className="flex gap-2">
+              <button className="rounded-md border px-3 py-2 text-sm" type="submit">Guardar</button>
+              <button className="rounded-md border px-3 py-2 text-sm" onClick={() => setEditingCommunity(null)} type="button">Cancelar</button>
+            </div>
+          </form>
+        ) : null}
+      </section>
+
+
     </div>
   );
 }

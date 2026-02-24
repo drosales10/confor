@@ -1,5 +1,4 @@
 /* eslint-disable react-hooks/set-state-in-effect */
-/* eslint-disable */
 "use client";
 
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
@@ -590,7 +589,7 @@ export default function ConfiguracionForestalPage() {
   const debouncedLandUseSearch = useDebounce(landUseSearch, 300);
 
   const loadCountryOptions = useCallback(async () => {
-    const allItems = await fetchAllPages<CountryItem>("/api/general-config/countries");
+    const allItems = await fetchAllPages<CountryItem>("/api/forest/config/countries");
     const options = allItems.filter((item) => item.isActive);
     setCountryOptions(options);
     if (options.length === 0) return;
@@ -600,7 +599,7 @@ export default function ConfiguracionForestalPage() {
   }, []);
 
   const loadStateOptions = useCallback(async () => {
-    const allItems = await fetchAllPages<StateDepartmentItem>("/api/general-config/state-departments");
+    const allItems = await fetchAllPages<StateDepartmentItem>("/api/forest/config/state-departments");
     const options = allItems.filter((item) => item.isActive);
     setStateOptions(options);
     if (options.length === 0) return;
@@ -608,7 +607,7 @@ export default function ConfiguracionForestalPage() {
   }, []);
 
   const loadMunicipalityOptions = useCallback(async () => {
-    const allItems = await fetchAllPages<MunicipalityDistrictItem>("/api/general-config/municipality-districts");
+    const allItems = await fetchAllPages<MunicipalityDistrictItem>("/api/forest/config/municipality-districts");
     const options = allItems.filter((item) => item.isActive);
     setMunicipalityOptions(options);
     if (options.length === 0) return;
@@ -616,7 +615,7 @@ export default function ConfiguracionForestalPage() {
   }, []);
 
   const loadCityOptions = useCallback(async () => {
-    const allItems = await fetchAllPages<CityItem>("/api/general-config/cities");
+    const allItems = await fetchAllPages<CityItem>("/api/forest/config/cities");
     const options = allItems.filter((item) => item.isActive);
     setCityOptions(options);
     if (options.length === 0) return;
@@ -649,7 +648,7 @@ export default function ConfiguracionForestalPage() {
     setContinentError(null);
 
     const result = await requestJson<PaginatedResponse<ContinentItem>>(
-      `/api/general-config/continents?page=${continentPage}&limit=${continentPagination.limit}${debouncedContinentSearch ? `&search=${encodeURIComponent(debouncedContinentSearch)}` : ""}`,
+      `/api/forest/config/continents?page=${continentPage}&limit=${continentPagination.limit}${debouncedContinentSearch ? `&search=${encodeURIComponent(debouncedContinentSearch)}` : ""}`,
     );
 
     if (!result.success || !result.data) {
@@ -671,7 +670,7 @@ export default function ConfiguracionForestalPage() {
     setCountryError(null);
 
     const result = await requestJson<PaginatedResponse<CountryItem>>(
-      `/api/general-config/countries?page=${countryPage}&limit=${countryPagination.limit}${debouncedCountrySearch ? `&search=${encodeURIComponent(debouncedCountrySearch)}` : ""}`,
+      `/api/forest/config/countries?page=${countryPage}&limit=${countryPagination.limit}${debouncedCountrySearch ? `&search=${encodeURIComponent(debouncedCountrySearch)}` : ""}`,
     );
 
     if (!result.success || !result.data) {
@@ -690,7 +689,7 @@ export default function ConfiguracionForestalPage() {
     setRegionError(null);
 
     const result = await requestJson<PaginatedResponse<RegionItem>>(
-      `/api/general-config/regions?page=${regionPage}&limit=${regionPagination.limit}${debouncedRegionSearch ? `&search=${encodeURIComponent(debouncedRegionSearch)}` : ""}`,
+      `/api/forest/config/regions?page=${regionPage}&limit=${regionPagination.limit}${debouncedRegionSearch ? `&search=${encodeURIComponent(debouncedRegionSearch)}` : ""}`,
     );
 
     if (!result.success || !result.data) {
@@ -709,7 +708,7 @@ export default function ConfiguracionForestalPage() {
     setStateDepartmentError(null);
 
     const result = await requestJson<PaginatedResponse<StateDepartmentItem>>(
-      `/api/general-config/state-departments?page=${stateDepartmentPage}&limit=${stateDepartmentPagination.limit}${debouncedStateDepartmentSearch ? `&search=${encodeURIComponent(debouncedStateDepartmentSearch)}` : ""}`,
+      `/api/forest/config/state-departments?page=${stateDepartmentPage}&limit=${stateDepartmentPagination.limit}${debouncedStateDepartmentSearch ? `&search=${encodeURIComponent(debouncedStateDepartmentSearch)}` : ""}`,
     );
 
     if (!result.success || !result.data) {
@@ -728,7 +727,7 @@ export default function ConfiguracionForestalPage() {
     setMunicipalityError(null);
 
     const result = await requestJson<PaginatedResponse<MunicipalityDistrictItem>>(
-      `/api/general-config/municipality-districts?page=${municipalityPage}&limit=${municipalityPagination.limit}${debouncedMunicipalitySearch ? `&search=${encodeURIComponent(debouncedMunicipalitySearch)}` : ""}`,
+      `/api/forest/config/municipality-districts?page=${municipalityPage}&limit=${municipalityPagination.limit}${debouncedMunicipalitySearch ? `&search=${encodeURIComponent(debouncedMunicipalitySearch)}` : ""}`,
     );
 
     if (!result.success || !result.data) {
@@ -747,7 +746,7 @@ export default function ConfiguracionForestalPage() {
     setCityError(null);
 
     const result = await requestJson<PaginatedResponse<CityItem>>(
-      `/api/general-config/cities?page=${cityPage}&limit=${cityPagination.limit}${debouncedCitySearch ? `&search=${encodeURIComponent(debouncedCitySearch)}` : ""}`,
+      `/api/forest/config/cities?page=${cityPage}&limit=${cityPagination.limit}${debouncedCitySearch ? `&search=${encodeURIComponent(debouncedCitySearch)}` : ""}`,
     );
 
     if (!result.success || !result.data) {
@@ -766,7 +765,7 @@ export default function ConfiguracionForestalPage() {
     setCommunityError(null);
 
     const result = await requestJson<PaginatedResponse<CommunityTerritoryItem>>(
-      `/api/general-config/community-territories?page=${communityPage}&limit=${communityPagination.limit}${debouncedCommunitySearch ? `&search=${encodeURIComponent(debouncedCommunitySearch)}` : ""}`,
+      `/api/forest/config/community-territories?page=${communityPage}&limit=${communityPagination.limit}${debouncedCommunitySearch ? `&search=${encodeURIComponent(debouncedCommunitySearch)}` : ""}`,
     );
 
     if (!result.success || !result.data) {
@@ -1633,7 +1632,7 @@ export default function ConfiguracionForestalPage() {
     event.preventDefault();
     if (!canCreateContinent) return;
 
-    const result = await requestJson<ContinentItem>("/api/general-config/continents", {
+    const result = await requestJson<ContinentItem>("/api/forest/config/continents", {
       method: "POST",
       body: JSON.stringify(continentForm),
     });
@@ -1653,7 +1652,7 @@ export default function ConfiguracionForestalPage() {
     event.preventDefault();
     if (!editingContinent) return;
 
-    const result = await requestJson<ContinentItem>("/api/general-config/continents", {
+    const result = await requestJson<ContinentItem>("/api/forest/config/continents", {
       method: "PATCH",
       body: JSON.stringify(editingContinent),
     });
@@ -1669,7 +1668,7 @@ export default function ConfiguracionForestalPage() {
   }
 
   async function deleteContinent(id: string) {
-    const result = await requestJson<{ id: string }>("/api/general-config/continents", {
+    const result = await requestJson<{ id: string }>("/api/forest/config/continents", {
       method: "DELETE",
       body: JSON.stringify({ id }),
     });
@@ -1687,7 +1686,7 @@ export default function ConfiguracionForestalPage() {
     event.preventDefault();
     if (!canCreateCountry) return;
 
-    const result = await requestJson<CountryItem>("/api/general-config/countries", {
+    const result = await requestJson<CountryItem>("/api/forest/config/countries", {
       method: "POST",
       body: JSON.stringify(countryForm),
     });
@@ -1713,7 +1712,7 @@ export default function ConfiguracionForestalPage() {
     event.preventDefault();
     if (!editingCountry) return;
 
-    const result = await requestJson<CountryItem>("/api/general-config/countries", {
+    const result = await requestJson<CountryItem>("/api/forest/config/countries", {
       method: "PATCH",
       body: JSON.stringify({
         id: editingCountry.id,
@@ -1736,7 +1735,7 @@ export default function ConfiguracionForestalPage() {
   }
 
   async function deleteCountry(id: string) {
-    const result = await requestJson<{ id: string }>("/api/general-config/countries", {
+    const result = await requestJson<{ id: string }>("/api/forest/config/countries", {
       method: "DELETE",
       body: JSON.stringify({ id }),
     });
@@ -1759,7 +1758,7 @@ export default function ConfiguracionForestalPage() {
     event.preventDefault();
     if (!canCreateRegion) return;
 
-    const result = await requestJson<RegionItem>("/api/general-config/regions", {
+    const result = await requestJson<RegionItem>("/api/forest/config/regions", {
       method: "POST",
       body: JSON.stringify(regionForm),
     });
@@ -1784,7 +1783,7 @@ export default function ConfiguracionForestalPage() {
     event.preventDefault();
     if (!editingRegion) return;
 
-    const result = await requestJson<RegionItem>("/api/general-config/regions", {
+    const result = await requestJson<RegionItem>("/api/forest/config/regions", {
       method: "PATCH",
       body: JSON.stringify({
         id: editingRegion.id,
@@ -1806,7 +1805,7 @@ export default function ConfiguracionForestalPage() {
   }
 
   async function deleteRegion(id: string) {
-    const result = await requestJson<{ id: string }>("/api/general-config/regions", {
+    const result = await requestJson<{ id: string }>("/api/forest/config/regions", {
       method: "DELETE",
       body: JSON.stringify({ id }),
     });
@@ -1824,7 +1823,7 @@ export default function ConfiguracionForestalPage() {
     event.preventDefault();
     if (!canCreateStateDepartment) return;
 
-    const result = await requestJson<StateDepartmentItem>("/api/general-config/state-departments", {
+    const result = await requestJson<StateDepartmentItem>("/api/forest/config/state-departments", {
       method: "POST",
       body: JSON.stringify(stateDepartmentForm),
     });
@@ -1850,7 +1849,7 @@ export default function ConfiguracionForestalPage() {
     event.preventDefault();
     if (!editingStateDepartment) return;
 
-    const result = await requestJson<StateDepartmentItem>("/api/general-config/state-departments", {
+    const result = await requestJson<StateDepartmentItem>("/api/forest/config/state-departments", {
       method: "PATCH",
       body: JSON.stringify({
         id: editingStateDepartment.id,
@@ -1873,7 +1872,7 @@ export default function ConfiguracionForestalPage() {
   }
 
   async function deleteStateDepartment(id: string) {
-    const result = await requestJson<{ id: string }>("/api/general-config/state-departments", {
+    const result = await requestJson<{ id: string }>("/api/forest/config/state-departments", {
       method: "DELETE",
       body: JSON.stringify({ id }),
     });
@@ -1892,7 +1891,7 @@ export default function ConfiguracionForestalPage() {
     event.preventDefault();
     if (!canCreateMunicipality) return;
 
-    const result = await requestJson<MunicipalityDistrictItem>("/api/general-config/municipality-districts", {
+    const result = await requestJson<MunicipalityDistrictItem>("/api/forest/config/municipality-districts", {
       method: "POST",
       body: JSON.stringify(municipalityForm),
     });
@@ -1918,7 +1917,7 @@ export default function ConfiguracionForestalPage() {
     event.preventDefault();
     if (!editingMunicipality) return;
 
-    const result = await requestJson<MunicipalityDistrictItem>("/api/general-config/municipality-districts", {
+    const result = await requestJson<MunicipalityDistrictItem>("/api/forest/config/municipality-districts", {
       method: "PATCH",
       body: JSON.stringify({
         id: editingMunicipality.id,
@@ -1941,7 +1940,7 @@ export default function ConfiguracionForestalPage() {
   }
 
   async function deleteMunicipality(id: string) {
-    const result = await requestJson<{ id: string }>("/api/general-config/municipality-districts", {
+    const result = await requestJson<{ id: string }>("/api/forest/config/municipality-districts", {
       method: "DELETE",
       body: JSON.stringify({ id }),
     });
@@ -1960,7 +1959,7 @@ export default function ConfiguracionForestalPage() {
     event.preventDefault();
     if (!canCreateCity) return;
 
-    const result = await requestJson<CityItem>("/api/general-config/cities", {
+    const result = await requestJson<CityItem>("/api/forest/config/cities", {
       method: "POST",
       body: JSON.stringify(cityForm),
     });
@@ -1986,7 +1985,7 @@ export default function ConfiguracionForestalPage() {
     event.preventDefault();
     if (!editingCity) return;
 
-    const result = await requestJson<CityItem>("/api/general-config/cities", {
+    const result = await requestJson<CityItem>("/api/forest/config/cities", {
       method: "PATCH",
       body: JSON.stringify({
         id: editingCity.id,
@@ -2009,7 +2008,7 @@ export default function ConfiguracionForestalPage() {
   }
 
   async function deleteCity(id: string) {
-    const result = await requestJson<{ id: string }>("/api/general-config/cities", {
+    const result = await requestJson<{ id: string }>("/api/forest/config/cities", {
       method: "DELETE",
       body: JSON.stringify({ id }),
     });
@@ -2028,7 +2027,7 @@ export default function ConfiguracionForestalPage() {
     event.preventDefault();
     if (!canCreateCommunity) return;
 
-    const result = await requestJson<CommunityTerritoryItem>("/api/general-config/community-territories", {
+    const result = await requestJson<CommunityTerritoryItem>("/api/forest/config/community-territories", {
       method: "POST",
       body: JSON.stringify(communityForm),
     });
@@ -2054,7 +2053,7 @@ export default function ConfiguracionForestalPage() {
     event.preventDefault();
     if (!editingCommunity) return;
 
-    const result = await requestJson<CommunityTerritoryItem>("/api/general-config/community-territories", {
+    const result = await requestJson<CommunityTerritoryItem>("/api/forest/config/community-territories", {
       method: "PATCH",
       body: JSON.stringify({
         id: editingCommunity.id,
@@ -2077,7 +2076,7 @@ export default function ConfiguracionForestalPage() {
   }
 
   async function deleteCommunity(id: string) {
-    const result = await requestJson<{ id: string }>("/api/general-config/community-territories", {
+    const result = await requestJson<{ id: string }>("/api/forest/config/community-territories", {
       method: "DELETE",
       body: JSON.stringify({ id }),
     });
@@ -2671,6 +2670,659 @@ export default function ConfiguracionForestalPage() {
             <div className="flex gap-2">
               <button className="rounded-md border px-3 py-2 text-sm" type="submit">Guardar</button>
               <button className="rounded-md border px-3 py-2 text-sm" onClick={() => setEditingIma(null)} type="button">Cancelar</button>
+            </div>
+          </form>
+        ) : null}
+      </section>
+
+      <section className="space-y-4 rounded-xl border p-4">
+        <CatalogHeader title="Continentes" subtitle="CRUD de catálogo Continent" />
+        <form className="grid gap-3 md:grid-cols-4" onSubmit={createContinent}>
+          <input className="rounded-md border px-3 py-2" placeholder="Código" value={continentForm.code} onChange={(event) => setContinentForm((prev) => ({ ...prev, code: event.target.value }))} />
+          <input className="rounded-md border px-3 py-2 md:col-span-2" placeholder="Nombre" value={continentForm.name} onChange={(event) => setContinentForm((prev) => ({ ...prev, name: event.target.value }))} />
+          <label className="flex items-center gap-2 rounded-md border px-3 py-2 text-sm">
+            <input checked={continentForm.isActive} onChange={(event) => setContinentForm((prev) => ({ ...prev, isActive: event.target.checked }))} type="checkbox" />
+            Activo
+          </label>
+          <button className="rounded-md border px-3 py-2 text-sm" disabled={!canCreateContinent} type="submit">
+            Crear continente
+          </button>
+        </form>
+
+        <input className="w-full rounded-md border px-3 py-2" placeholder="Buscar por código o nombre" value={continentSearch} onChange={(event) => setContinentSearch(event.target.value)} />
+        {continentError ? <p className="text-sm text-red-600">{continentError}</p> : null}
+        {continentLoading ? <p className="text-sm">Cargando...</p> : null}
+
+        <div className="overflow-auto rounded-md border">
+          <table className="min-w-full text-sm">
+            <thead className="border-b">
+              <tr>
+                <th className="px-3 py-2 text-left">Código</th>
+                <th className="px-3 py-2 text-left">Nombre</th>
+                <th className="px-3 py-2 text-left">Activo</th>
+                <th className="px-3 py-2 text-left">Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              {continentItems.map((item) => (
+                <tr className="border-b" key={item.id}>
+                  <td className="px-3 py-2">{item.code}</td>
+                  <td className="px-3 py-2">{item.name}</td>
+                  <td className="px-3 py-2">{item.isActive ? "Sí" : "No"}</td>
+                  <td className="px-3 py-2">
+                    <div className="flex gap-2">
+                      <button className="rounded border px-2 py-1" onClick={() => setEditingContinent(item)} type="button">Editar</button>
+                      <button className="rounded border px-2 py-1" onClick={() => void deleteContinent(item.id)} type="button">Eliminar</button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        <div className="flex items-center justify-between text-sm">
+          <span>Total: {continentPagination.total}</span>
+          <div className="flex items-center gap-2">
+            <button className="rounded border px-2 py-1" disabled={continentPagination.page <= 1} onClick={() => setContinentPage((prev) => Math.max(1, prev - 1))} type="button">Anterior</button>
+            <span>
+              Página {continentPagination.page} de {Math.max(1, continentPagination.totalPages)}
+            </span>
+            <button className="rounded border px-2 py-1" disabled={continentPagination.page >= continentPagination.totalPages} onClick={() => setContinentPage((prev) => prev + 1)} type="button">Siguiente</button>
+          </div>
+        </div>
+
+        {editingContinent ? (
+          <form className="grid gap-3 rounded-lg border p-3 md:grid-cols-4" onSubmit={updateContinent}>
+            <input className="rounded-md border px-3 py-2" value={editingContinent.code} onChange={(event) => setEditingContinent((prev) => (prev ? { ...prev, code: event.target.value } : prev))} />
+            <input className="rounded-md border px-3 py-2 md:col-span-2" value={editingContinent.name} onChange={(event) => setEditingContinent((prev) => (prev ? { ...prev, name: event.target.value } : prev))} />
+            <label className="flex items-center gap-2 rounded-md border px-3 py-2 text-sm">
+              <input checked={editingContinent.isActive} onChange={(event) => setEditingContinent((prev) => (prev ? { ...prev, isActive: event.target.checked } : prev))} type="checkbox" />
+              Activo
+            </label>
+            <div className="flex gap-2">
+              <button className="rounded-md border px-3 py-2 text-sm" type="submit">Guardar</button>
+              <button className="rounded-md border px-3 py-2 text-sm" onClick={() => setEditingContinent(null)} type="button">Cancelar</button>
+            </div>
+          </form>
+        ) : null}
+      </section>
+
+      <section className="space-y-4 rounded-xl border p-4">
+        <CatalogHeader title="Países" subtitle="CRUD de catálogo Country" />
+        <form className="grid gap-3 md:grid-cols-5" onSubmit={createCountry}>
+          <select className="rounded-md border px-3 py-2" value={countryForm.continentId} onChange={(event) => setCountryForm((prev) => ({ ...prev, continentId: event.target.value }))}>
+            <option value="">Seleccione continente</option>
+            {activeContinents.map((continent) => (
+              <option key={continent.id} value={continent.id}>
+                {continent.code} - {continent.name}
+              </option>
+            ))}
+          </select>
+          <input className="rounded-md border px-3 py-2" placeholder="Código" value={countryForm.code} onChange={(event) => setCountryForm((prev) => ({ ...prev, code: event.target.value }))} />
+          <input className="rounded-md border px-3 py-2" placeholder="Nombre" value={countryForm.name} onChange={(event) => setCountryForm((prev) => ({ ...prev, name: event.target.value }))} />
+          <label className="flex items-center gap-2 rounded-md border px-3 py-2 text-sm">
+            <input checked={countryForm.isActive} onChange={(event) => setCountryForm((prev) => ({ ...prev, isActive: event.target.checked }))} type="checkbox" />
+            Activo
+          </label>
+          <button className="rounded-md border px-3 py-2 text-sm" disabled={!canCreateCountry} type="submit">
+            Crear país
+          </button>
+        </form>
+
+        {activeContinents.length === 0 ? <p className="text-xs text-muted-foreground">No hay continentes activos cargados. Debes cargar continentes para registrar países.</p> : null}
+
+        <input className="w-full rounded-md border px-3 py-2" placeholder="Buscar por código o nombre" value={countrySearch} onChange={(event) => setCountrySearch(event.target.value)} />
+        {countryError ? <p className="text-sm text-red-600">{countryError}</p> : null}
+        {countryLoading ? <p className="text-sm">Cargando...</p> : null}
+
+        <div className="overflow-auto rounded-md border">
+          <table className="min-w-full text-sm">
+            <thead className="border-b">
+              <tr>
+                <th className="px-3 py-2 text-left">Continente</th>
+                <th className="px-3 py-2 text-left">Código</th>
+                <th className="px-3 py-2 text-left">Nombre</th>
+                <th className="px-3 py-2 text-left">Activo</th>
+                <th className="px-3 py-2 text-left">Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              {countryItems.map((item) => (
+                <tr className="border-b" key={item.id}>
+                  <td className="px-3 py-2">{item.continent ? `${item.continent.code} - ${item.continent.name}` : "-"}</td>
+                  <td className="px-3 py-2">{item.code}</td>
+                  <td className="px-3 py-2">{item.name}</td>
+                  <td className="px-3 py-2">{item.isActive ? "Sí" : "No"}</td>
+                  <td className="px-3 py-2">
+                    <div className="flex gap-2">
+                      <button className="rounded border px-2 py-1" onClick={() => setEditingCountry({ ...item, continentId: item.continentId ?? item.continent?.id ?? "" })} type="button">Editar</button>
+                      <button className="rounded border px-2 py-1" onClick={() => void deleteCountry(item.id)} type="button">Eliminar</button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        <div className="flex items-center justify-between text-sm">
+          <span>Total: {countryPagination.total}</span>
+          <div className="flex items-center gap-2">
+            <button className="rounded border px-2 py-1" disabled={countryPagination.page <= 1} onClick={() => setCountryPage((prev) => Math.max(1, prev - 1))} type="button">Anterior</button>
+            <span>
+              Página {countryPagination.page} de {Math.max(1, countryPagination.totalPages)}
+            </span>
+            <button className="rounded border px-2 py-1" disabled={countryPagination.page >= countryPagination.totalPages} onClick={() => setCountryPage((prev) => prev + 1)} type="button">Siguiente</button>
+          </div>
+        </div>
+
+        {editingCountry ? (
+          <form className="grid gap-3 rounded-lg border p-3 md:grid-cols-5" onSubmit={updateCountry}>
+            <select className="rounded-md border px-3 py-2" value={editingCountry.continentId ?? editingCountry.continent?.id ?? ""} onChange={(event) => setEditingCountry((prev) => (prev ? { ...prev, continentId: event.target.value } : prev))}>
+              <option value="">Seleccione continente</option>
+              {activeContinents.map((continent) => (
+                <option key={continent.id} value={continent.id}>
+                  {continent.code} - {continent.name}
+                </option>
+              ))}
+            </select>
+            <input className="rounded-md border px-3 py-2" value={editingCountry.code} onChange={(event) => setEditingCountry((prev) => (prev ? { ...prev, code: event.target.value } : prev))} />
+            <input className="rounded-md border px-3 py-2" value={editingCountry.name} onChange={(event) => setEditingCountry((prev) => (prev ? { ...prev, name: event.target.value } : prev))} />
+            <label className="flex items-center gap-2 rounded-md border px-3 py-2 text-sm">
+              <input checked={editingCountry.isActive} onChange={(event) => setEditingCountry((prev) => (prev ? { ...prev, isActive: event.target.checked } : prev))} type="checkbox" />
+              Activo
+            </label>
+            <div className="flex gap-2">
+              <button className="rounded-md border px-3 py-2 text-sm" type="submit">Guardar</button>
+              <button className="rounded-md border px-3 py-2 text-sm" onClick={() => setEditingCountry(null)} type="button">Cancelar</button>
+            </div>
+          </form>
+        ) : null}
+      </section>
+
+      <section className="space-y-4 rounded-xl border p-4">
+        <CatalogHeader title="Regiones" subtitle="CRUD de catálogo Region" />
+        <form className="grid gap-3 md:grid-cols-5" onSubmit={createRegion}>
+          <select className="rounded-md border px-3 py-2" value={regionForm.countryId} onChange={(event) => setRegionForm((prev) => ({ ...prev, countryId: event.target.value }))}>
+            <option value="">Seleccione país</option>
+            {countryOptions.map((country) => (
+              <option key={country.id} value={country.id}>
+                {country.code} - {country.name}
+              </option>
+            ))}
+          </select>
+          <input className="rounded-md border px-3 py-2" placeholder="Código" value={regionForm.code} onChange={(event) => setRegionForm((prev) => ({ ...prev, code: event.target.value }))} />
+          <input className="rounded-md border px-3 py-2" placeholder="Nombre" value={regionForm.name} onChange={(event) => setRegionForm((prev) => ({ ...prev, name: event.target.value }))} />
+          <label className="flex items-center gap-2 rounded-md border px-3 py-2 text-sm">
+            <input checked={regionForm.isActive} onChange={(event) => setRegionForm((prev) => ({ ...prev, isActive: event.target.checked }))} type="checkbox" />
+            Activo
+          </label>
+          <button className="rounded-md border px-3 py-2 text-sm" disabled={!canCreateRegion} type="submit">
+            Crear región
+          </button>
+        </form>
+
+        {countryOptions.length === 0 ? <p className="text-xs text-muted-foreground">No hay países activos cargados. Debes cargar países para registrar regiones.</p> : null}
+
+        <input className="w-full rounded-md border px-3 py-2" placeholder="Buscar por código o nombre" value={regionSearch} onChange={(event) => setRegionSearch(event.target.value)} />
+        {regionError ? <p className="text-sm text-red-600">{regionError}</p> : null}
+        {regionLoading ? <p className="text-sm">Cargando...</p> : null}
+
+        <div className="overflow-auto rounded-md border">
+          <table className="min-w-full text-sm">
+            <thead className="border-b">
+              <tr>
+                <th className="px-3 py-2 text-left">País</th>
+                <th className="px-3 py-2 text-left">Código</th>
+                <th className="px-3 py-2 text-left">Nombre</th>
+                <th className="px-3 py-2 text-left">Activo</th>
+                <th className="px-3 py-2 text-left">Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              {regionItems.map((item) => (
+                <tr className="border-b" key={item.id}>
+                  <td className="px-3 py-2">{item.country ? `${item.country.code} - ${item.country.name}` : "-"}</td>
+                  <td className="px-3 py-2">{item.code}</td>
+                  <td className="px-3 py-2">{item.name}</td>
+                  <td className="px-3 py-2">{item.isActive ? "Sí" : "No"}</td>
+                  <td className="px-3 py-2">
+                    <div className="flex gap-2">
+                      <button className="rounded border px-2 py-1" onClick={() => setEditingRegion({ ...item, countryId: item.countryId ?? item.country?.id ?? "" })} type="button">Editar</button>
+                      <button className="rounded border px-2 py-1" onClick={() => void deleteRegion(item.id)} type="button">Eliminar</button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        <div className="flex items-center justify-between text-sm">
+          <span>Total: {regionPagination.total}</span>
+          <div className="flex items-center gap-2">
+            <button className="rounded border px-2 py-1" disabled={regionPagination.page <= 1} onClick={() => setRegionPage((prev) => Math.max(1, prev - 1))} type="button">Anterior</button>
+            <span>
+              Página {regionPagination.page} de {Math.max(1, regionPagination.totalPages)}
+            </span>
+            <button className="rounded border px-2 py-1" disabled={regionPagination.page >= regionPagination.totalPages} onClick={() => setRegionPage((prev) => prev + 1)} type="button">Siguiente</button>
+          </div>
+        </div>
+
+        {editingRegion ? (
+          <form className="grid gap-3 rounded-lg border p-3 md:grid-cols-5" onSubmit={updateRegion}>
+            <select className="rounded-md border px-3 py-2" value={editingRegion.countryId ?? editingRegion.country?.id ?? ""} onChange={(event) => setEditingRegion((prev) => (prev ? { ...prev, countryId: event.target.value } : prev))}>
+              <option value="">Seleccione país</option>
+              {countryOptions.map((country) => (
+                <option key={country.id} value={country.id}>
+                  {country.code} - {country.name}
+                </option>
+              ))}
+            </select>
+            <input className="rounded-md border px-3 py-2" value={editingRegion.code} onChange={(event) => setEditingRegion((prev) => (prev ? { ...prev, code: event.target.value } : prev))} />
+            <input className="rounded-md border px-3 py-2" value={editingRegion.name} onChange={(event) => setEditingRegion((prev) => (prev ? { ...prev, name: event.target.value } : prev))} />
+            <label className="flex items-center gap-2 rounded-md border px-3 py-2 text-sm">
+              <input checked={editingRegion.isActive} onChange={(event) => setEditingRegion((prev) => (prev ? { ...prev, isActive: event.target.checked } : prev))} type="checkbox" />
+              Activo
+            </label>
+            <div className="flex gap-2">
+              <button className="rounded-md border px-3 py-2 text-sm" type="submit">Guardar</button>
+              <button className="rounded-md border px-3 py-2 text-sm" onClick={() => setEditingRegion(null)} type="button">Cancelar</button>
+            </div>
+          </form>
+        ) : null}
+      </section>
+
+      <section className="space-y-4 rounded-xl border p-4">
+        <CatalogHeader title="Estados / Departamentos" subtitle="CRUD de catálogo StateDepartment" />
+        <form className="grid gap-3 md:grid-cols-5" onSubmit={createStateDepartment}>
+          <select className="rounded-md border px-3 py-2" value={stateDepartmentForm.countryId} onChange={(event) => setStateDepartmentForm((prev) => ({ ...prev, countryId: event.target.value }))}>
+            <option value="">Seleccione país</option>
+            {countryOptions.map((country) => (
+              <option key={country.id} value={country.id}>
+                {country.code} - {country.name}
+              </option>
+            ))}
+          </select>
+          <input className="rounded-md border px-3 py-2" placeholder="Código" value={stateDepartmentForm.code} onChange={(event) => setStateDepartmentForm((prev) => ({ ...prev, code: event.target.value }))} />
+          <input className="rounded-md border px-3 py-2" placeholder="Nombre" value={stateDepartmentForm.name} onChange={(event) => setStateDepartmentForm((prev) => ({ ...prev, name: event.target.value }))} />
+          <label className="flex items-center gap-2 rounded-md border px-3 py-2 text-sm">
+            <input checked={stateDepartmentForm.isActive} onChange={(event) => setStateDepartmentForm((prev) => ({ ...prev, isActive: event.target.checked }))} type="checkbox" />
+            Activo
+          </label>
+          <button className="rounded-md border px-3 py-2 text-sm" disabled={!canCreateStateDepartment} type="submit">
+            Crear estado
+          </button>
+        </form>
+
+        {countryOptions.length === 0 ? <p className="text-xs text-muted-foreground">No hay países activos cargados. Debes cargar países para registrar estados/departamentos.</p> : null}
+
+        <input className="w-full rounded-md border px-3 py-2" placeholder="Buscar por código o nombre" value={stateDepartmentSearch} onChange={(event) => setStateDepartmentSearch(event.target.value)} />
+        {stateDepartmentError ? <p className="text-sm text-red-600">{stateDepartmentError}</p> : null}
+        {stateDepartmentLoading ? <p className="text-sm">Cargando...</p> : null}
+
+        <div className="overflow-auto rounded-md border">
+          <table className="min-w-full text-sm">
+            <thead className="border-b">
+              <tr>
+                <th className="px-3 py-2 text-left">País</th>
+                <th className="px-3 py-2 text-left">Código</th>
+                <th className="px-3 py-2 text-left">Nombre</th>
+                <th className="px-3 py-2 text-left">Activo</th>
+                <th className="px-3 py-2 text-left">Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              {stateDepartmentItems.map((item) => (
+                <tr className="border-b" key={item.id}>
+                  <td className="px-3 py-2">{item.country ? `${item.country.code} - ${item.country.name}` : "-"}</td>
+                  <td className="px-3 py-2">{item.code}</td>
+                  <td className="px-3 py-2">{item.name}</td>
+                  <td className="px-3 py-2">{item.isActive ? "Sí" : "No"}</td>
+                  <td className="px-3 py-2">
+                    <div className="flex gap-2">
+                      <button className="rounded border px-2 py-1" onClick={() => setEditingStateDepartment({ ...item, countryId: item.countryId ?? item.country?.id ?? "" })} type="button">Editar</button>
+                      <button className="rounded border px-2 py-1" onClick={() => void deleteStateDepartment(item.id)} type="button">Eliminar</button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        <div className="flex items-center justify-between text-sm">
+          <span>Total: {stateDepartmentPagination.total}</span>
+          <div className="flex items-center gap-2">
+            <button className="rounded border px-2 py-1" disabled={stateDepartmentPagination.page <= 1} onClick={() => setStateDepartmentPage((prev) => Math.max(1, prev - 1))} type="button">Anterior</button>
+            <span>
+              Página {stateDepartmentPagination.page} de {Math.max(1, stateDepartmentPagination.totalPages)}
+            </span>
+            <button className="rounded border px-2 py-1" disabled={stateDepartmentPagination.page >= stateDepartmentPagination.totalPages} onClick={() => setStateDepartmentPage((prev) => prev + 1)} type="button">Siguiente</button>
+          </div>
+        </div>
+
+        {editingStateDepartment ? (
+          <form className="grid gap-3 rounded-lg border p-3 md:grid-cols-5" onSubmit={updateStateDepartment}>
+            <select className="rounded-md border px-3 py-2" value={editingStateDepartment.countryId ?? editingStateDepartment.country?.id ?? ""} onChange={(event) => setEditingStateDepartment((prev) => (prev ? { ...prev, countryId: event.target.value } : prev))}>
+              <option value="">Seleccione país</option>
+              {countryOptions.map((country) => (
+                <option key={country.id} value={country.id}>
+                  {country.code} - {country.name}
+                </option>
+              ))}
+            </select>
+            <input className="rounded-md border px-3 py-2" value={editingStateDepartment.code} onChange={(event) => setEditingStateDepartment((prev) => (prev ? { ...prev, code: event.target.value } : prev))} />
+            <input className="rounded-md border px-3 py-2" value={editingStateDepartment.name} onChange={(event) => setEditingStateDepartment((prev) => (prev ? { ...prev, name: event.target.value } : prev))} />
+            <label className="flex items-center gap-2 rounded-md border px-3 py-2 text-sm">
+              <input checked={editingStateDepartment.isActive} onChange={(event) => setEditingStateDepartment((prev) => (prev ? { ...prev, isActive: event.target.checked } : prev))} type="checkbox" />
+              Activo
+            </label>
+            <div className="flex gap-2">
+              <button className="rounded-md border px-3 py-2 text-sm" type="submit">Guardar</button>
+              <button className="rounded-md border px-3 py-2 text-sm" onClick={() => setEditingStateDepartment(null)} type="button">Cancelar</button>
+            </div>
+          </form>
+        ) : null}
+      </section>
+
+      <section className="space-y-4 rounded-xl border p-4">
+        <CatalogHeader title="Municipios / Distritos" subtitle="CRUD de catálogo MunicipalityDistrict" />
+        <form className="grid gap-3 md:grid-cols-5" onSubmit={createMunicipality}>
+          <select className="rounded-md border px-3 py-2" value={municipalityForm.stateId} onChange={(event) => setMunicipalityForm((prev) => ({ ...prev, stateId: event.target.value }))}>
+            <option value="">Seleccione estado</option>
+            {stateOptions.map((state) => (
+              <option key={state.id} value={state.id}>
+                {state.code} - {state.name}
+              </option>
+            ))}
+          </select>
+          <input className="rounded-md border px-3 py-2" placeholder="Código" value={municipalityForm.code} onChange={(event) => setMunicipalityForm((prev) => ({ ...prev, code: event.target.value }))} />
+          <input className="rounded-md border px-3 py-2" placeholder="Nombre" value={municipalityForm.name} onChange={(event) => setMunicipalityForm((prev) => ({ ...prev, name: event.target.value }))} />
+          <label className="flex items-center gap-2 rounded-md border px-3 py-2 text-sm">
+            <input checked={municipalityForm.isActive} onChange={(event) => setMunicipalityForm((prev) => ({ ...prev, isActive: event.target.checked }))} type="checkbox" />
+            Activo
+          </label>
+          <button className="rounded-md border px-3 py-2 text-sm" disabled={!canCreateMunicipality} type="submit">
+            Crear municipio
+          </button>
+        </form>
+
+        {stateOptions.length === 0 ? <p className="text-xs text-muted-foreground">No hay estados activos cargados. Debes cargar estados/departamentos para registrar municipios.</p> : null}
+
+        <input className="w-full rounded-md border px-3 py-2" placeholder="Buscar por código o nombre" value={municipalitySearch} onChange={(event) => setMunicipalitySearch(event.target.value)} />
+        {municipalityError ? <p className="text-sm text-red-600">{municipalityError}</p> : null}
+        {municipalityLoading ? <p className="text-sm">Cargando...</p> : null}
+
+        <div className="overflow-auto rounded-md border">
+          <table className="min-w-full text-sm">
+            <thead className="border-b">
+              <tr>
+                <th className="px-3 py-2 text-left">Estado</th>
+                <th className="px-3 py-2 text-left">País</th>
+                <th className="px-3 py-2 text-left">Código</th>
+                <th className="px-3 py-2 text-left">Nombre</th>
+                <th className="px-3 py-2 text-left">Activo</th>
+                <th className="px-3 py-2 text-left">Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              {municipalityItems.map((item) => (
+                <tr className="border-b" key={item.id}>
+                  <td className="px-3 py-2">{item.state ? `${item.state.code} - ${item.state.name}` : "-"}</td>
+                  <td className="px-3 py-2">{item.state?.country ? `${item.state.country.code} - ${item.state.country.name}` : "-"}</td>
+                  <td className="px-3 py-2">{item.code}</td>
+                  <td className="px-3 py-2">{item.name}</td>
+                  <td className="px-3 py-2">{item.isActive ? "Sí" : "No"}</td>
+                  <td className="px-3 py-2">
+                    <div className="flex gap-2">
+                      <button className="rounded border px-2 py-1" onClick={() => setEditingMunicipality({ ...item, stateId: item.stateId ?? item.state?.id ?? "" })} type="button">Editar</button>
+                      <button className="rounded border px-2 py-1" onClick={() => void deleteMunicipality(item.id)} type="button">Eliminar</button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        <div className="flex items-center justify-between text-sm">
+          <span>Total: {municipalityPagination.total}</span>
+          <div className="flex items-center gap-2">
+            <button className="rounded border px-2 py-1" disabled={municipalityPagination.page <= 1} onClick={() => setMunicipalityPage((prev) => Math.max(1, prev - 1))} type="button">Anterior</button>
+            <span>
+              Página {municipalityPagination.page} de {Math.max(1, municipalityPagination.totalPages)}
+            </span>
+            <button className="rounded border px-2 py-1" disabled={municipalityPagination.page >= municipalityPagination.totalPages} onClick={() => setMunicipalityPage((prev) => prev + 1)} type="button">Siguiente</button>
+          </div>
+        </div>
+
+        {editingMunicipality ? (
+          <form className="grid gap-3 rounded-lg border p-3 md:grid-cols-5" onSubmit={updateMunicipality}>
+            <select className="rounded-md border px-3 py-2" value={editingMunicipality.stateId ?? editingMunicipality.state?.id ?? ""} onChange={(event) => setEditingMunicipality((prev) => (prev ? { ...prev, stateId: event.target.value } : prev))}>
+              <option value="">Seleccione estado</option>
+              {stateOptions.map((state) => (
+                <option key={state.id} value={state.id}>
+                  {state.code} - {state.name}
+                </option>
+              ))}
+            </select>
+            <input className="rounded-md border px-3 py-2" value={editingMunicipality.code} onChange={(event) => setEditingMunicipality((prev) => (prev ? { ...prev, code: event.target.value } : prev))} />
+            <input className="rounded-md border px-3 py-2" value={editingMunicipality.name} onChange={(event) => setEditingMunicipality((prev) => (prev ? { ...prev, name: event.target.value } : prev))} />
+            <label className="flex items-center gap-2 rounded-md border px-3 py-2 text-sm">
+              <input checked={editingMunicipality.isActive} onChange={(event) => setEditingMunicipality((prev) => (prev ? { ...prev, isActive: event.target.checked } : prev))} type="checkbox" />
+              Activo
+            </label>
+            <div className="flex gap-2">
+              <button className="rounded-md border px-3 py-2 text-sm" type="submit">Guardar</button>
+              <button className="rounded-md border px-3 py-2 text-sm" onClick={() => setEditingMunicipality(null)} type="button">Cancelar</button>
+            </div>
+          </form>
+        ) : null}
+      </section>
+
+      <section className="space-y-4 rounded-xl border p-4">
+        <CatalogHeader title="Ciudades" subtitle="CRUD de catálogo City" />
+        <form className="grid gap-3 md:grid-cols-5" onSubmit={createCity}>
+          <select className="rounded-md border px-3 py-2" value={cityForm.municipalityId} onChange={(event) => setCityForm((prev) => ({ ...prev, municipalityId: event.target.value }))}>
+            <option value="">Seleccione municipio</option>
+            {municipalityOptions.map((municipality) => (
+              <option key={municipality.id} value={municipality.id}>
+                {municipality.code} - {municipality.name}
+              </option>
+            ))}
+          </select>
+          <input className="rounded-md border px-3 py-2" placeholder="Código" value={cityForm.code} onChange={(event) => setCityForm((prev) => ({ ...prev, code: event.target.value }))} />
+          <input className="rounded-md border px-3 py-2" placeholder="Nombre" value={cityForm.name} onChange={(event) => setCityForm((prev) => ({ ...prev, name: event.target.value }))} />
+          <label className="flex items-center gap-2 rounded-md border px-3 py-2 text-sm">
+            <input checked={cityForm.isActive} onChange={(event) => setCityForm((prev) => ({ ...prev, isActive: event.target.checked }))} type="checkbox" />
+            Activo
+          </label>
+          <button className="rounded-md border px-3 py-2 text-sm" disabled={!canCreateCity} type="submit">
+            Crear ciudad
+          </button>
+        </form>
+
+        {municipalityOptions.length === 0 ? <p className="text-xs text-muted-foreground">No hay municipios activos cargados. Debes cargar municipios para registrar ciudades.</p> : null}
+
+        <input className="w-full rounded-md border px-3 py-2" placeholder="Buscar por código o nombre" value={citySearch} onChange={(event) => setCitySearch(event.target.value)} />
+        {cityError ? <p className="text-sm text-red-600">{cityError}</p> : null}
+        {cityLoading ? <p className="text-sm">Cargando...</p> : null}
+
+        <div className="overflow-auto rounded-md border">
+          <table className="min-w-full text-sm">
+            <thead className="border-b">
+              <tr>
+                <th className="px-3 py-2 text-left">Municipio</th>
+                <th className="px-3 py-2 text-left">Estado</th>
+                <th className="px-3 py-2 text-left">País</th>
+                <th className="px-3 py-2 text-left">Código</th>
+                <th className="px-3 py-2 text-left">Nombre</th>
+                <th className="px-3 py-2 text-left">Activo</th>
+                <th className="px-3 py-2 text-left">Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              {cityItems.map((item) => (
+                <tr className="border-b" key={item.id}>
+                  <td className="px-3 py-2">{item.municipality ? `${item.municipality.code} - ${item.municipality.name}` : "-"}</td>
+                  <td className="px-3 py-2">{item.municipality?.state ? `${item.municipality.state.code} - ${item.municipality.state.name}` : "-"}</td>
+                  <td className="px-3 py-2">{item.municipality?.state?.country ? `${item.municipality.state.country.code} - ${item.municipality.state.country.name}` : "-"}</td>
+                  <td className="px-3 py-2">{item.code}</td>
+                  <td className="px-3 py-2">{item.name}</td>
+                  <td className="px-3 py-2">{item.isActive ? "Sí" : "No"}</td>
+                  <td className="px-3 py-2">
+                    <div className="flex gap-2">
+                      <button className="rounded border px-2 py-1" onClick={() => setEditingCity({ ...item, municipalityId: item.municipalityId ?? item.municipality?.id ?? "" })} type="button">Editar</button>
+                      <button className="rounded border px-2 py-1" onClick={() => void deleteCity(item.id)} type="button">Eliminar</button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        <div className="flex items-center justify-between text-sm">
+          <span>Total: {cityPagination.total}</span>
+          <div className="flex items-center gap-2">
+            <button className="rounded border px-2 py-1" disabled={cityPagination.page <= 1} onClick={() => setCityPage((prev) => Math.max(1, prev - 1))} type="button">Anterior</button>
+            <span>
+              Página {cityPagination.page} de {Math.max(1, cityPagination.totalPages)}
+            </span>
+            <button className="rounded border px-2 py-1" disabled={cityPagination.page >= cityPagination.totalPages} onClick={() => setCityPage((prev) => prev + 1)} type="button">Siguiente</button>
+          </div>
+        </div>
+
+        {editingCity ? (
+          <form className="grid gap-3 rounded-lg border p-3 md:grid-cols-5" onSubmit={updateCity}>
+            <select className="rounded-md border px-3 py-2" value={editingCity.municipalityId ?? editingCity.municipality?.id ?? ""} onChange={(event) => setEditingCity((prev) => (prev ? { ...prev, municipalityId: event.target.value } : prev))}>
+              <option value="">Seleccione municipio</option>
+              {municipalityOptions.map((municipality) => (
+                <option key={municipality.id} value={municipality.id}>
+                  {municipality.code} - {municipality.name}
+                </option>
+              ))}
+            </select>
+            <input className="rounded-md border px-3 py-2" value={editingCity.code} onChange={(event) => setEditingCity((prev) => (prev ? { ...prev, code: event.target.value } : prev))} />
+            <input className="rounded-md border px-3 py-2" value={editingCity.name} onChange={(event) => setEditingCity((prev) => (prev ? { ...prev, name: event.target.value } : prev))} />
+            <label className="flex items-center gap-2 rounded-md border px-3 py-2 text-sm">
+              <input checked={editingCity.isActive} onChange={(event) => setEditingCity((prev) => (prev ? { ...prev, isActive: event.target.checked } : prev))} type="checkbox" />
+              Activo
+            </label>
+            <div className="flex gap-2">
+              <button className="rounded-md border px-3 py-2 text-sm" type="submit">Guardar</button>
+              <button className="rounded-md border px-3 py-2 text-sm" onClick={() => setEditingCity(null)} type="button">Cancelar</button>
+            </div>
+          </form>
+        ) : null}
+      </section>
+
+      <section className="space-y-4 rounded-xl border p-4">
+        <CatalogHeader title="Desarrollo local" subtitle="CRUD de catálogo CommunityTerritory" />
+        <form className="grid gap-3 md:grid-cols-6" onSubmit={createCommunity}>
+          <select className="rounded-md border px-3 py-2" value={communityForm.cityId} onChange={(event) => setCommunityForm((prev) => ({ ...prev, cityId: event.target.value }))}>
+            <option value="">Seleccione ciudad</option>
+            {cityOptions.map((city) => (
+              <option key={city.id} value={city.id}>
+                {city.code} - {city.name}
+              </option>
+            ))}
+          </select>
+          <input className="rounded-md border px-3 py-2" placeholder="Código" value={communityForm.code} onChange={(event) => setCommunityForm((prev) => ({ ...prev, code: event.target.value }))} />
+          <input className="rounded-md border px-3 py-2" placeholder="Nombre" value={communityForm.name} onChange={(event) => setCommunityForm((prev) => ({ ...prev, name: event.target.value }))} />
+          <select className="rounded-md border px-3 py-2" value={communityForm.type} onChange={(event) => setCommunityForm((prev) => ({ ...prev, type: event.target.value as CommunityType }))}>
+            <option value="COMUNA">COMUNA</option>
+            <option value="TERRITORIO_INDIGENA">TERRITORIO_INDIGENA</option>
+            <option value="COMUNIDAD_CRIOLLA">COMUNIDAD_CRIOLLA</option>
+            <option value="PARROQUIA">PARROQUIA</option>
+          </select>
+          <label className="flex items-center gap-2 rounded-md border px-3 py-2 text-sm">
+            <input checked={communityForm.isActive} onChange={(event) => setCommunityForm((prev) => ({ ...prev, isActive: event.target.checked }))} type="checkbox" />
+            Activo
+          </label>
+          <button className="rounded-md border px-3 py-2 text-sm" disabled={!canCreateCommunity} type="submit">
+            Crear desarrollo
+          </button>
+        </form>
+
+        {cityOptions.length === 0 ? <p className="text-xs text-muted-foreground">No hay ciudades activas cargadas. Debes cargar ciudades para registrar desarrollos locales.</p> : null}
+
+        <input className="w-full rounded-md border px-3 py-2" placeholder="Buscar por código o nombre" value={communitySearch} onChange={(event) => setCommunitySearch(event.target.value)} />
+        {communityError ? <p className="text-sm text-red-600">{communityError}</p> : null}
+        {communityLoading ? <p className="text-sm">Cargando...</p> : null}
+
+        <div className="overflow-auto rounded-md border">
+          <table className="min-w-full text-sm">
+            <thead className="border-b">
+              <tr>
+                <th className="px-3 py-2 text-left">Ciudad</th>
+                <th className="px-3 py-2 text-left">Municipio</th>
+                <th className="px-3 py-2 text-left">Tipo</th>
+                <th className="px-3 py-2 text-left">Código</th>
+                <th className="px-3 py-2 text-left">Nombre</th>
+                <th className="px-3 py-2 text-left">Activo</th>
+                <th className="px-3 py-2 text-left">Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              {communityItems.map((item) => (
+                <tr className="border-b" key={item.id}>
+                  <td className="px-3 py-2">{item.city ? `${item.city.code} - ${item.city.name}` : "-"}</td>
+                  <td className="px-3 py-2">{item.city?.municipality ? `${item.city.municipality.code} - ${item.city.municipality.name}` : "-"}</td>
+                  <td className="px-3 py-2">{item.type}</td>
+                  <td className="px-3 py-2">{item.code}</td>
+                  <td className="px-3 py-2">{item.name}</td>
+                  <td className="px-3 py-2">{item.isActive ? "Sí" : "No"}</td>
+                  <td className="px-3 py-2">
+                    <div className="flex gap-2">
+                      <button className="rounded border px-2 py-1" onClick={() => setEditingCommunity({ ...item, cityId: item.cityId ?? item.city?.id ?? "" })} type="button">Editar</button>
+                      <button className="rounded border px-2 py-1" onClick={() => void deleteCommunity(item.id)} type="button">Eliminar</button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        <div className="flex items-center justify-between text-sm">
+          <span>Total: {communityPagination.total}</span>
+          <div className="flex items-center gap-2">
+            <button className="rounded border px-2 py-1" disabled={communityPagination.page <= 1} onClick={() => setCommunityPage((prev) => Math.max(1, prev - 1))} type="button">Anterior</button>
+            <span>
+              Página {communityPagination.page} de {Math.max(1, communityPagination.totalPages)}
+            </span>
+            <button className="rounded border px-2 py-1" disabled={communityPagination.page >= communityPagination.totalPages} onClick={() => setCommunityPage((prev) => prev + 1)} type="button">Siguiente</button>
+          </div>
+        </div>
+
+        {editingCommunity ? (
+          <form className="grid gap-3 rounded-lg border p-3 md:grid-cols-6" onSubmit={updateCommunity}>
+            <select className="rounded-md border px-3 py-2" value={editingCommunity.cityId ?? editingCommunity.city?.id ?? ""} onChange={(event) => setEditingCommunity((prev) => (prev ? { ...prev, cityId: event.target.value } : prev))}>
+              <option value="">Seleccione ciudad</option>
+              {cityOptions.map((city) => (
+                <option key={city.id} value={city.id}>
+                  {city.code} - {city.name}
+                </option>
+              ))}
+            </select>
+            <input className="rounded-md border px-3 py-2" value={editingCommunity.code} onChange={(event) => setEditingCommunity((prev) => (prev ? { ...prev, code: event.target.value } : prev))} />
+            <input className="rounded-md border px-3 py-2" value={editingCommunity.name} onChange={(event) => setEditingCommunity((prev) => (prev ? { ...prev, name: event.target.value } : prev))} />
+            <select className="rounded-md border px-3 py-2" value={editingCommunity.type} onChange={(event) => setEditingCommunity((prev) => (prev ? { ...prev, type: event.target.value as CommunityType } : prev))}>
+              <option value="COMUNA">COMUNA</option>
+              <option value="TERRITORIO_INDIGENA">TERRITORIO_INDIGENA</option>
+              <option value="COMUNIDAD_CRIOLLA">COMUNIDAD_CRIOLLA</option>
+              <option value="PARROQUIA">PARROQUIA</option>
+            </select>
+            <label className="flex items-center gap-2 rounded-md border px-3 py-2 text-sm">
+              <input checked={editingCommunity.isActive} onChange={(event) => setEditingCommunity((prev) => (prev ? { ...prev, isActive: event.target.checked } : prev))} type="checkbox" />
+              Activo
+            </label>
+            <div className="flex gap-2">
+              <button className="rounded-md border px-3 py-2 text-sm" type="submit">Guardar</button>
+              <button className="rounded-md border px-3 py-2 text-sm" onClick={() => setEditingCommunity(null)} type="button">Cancelar</button>
             </div>
           </form>
         ) : null}

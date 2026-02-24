@@ -21,6 +21,7 @@ const nav = [
   { href: "/patrimonio-forestal", label: "Patrimonio forestal", module: "forest-patrimony" },
   { href: "/activo-biologico", label: "Activo biológico", module: "forest-biological-asset" },
   { href: "/configuracion-forestal", label: "Configuración forestal", module: "forest-config" },
+  { href: "/configuracion-general", label: "Configuración general", module: "general-config" },
   { href: "/profile", label: "Perfil", module: "profile" },
   { href: "/analytics", label: "Analítica", module: "analytics" },
   { href: "/settings", label: "Configuración", module: "settings" },
@@ -52,9 +53,9 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   const fallbackConfig = !siteNameConfig
     ? await prisma.systemConfiguration.findFirst({
-        where: { organizationId: null, category: "general", key: "site_name" },
-        select: { value: true },
-      })
+      where: { organizationId: null, category: "general", key: "site_name" },
+      select: { value: true },
+    })
     : null;
 
   const appName = siteNameConfig?.value?.trim() || fallbackConfig?.value?.trim() || "Modular Enterprise App";

@@ -60,7 +60,7 @@ export async function GET(req: NextRequest) {
   if (!query.success) return fail("Parámetros inválidos", 400, query.error.flatten());
 
   const { page, limit, search } = query.data;
-  const where = search
+  const where: any = search
     ? {
         OR: [
           { code: { contains: search, mode: "insensitive" as const } },
@@ -68,7 +68,12 @@ export async function GET(req: NextRequest) {
           { description: { contains: search, mode: "insensitive" as const } },
         ],
       }
-    : {};
+    :
+    {};
+
+  if (authResult.session.user.organizationId) {
+    where.organizationId = authResult.session.user.organizationId;
+  }
 
   const [total, items] = await Promise.all([
     prisma.imaClass.count({ where }),
@@ -108,6 +113,7 @@ export async function POST(req: NextRequest) {
   try {
     const created = await prisma.imaClass.create({
       data: {
+        organizationId: authResult.session.user.organizationId || null,
         code: parsed.data.code,
         classification: parsed.data.classification,
         name: parsed.data.name,

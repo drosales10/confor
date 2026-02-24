@@ -61,14 +61,19 @@ export async function GET(req: NextRequest) {
 
   const { page, limit, search } = query.data;
 
-  const where = search
+  const where: any = search
     ? {
         OR: [
           { code: { contains: search, mode: "insensitive" as const } },
           { name: { contains: search, mode: "insensitive" as const } },
         ],
       }
-    : {};
+    :
+    {};
+
+  if (authResult.session.user.organizationId) {
+    where.organizationId = authResult.session.user.organizationId;
+  }
 
   const [total, items] = await Promise.all([
     prisma.forestInventoryTypeCatalog.count({ where }),
@@ -108,6 +113,7 @@ export async function POST(req: NextRequest) {
   try {
     const created = await prisma.forestInventoryTypeCatalog.create({
       data: {
+        organizationId: authResult.session.user.organizationId || null,
         code: parsed.data.code,
         name: parsed.data.name,
         isActive: parsed.data.isActive ?? true,

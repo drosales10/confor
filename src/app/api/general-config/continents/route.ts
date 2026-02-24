@@ -4,8 +4,8 @@ import { prisma } from "@/lib/prisma";
 import { fail, ok, requireAuth, requirePermission } from "@/lib/api-helpers";
 import { hasPermission } from "@/lib/permissions";
 import {
-  communityTerritoryCreateSchema,
-  communityTerritoryUpdateSchema,
+  continentCreateSchema,
+  continentUpdateSchema,
   deleteByIdSchema,
   forestConfigQuerySchema,
 } from "@/validations/forest-config.schema";
@@ -19,13 +19,13 @@ async function safeAuditLog(data: Prisma.AuditLogUncheckedCreateInput) {
 function ensureReadPermission(permissions: string[], isSuperAdmin: boolean) {
   if (isSuperAdmin) return null;
 
-  const canReadForestConfig = hasPermission(permissions, "forest-config", "READ");
-  const canWriteForestConfig = ["CREATE", "UPDATE", "DELETE"].some((action) =>
-    hasPermission(permissions, "forest-config", action),
+  const canReadGeneralConfig = hasPermission(permissions, "general-config", "READ");
+  const canWriteGeneralConfig = ["CREATE", "UPDATE", "DELETE"].some((action) =>
+    hasPermission(permissions, "general-config", action),
   );
 
-  if (!canReadForestConfig && !canWriteForestConfig) {
-    return requirePermission(permissions, "forest-config", "READ");
+  if (!canReadGeneralConfig && !canWriteGeneralConfig) {
+    return requirePermission(permissions, "general-config", "READ");
   }
 
   return null;
@@ -33,7 +33,7 @@ function ensureReadPermission(permissions: string[], isSuperAdmin: boolean) {
 
 function mapPrismaError(error: unknown, message: string) {
   if (error instanceof Prisma.PrismaClientKnownRequestError) {
-    if (error.code === "P2002") return fail("Ya existe un registro con ese código en la ciudad", 409);
+    if (error.code === "P2002") return fail("Ya existe un registro con ese código", 409);
     if (error.code === "P2003") return fail("No se pudo completar por una relación inválida", 400);
     if (error.code === "P2025") return fail("Registro no encontrado", 404);
   }
@@ -65,43 +65,17 @@ export async function GET(req: NextRequest) {
         OR: [
           { code: { contains: search, mode: "insensitive" as const } },
           { name: { contains: search, mode: "insensitive" as const } },
-          { city: { name: { contains: search, mode: "insensitive" as const } } },
-          { city: { code: { contains: search, mode: "insensitive" as const } } },
         ],
       }
     : {};
 
   const [total, items] = await Promise.all([
-    prisma.communityTerritory.count({ where }),
-    prisma.communityTerritory.findMany({
+    prisma.continent.count({ where }),
+    prisma.continent.findMany({
       where,
       skip: (page - 1) * limit,
       take: limit,
       orderBy: [{ name: "asc" }],
-      include: {
-        city: {
-          select: {
-            id: true,
-            code: true,
-            name: true,
-            municipality: {
-              select: {
-                id: true,
-                code: true,
-                name: true,
-                state: {
-                  select: {
-                    id: true,
-                    code: true,
-                    name: true,
-                    country: { select: { id: true, code: true, name: true } },
-                  },
-                },
-              },
-            },
-          },
-        },
-      },
     }),
   ]);
 
@@ -122,63 +96,34 @@ export async function POST(req: NextRequest) {
 
   const isSuperAdmin = authResult.session.user.roles?.includes("SUPER_ADMIN") ?? false;
   if (!isSuperAdmin) {
-    const permissionError = requirePermission(authResult.session.user.permissions ?? [], "forest-config", "CREATE");
+    const permissionError = requirePermission(authResult.session.user.permissions ?? [], "general-config", "CREATE");
     if (permissionError) return permissionError;
   }
 
   const body = await req.json();
-  const parsed = communityTerritoryCreateSchema.safeParse(body);
+  const parsed = continentCreateSchema.safeParse(body);
   if (!parsed.success) return fail("Datos inválidos", 400, parsed.error.flatten());
 
-  const city = await prisma.city.findUnique({ where: { id: parsed.data.cityId } });
-  if (!city) return fail("Ciudad no encontrada", 404);
-
   try {
-    const created = await prisma.communityTerritory.create({
+    const created = await prisma.continent.create({
       data: {
-        cityId: parsed.data.cityId,
         code: parsed.data.code,
         name: parsed.data.name,
-        type: parsed.data.type,
         isActive: parsed.data.isActive ?? true,
-      },
-      include: {
-        city: {
-          select: {
-            id: true,
-            code: true,
-            name: true,
-            municipality: {
-              select: {
-                id: true,
-                code: true,
-                name: true,
-                state: {
-                  select: {
-                    id: true,
-                    code: true,
-                    name: true,
-                    country: { select: { id: true, code: true, name: true } },
-                  },
-                },
-              },
-            },
-          },
-        },
       },
     });
 
     await safeAuditLog({
       userId: authResult.session.user.id,
       action: "CREATE",
-      entityType: "CommunityTerritory",
+      entityType: "Continent",
       entityId: created.id,
       newValues: parsed.data,
     });
 
     return ok(created, 201);
   } catch (error) {
-    return mapPrismaError(error, "No fue posible crear el desarrollo local");
+    return mapPrismaError(error, "No fue posible crear el continente");
   }
 }
 
@@ -188,66 +133,35 @@ export async function PATCH(req: NextRequest) {
 
   const isSuperAdmin = authResult.session.user.roles?.includes("SUPER_ADMIN") ?? false;
   if (!isSuperAdmin) {
-    const permissionError = requirePermission(authResult.session.user.permissions ?? [], "forest-config", "UPDATE");
+    const permissionError = requirePermission(authResult.session.user.permissions ?? [], "general-config", "UPDATE");
     if (permissionError) return permissionError;
   }
 
   const body = await req.json();
-  const parsed = communityTerritoryUpdateSchema.safeParse(body);
+  const parsed = continentUpdateSchema.safeParse(body);
   if (!parsed.success) return fail("Datos inválidos", 400, parsed.error.flatten());
 
-  if (parsed.data.cityId) {
-    const city = await prisma.city.findUnique({ where: { id: parsed.data.cityId } });
-    if (!city) return fail("Ciudad no encontrada", 404);
-  }
-
   try {
-    const updated = await prisma.communityTerritory.update({
+    const updated = await prisma.continent.update({
       where: { id: parsed.data.id },
       data: {
-        cityId: parsed.data.cityId,
         code: parsed.data.code,
         name: parsed.data.name,
-        type: parsed.data.type,
         isActive: parsed.data.isActive,
-      },
-      include: {
-        city: {
-          select: {
-            id: true,
-            code: true,
-            name: true,
-            municipality: {
-              select: {
-                id: true,
-                code: true,
-                name: true,
-                state: {
-                  select: {
-                    id: true,
-                    code: true,
-                    name: true,
-                    country: { select: { id: true, code: true, name: true } },
-                  },
-                },
-              },
-            },
-          },
-        },
       },
     });
 
     await safeAuditLog({
       userId: authResult.session.user.id,
       action: "UPDATE",
-      entityType: "CommunityTerritory",
+      entityType: "Continent",
       entityId: updated.id,
       newValues: parsed.data,
     });
 
     return ok(updated);
   } catch (error) {
-    return mapPrismaError(error, "No fue posible actualizar el desarrollo local");
+    return mapPrismaError(error, "No fue posible actualizar el continente");
   }
 }
 
@@ -257,7 +171,7 @@ export async function DELETE(req: NextRequest) {
 
   const isSuperAdmin = authResult.session.user.roles?.includes("SUPER_ADMIN") ?? false;
   if (!isSuperAdmin) {
-    const permissionError = requirePermission(authResult.session.user.permissions ?? [], "forest-config", "DELETE");
+    const permissionError = requirePermission(authResult.session.user.permissions ?? [], "general-config", "DELETE");
     if (permissionError) return permissionError;
   }
 
@@ -265,18 +179,27 @@ export async function DELETE(req: NextRequest) {
   const parsed = deleteByIdSchema.safeParse(body);
   if (!parsed.success) return fail("Datos inválidos", 400, parsed.error.flatten());
 
+  const [countriesCount, landUseCount] = await Promise.all([
+    prisma.country.count({ where: { continentId: parsed.data.id } }),
+    prisma.landUseType.count({ where: { continentId: parsed.data.id } }),
+  ]);
+
+  if (countriesCount > 0 || landUseCount > 0) {
+    return fail("No se puede eliminar el continente porque tiene registros relacionados", 409);
+  }
+
   try {
-    await prisma.communityTerritory.delete({ where: { id: parsed.data.id } });
+    await prisma.continent.delete({ where: { id: parsed.data.id } });
 
     await safeAuditLog({
       userId: authResult.session.user.id,
       action: "DELETE",
-      entityType: "CommunityTerritory",
+      entityType: "Continent",
       entityId: parsed.data.id,
     });
 
     return ok({ id: parsed.data.id });
   } catch (error) {
-    return mapPrismaError(error, "No fue posible eliminar el desarrollo local");
+    return mapPrismaError(error, "No fue posible eliminar el continente");
   }
 }

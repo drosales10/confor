@@ -925,7 +925,36 @@ export default function PatrimonioForestalPage() {
 
   async function onSubmitLevel3(event: FormEvent) {
     event.preventDefault();
-    if (!selectedLevel2Id) return;
+    if (!selectedLevel2Id) {
+      setError("Selecciona un nivel 2 padre antes de crear el nivel 3");
+      sileo.warning({
+        title: "Selección requerida",
+        description: "Selecciona un nivel 2 padre antes de crear el nivel 3.",
+      });
+      return;
+    }
+
+    const code = level3Form.code.trim();
+    const name = level3Form.name.trim();
+    const totalAreaHa = parseLocaleDecimal(level3Form.totalAreaHa);
+
+    if (!code || name.length < 2) {
+      setError("Código y nombre son obligatorios para el nivel 3");
+      sileo.warning({
+        title: "Datos incompletos",
+        description: "Código y nombre son obligatorios para el nivel 3.",
+      });
+      return;
+    }
+
+    if (Number.isNaN(totalAreaHa) || totalAreaHa <= 0) {
+      setError("Superficie inválida");
+      sileo.warning({
+        title: "Datos inválidos",
+        description: "La superficie debe ser mayor a 0.",
+      });
+      return;
+    }
 
     setSubmitting(true);
     setError(null);
@@ -933,10 +962,10 @@ export default function PatrimonioForestalPage() {
     try {
       await createPatrimony("3", {
         level2Id: selectedLevel2Id,
-        code: level3Form.code.trim(),
-        name: level3Form.name.trim(),
+        code,
+        name,
         type: level3Form.type,
-        totalAreaHa: Number(level3Form.totalAreaHa),
+        totalAreaHa,
       });
       setLevel3Form({ code: "", name: "", type: "LOTE", totalAreaHa: "" });
       await loadLevel3(selectedLevel2Id, debouncedSearchLevel3, pageLevel3, limitLevel3);
@@ -1537,18 +1566,39 @@ export default function PatrimonioForestalPage() {
           </div>
         </div>
 
-        
 
-        
+
+
       </section>
-      
-      
 
-      <section className="rounded-lg border p-4">        
+
+
+      <section className="rounded-lg border p-4">
         <div className="mt-5 grid gap-4 md:grid-cols-1">
           <h3 className="font-medium">Crear Nivel 3</h3>
           <form className="mt-4 grid gap-3 md:grid-cols-2" onSubmit={onSubmitLevel3}>
-            
+
+            <select
+              className="w-full rounded-md border px-3 py-2 text-sm"
+              value={selectedLevel2Id}
+              onChange={(event) => {
+                setPageAdjustReason("navegación");
+                setSelectedLevel2Id(event.target.value);
+                setSelectedLevel3Id("");
+                setSelectedLevel4Id("");
+                setPageLevel3(1);
+                setPageLevel4(1);
+                setPageLevel5(1);
+              }}
+              required
+            >
+              <option value="">Seleccione Nivel 2 Padre</option>
+              {items.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.code} - {item.name}
+                </option>
+              ))}
+            </select>
             <input
               className="w-full rounded-md border px-3 py-2 text-sm"
               placeholder="Código"
@@ -1587,55 +1637,55 @@ export default function PatrimonioForestalPage() {
             </button>
           </form>
 
-          
+
         </div>
-        
+
         <div className="mt-5 grid gap-4 md:grid-cols-1">
-            <h3 className="font-medium">Nivel 3</h3>
-            <div className="mt-2 flex items-center justify-between gap-2">
-              <p className="text-xs text-muted-foreground">Total: {paginationLevel3.total}</p>
-              <label className="text-xs">
-                <span className="mr-1">Límite</span>
-                <select
-                  className="rounded-md border px-2 py-1"
-                  onChange={(event) => {
-                    setPageAdjustReason("límite");
-                    setPageLevel3(1);
-                    setLimitLevel3(Number(event.target.value));
-                  }}
-                  value={limitLevel3}
-                >
-                  <option value={10}>10</option>
-                  <option value={25}>25</option>
-                  <option value={50}>50</option>
-                </select>
-              </label>
-            </div>
-            <input
-              className="mt-2 w-full rounded-md border px-2 py-1 text-xs"
-              onChange={(event) => {
-                setPageAdjustReason("filtro");
-                setPageLevel3(1);
-                setSearchLevel3(event.target.value);
-              }}
-              placeholder="Buscar nivel 3"
-              value={searchLevel3}
-            />
-            <div className="mt-3 overflow-x-auto rounded-lg border">
-              <table className="w-full text-left text-sm">
-                <thead>
-                  <tr className="border-b">
-                    <th className="px-3 py-2">Código</th>
-                    <th className="px-3 py-2">Nombre</th>
-                    <th className="px-3 py-2">Superficie (ha)</th>
-                    <th className="px-3 py-2">Acciones</th>
-                  </tr>
-                </thead>
+          <h3 className="font-medium">Nivel 3</h3>
+          <div className="mt-2 flex items-center justify-between gap-2">
+            <p className="text-xs text-muted-foreground">Total: {paginationLevel3.total}</p>
+            <label className="text-xs">
+              <span className="mr-1">Límite</span>
+              <select
+                className="rounded-md border px-2 py-1"
+                onChange={(event) => {
+                  setPageAdjustReason("límite");
+                  setPageLevel3(1);
+                  setLimitLevel3(Number(event.target.value));
+                }}
+                value={limitLevel3}
+              >
+                <option value={10}>10</option>
+                <option value={25}>25</option>
+                <option value={50}>50</option>
+              </select>
+            </label>
+          </div>
+          <input
+            className="mt-2 w-full rounded-md border px-2 py-1 text-xs"
+            onChange={(event) => {
+              setPageAdjustReason("filtro");
+              setPageLevel3(1);
+              setSearchLevel3(event.target.value);
+            }}
+            placeholder="Buscar nivel 3"
+            value={searchLevel3}
+          />
+          <div className="mt-3 overflow-x-auto rounded-lg border">
+            <table className="w-full text-left text-sm">
+              <thead>
+                <tr className="border-b">
+                  <th className="px-3 py-2">Código</th>
+                  <th className="px-3 py-2">Nombre</th>
+                  <th className="px-3 py-2">Superficie (ha)</th>
+                  <th className="px-3 py-2">Acciones</th>
+                </tr>
+              </thead>
               <tbody>
                 {level3Items.map((item) => (
                   <tr className="border-b" key={item.id}>
                     <td className="px-3 py-2">
-                      {editingLevel3Id === item.id ? (                        
+                      {editingLevel3Id === item.id ? (
                         <input
                           className="w-full rounded-md border px-2 py-1 text-xs"
                           onChange={(event) => setEditLevel3Form((prev) => ({ ...prev, code: event.target.value }))}
@@ -1646,147 +1696,166 @@ export default function PatrimonioForestalPage() {
                       )}
                     </td>
                     <td className="px-3 py-2">
-                    {editingLevel2Id === item.id ? (
-                      <input
-                        className="w-full rounded-md border px-2 py-1 text-xs"
-                        onChange={(event) => setEditLevel3Form((prev) => ({ ...prev, name: event.target.value }))}
-                        value={editLevel3Form.name}
-                      />
-                    ) : (
-                      item.name
-                    )}
-                  </td>
-                      <td className="px-3 py-2">
-                    {editingLevel3Id === item.id ? (
-                      <select
-                        className="w-full rounded-md border px-2 py-1 text-xs"
-                        onChange={(event) => setEditLevel3Form((prev) => ({ ...prev, type: event.target.value }))}
-                        value={editLevel3Form.type}
-                      >
-                        <option value="COMPARTIMIENTO">Compartimiento</option>
-                        <option value="BLOCK">Block</option>
-                        <option value="SECCION">Sección</option>
-                        <option value="LOTE">Lote</option>
-                        <option value="ZONA">Zona</option>
-                        <option value="BLOQUE">Bloque</option>
-                      </select>
-                    ) : (
-                      item.type
-                    )}
-                  </td>
-                  <td className="px-3 py-2">
-                    {editingLevel3Id === item.id ? (
-                      <input
-                        className="w-full rounded-md border px-2 py-1 text-xs"
-                        min="0"
-                        onChange={(event) => setEditLevel3Form((prev) => ({ ...prev, totalAreaHa: event.target.value }))}
-                        step="0.01"
-                        type="number"
-                        value={editLevel3Form.totalAreaHa}
-                      />
-                    ) : (
-                      String(item.totalAreaHa)
-                    )}
-                  </td>
-                  <td className="px-3 py-2">{item.legalStatus ?? "-"}</td>
-                  <td className="px-3 py-2">
-                    {editingLevel3Id === item.id ? (
-                      <label className="flex items-center gap-2 text-xs">
+                      {editingLevel2Id === item.id ? (
                         <input
-                          checked={editLevel3Form.isActive}
-                          onChange={(event) => setEditLevel3Form((prev) => ({ ...prev, isActive: event.target.checked }))}
-                          type="checkbox"
+                          className="w-full rounded-md border px-2 py-1 text-xs"
+                          onChange={(event) => setEditLevel3Form((prev) => ({ ...prev, name: event.target.value }))}
+                          value={editLevel3Form.name}
                         />
-                        Activo
-                      </label>
-                    ) : item.isActive ? (
-                      "Activo"
-                    ) : (
-                      "Inactivo"
-                    )}
-                  </td>
-                  <td className="px-3 py-2">
-                    {editingLevel3Id === item.id ? (
-                      <>
-                        <button
-                          className="mr-2 rounded-md border px-2 py-1 text-xs disabled:opacity-60"
-                          disabled={submitting}
-                          onClick={onSaveLevel2Edit}
-                          type="button"
+                      ) : (
+                        item.name
+                      )}
+                    </td>
+                    <td className="px-3 py-2">
+                      {editingLevel3Id === item.id ? (
+                        <select
+                          className="w-full rounded-md border px-2 py-1 text-xs"
+                          onChange={(event) => setEditLevel3Form((prev) => ({ ...prev, type: event.target.value }))}
+                          value={editLevel3Form.type}
                         >
-                          Guardar
-                        </button>
-                        <button
-                          className="rounded-md border px-2 py-1 text-xs disabled:opacity-60"
-                          disabled={submitting}
-                          onClick={() => setEditingLevel3Id(null)}
-                          type="button"
-                        >
-                          Cancelar
-                        </button>
-                      </>
-                    ) : (
-                      <>
-                        <button
-                          className="mr-2 rounded-md border px-2 py-1 text-xs disabled:opacity-60"
-                          disabled={submitting}
-                          onClick={() => onEditLevel3(item)}
-                          type="button"
-                        >
-                          Editar
-                        </button>
-                        <button
-                          className="rounded-md border px-2 py-1 text-xs disabled:opacity-60"
-                          disabled={submitting}
-                          onClick={() => onDeleteLevel3(item.id)}
-                          type="button"
-                        >
-                          Eliminar
-                        </button>
-                      </>
-                    )}
-                  </td>
-                </tr>
-              ))}
-              {!loading && items.length === 0 ? (
-                <tr>
-                  <td className="px-3 py-3" colSpan={7}>
-                    Sin resultados
-                  </td>
-                </tr>
-              ) : null}
-            </tbody>
-          </table>
-        </div>
-            <div className="mt-2 flex items-center justify-end gap-2 text-xs">
-              <button
-                className="rounded-md border px-2 py-1 disabled:opacity-60"
-                disabled={pageLevel3 <= 1 || submitting}
-                onClick={() => setPageLevel3((current) => Math.max(1, current - 1))}
-                type="button"
-              >
-                Anterior
-              </button>
-              <span>
-                {paginationLevel3.page}/{paginationLevel3.totalPages} · {paginationLevel3.total}
-              </span>
-              <button
-                className="rounded-md border px-2 py-1 disabled:opacity-60"
-                disabled={pageLevel3 >= paginationLevel3.totalPages || submitting}
-                onClick={() => setPageLevel3((current) => Math.min(paginationLevel3.totalPages, current + 1))}
-                type="button"
-              >
-                Siguiente
-              </button>
-            </div>
+                          <option value="COMPARTIMIENTO">Compartimiento</option>
+                          <option value="BLOCK">Block</option>
+                          <option value="SECCION">Sección</option>
+                          <option value="LOTE">Lote</option>
+                          <option value="ZONA">Zona</option>
+                          <option value="BLOQUE">Bloque</option>
+                        </select>
+                      ) : (
+                        item.type
+                      )}
+                    </td>
+                    <td className="px-3 py-2">
+                      {editingLevel3Id === item.id ? (
+                        <input
+                          className="w-full rounded-md border px-2 py-1 text-xs"
+                          min="0"
+                          onChange={(event) => setEditLevel3Form((prev) => ({ ...prev, totalAreaHa: event.target.value }))}
+                          step="0.01"
+                          type="number"
+                          value={editLevel3Form.totalAreaHa}
+                        />
+                      ) : (
+                        String(item.totalAreaHa)
+                      )}
+                    </td>
+                    <td className="px-3 py-2">{item.legalStatus ?? "-"}</td>
+                    <td className="px-3 py-2">
+                      {editingLevel3Id === item.id ? (
+                        <label className="flex items-center gap-2 text-xs">
+                          <input
+                            checked={editLevel3Form.isActive}
+                            onChange={(event) => setEditLevel3Form((prev) => ({ ...prev, isActive: event.target.checked }))}
+                            type="checkbox"
+                          />
+                          Activo
+                        </label>
+                      ) : item.isActive ? (
+                        "Activo"
+                      ) : (
+                        "Inactivo"
+                      )}
+                    </td>
+                    <td className="px-3 py-2">
+                      {editingLevel3Id === item.id ? (
+                        <>
+                          <button
+                            className="mr-2 rounded-md border px-2 py-1 text-xs disabled:opacity-60"
+                            disabled={submitting}
+                            onClick={onSaveLevel2Edit}
+                            type="button"
+                          >
+                            Guardar
+                          </button>
+                          <button
+                            className="rounded-md border px-2 py-1 text-xs disabled:opacity-60"
+                            disabled={submitting}
+                            onClick={() => setEditingLevel3Id(null)}
+                            type="button"
+                          >
+                            Cancelar
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <button
+                            className="mr-2 rounded-md border px-2 py-1 text-xs disabled:opacity-60"
+                            disabled={submitting}
+                            onClick={() => onEditLevel3(item)}
+                            type="button"
+                          >
+                            Editar
+                          </button>
+                          <button
+                            className="rounded-md border px-2 py-1 text-xs disabled:opacity-60"
+                            disabled={submitting}
+                            onClick={() => onDeleteLevel3(item.id)}
+                            type="button"
+                          >
+                            Eliminar
+                          </button>
+                        </>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+                {!loading && items.length === 0 ? (
+                  <tr>
+                    <td className="px-3 py-3" colSpan={7}>
+                      Sin resultados
+                    </td>
+                  </tr>
+                ) : null}
+              </tbody>
+            </table>
           </div>
+          <div className="mt-2 flex items-center justify-end gap-2 text-xs">
+            <button
+              className="rounded-md border px-2 py-1 disabled:opacity-60"
+              disabled={pageLevel3 <= 1 || submitting}
+              onClick={() => setPageLevel3((current) => Math.max(1, current - 1))}
+              type="button"
+            >
+              Anterior
+            </button>
+            <span>
+              {paginationLevel3.page}/{paginationLevel3.totalPages} · {paginationLevel3.total}
+            </span>
+            <button
+              className="rounded-md border px-2 py-1 disabled:opacity-60"
+              disabled={pageLevel3 >= paginationLevel3.totalPages || submitting}
+              onClick={() => setPageLevel3((current) => Math.min(paginationLevel3.totalPages, current + 1))}
+              type="button"
+            >
+              Siguiente
+            </button>
+          </div>
+        </div>
       </section>
-      
-      <section className="rounded-lg border p-4">        
+
+      <section className="rounded-lg border p-4">
         <div className="mt-5 grid gap-4 md:grid-cols-1">
           <h3 className="font-medium">Crear Nivel 4</h3>
           {error ? <p className="mt-2 text-sm text-red-600">{error}</p> : null}
-          <form className="mt-4 grid gap-3 md:grid-cols-2" onSubmit={onSubmitLevel4}>  
+          <form className="mt-4 grid gap-3 md:grid-cols-2" onSubmit={onSubmitLevel4}>
+            <select
+              className="w-full rounded-md border px-3 py-2 text-sm"
+              value={selectedLevel3Id}
+              onChange={(event) => {
+                setPageAdjustReason("navegación");
+                setSelectedLevel3Id(event.target.value);
+                setSelectedLevel4Id("");
+                setPageLevel4(1);
+                setPageLevel5(1);
+              }}
+              required
+            >
+              <option value="">Seleccione Nivel 3 Padre</option>
+              {level3Items.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.code} - {item.name}
+                </option>
+              ))}
+            </select>
             <input
               className="w-full rounded-md border px-3 py-2 text-sm"
               placeholder="Código"
@@ -1823,7 +1892,7 @@ export default function PatrimonioForestalPage() {
             </button>
           </form>
 
-          
+
           <div className="mt-5 grid gap-4 md:grid-cols-1">
             <h3 className="font-medium">Nivel 4</h3>
             <div className="mt-2 flex items-center justify-between gap-2">
@@ -1865,132 +1934,132 @@ export default function PatrimonioForestalPage() {
                     <th className="px-3 py-2">Acciones</th>
                   </tr>
                 </thead>
-              <tbody>
-                {level4Items.map((item) => (
-                  <tr className="border-b" key={item.id}>
-                    <td className="px-3 py-2">
-                      {editingLevel4Id === item.id ? (                        
-                        <input
-                          className="w-full rounded-md border px-2 py-1 text-xs"
-                          onChange={(event) => setEditLevel4Form((prev) => ({ ...prev, code: event.target.value }))}
-                          value={editLevel4Form.code}
-                        />
-                      ) : (
-                        item.code
-                      )}
-                    </td>
-                    <td className="px-3 py-2">
-                    {editingLevel4Id === item.id ? (
-                      <input
-                        className="w-full rounded-md border px-2 py-1 text-xs"
-                        onChange={(event) => setEditLevel4Form((prev) => ({ ...prev, name: event.target.value }))}
-
-                        value={editLevel4Form.name}
-                      />
-                    ) : (
-                      item.name
-                    )}
-                  </td>
+                <tbody>
+                  {level4Items.map((item) => (
+                    <tr className="border-b" key={item.id}>
                       <td className="px-3 py-2">
-                    {editingLevel4Id === item.id ? (
-                      <select
-                        className="w-full rounded-md border px-2 py-1 text-xs"
-                        onChange={(event) => setEditLevel4Form((prev) => ({ ...prev, type: event.target.value }))}
-                        value={editLevel4Form.type}
-                      >
-                        <option value="RODAL">Rodal</option>
-                          <option value="PARCELA">Parcela</option>
-                          <option value="ENUMERATION">Enumeration</option>
-                          <option value="UNIDAD_DE_MANEJO">Unidad de Manejo</option>
-                      </select>
-                    ) : (
-                      item.type
-                    )}
-                  </td>
-                  <td className="px-3 py-2">
-                    {editingLevel4Id === item.id ? (
-                      <input
-                        className="w-full rounded-md border px-2 py-1 text-xs"
-                        min="0"
-                        onChange={(event) => setEditLevel4Form((prev) => ({ ...prev, totalAreaHa: event.target.value }))}
-                        step="0.01"
-                        type="number"
-                        value={editLevel4Form.totalAreaHa}
-                      />
-                    ) : (
-                      String(item.totalAreaHa)
-                    )}
-                  </td>
-                  <td className="px-3 py-2">{item.legalStatus ?? "-"}</td>
-                  <td className="px-3 py-2">
-                    {editingLevel4Id === item.id ? (
-                      <label className="flex items-center gap-2 text-xs">
-                        <input
-                          checked={editLevel4Form.isActive}
-                          onChange={(event) => setEditLevel4Form((prev) => ({ ...prev, isActive: event.target.checked }))}
-                          type="checkbox"
-                        />
-                        Activo
-                      </label>
-                    ) : item.isActive ? (
-                      "Activo"
-                    ) : (
-                      "Inactivo"
-                    )}
-                  </td>
-                  <td className="px-3 py-2">
-                    {editingLevel4Id === item.id ? (
-                      <>
-                        <button
-                          className="mr-2 rounded-md border px-2 py-1 text-xs disabled:opacity-60"
-                          disabled={submitting}
-                          onClick={onSaveLevel4Edit}
-                          type="button"
-                        >
-                          Guardar
-                        </button>
-                        <button
-                          className="rounded-md border px-2 py-1 text-xs disabled:opacity-60"
-                          disabled={submitting}
-                          onClick={() => setEditingLevel4Id(null)}
-                          type="button"
-                        >
-                          Cancelar
-                        </button>
-                      </>
-                    ) : (
-                      <>
-                        <button
-                          className="mr-2 rounded-md border px-2 py-1 text-xs disabled:opacity-60"
-                          disabled={submitting}
-                          onClick={() => onEditLevel4(item)}
-                          type="button"
-                        >
-                          Editar
-                        </button>
-                        <button
-                          className="rounded-md border px-2 py-1 text-xs disabled:opacity-60"
-                          disabled={submitting}
-                          onClick={() => onDeleteLevel4(item.id)}
-                          type="button"
-                        >
-                          Eliminar
-                        </button>
-                      </>
-                    )}
-                  </td>
-                </tr>
-              ))}
-              {!loading && items.length === 0 ? (
-                <tr>
-                  <td className="px-3 py-3" colSpan={7}>
-                    Sin resultados
-                  </td>
-                </tr>
-              ) : null}
-            </tbody>
-          </table>
-        </div>
+                        {editingLevel4Id === item.id ? (
+                          <input
+                            className="w-full rounded-md border px-2 py-1 text-xs"
+                            onChange={(event) => setEditLevel4Form((prev) => ({ ...prev, code: event.target.value }))}
+                            value={editLevel4Form.code}
+                          />
+                        ) : (
+                          item.code
+                        )}
+                      </td>
+                      <td className="px-3 py-2">
+                        {editingLevel4Id === item.id ? (
+                          <input
+                            className="w-full rounded-md border px-2 py-1 text-xs"
+                            onChange={(event) => setEditLevel4Form((prev) => ({ ...prev, name: event.target.value }))}
+
+                            value={editLevel4Form.name}
+                          />
+                        ) : (
+                          item.name
+                        )}
+                      </td>
+                      <td className="px-3 py-2">
+                        {editingLevel4Id === item.id ? (
+                          <select
+                            className="w-full rounded-md border px-2 py-1 text-xs"
+                            onChange={(event) => setEditLevel4Form((prev) => ({ ...prev, type: event.target.value }))}
+                            value={editLevel4Form.type}
+                          >
+                            <option value="RODAL">Rodal</option>
+                            <option value="PARCELA">Parcela</option>
+                            <option value="ENUMERATION">Enumeration</option>
+                            <option value="UNIDAD_DE_MANEJO">Unidad de Manejo</option>
+                          </select>
+                        ) : (
+                          item.type
+                        )}
+                      </td>
+                      <td className="px-3 py-2">
+                        {editingLevel4Id === item.id ? (
+                          <input
+                            className="w-full rounded-md border px-2 py-1 text-xs"
+                            min="0"
+                            onChange={(event) => setEditLevel4Form((prev) => ({ ...prev, totalAreaHa: event.target.value }))}
+                            step="0.01"
+                            type="number"
+                            value={editLevel4Form.totalAreaHa}
+                          />
+                        ) : (
+                          String(item.totalAreaHa)
+                        )}
+                      </td>
+                      <td className="px-3 py-2">{item.legalStatus ?? "-"}</td>
+                      <td className="px-3 py-2">
+                        {editingLevel4Id === item.id ? (
+                          <label className="flex items-center gap-2 text-xs">
+                            <input
+                              checked={editLevel4Form.isActive}
+                              onChange={(event) => setEditLevel4Form((prev) => ({ ...prev, isActive: event.target.checked }))}
+                              type="checkbox"
+                            />
+                            Activo
+                          </label>
+                        ) : item.isActive ? (
+                          "Activo"
+                        ) : (
+                          "Inactivo"
+                        )}
+                      </td>
+                      <td className="px-3 py-2">
+                        {editingLevel4Id === item.id ? (
+                          <>
+                            <button
+                              className="mr-2 rounded-md border px-2 py-1 text-xs disabled:opacity-60"
+                              disabled={submitting}
+                              onClick={onSaveLevel4Edit}
+                              type="button"
+                            >
+                              Guardar
+                            </button>
+                            <button
+                              className="rounded-md border px-2 py-1 text-xs disabled:opacity-60"
+                              disabled={submitting}
+                              onClick={() => setEditingLevel4Id(null)}
+                              type="button"
+                            >
+                              Cancelar
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <button
+                              className="mr-2 rounded-md border px-2 py-1 text-xs disabled:opacity-60"
+                              disabled={submitting}
+                              onClick={() => onEditLevel4(item)}
+                              type="button"
+                            >
+                              Editar
+                            </button>
+                            <button
+                              className="rounded-md border px-2 py-1 text-xs disabled:opacity-60"
+                              disabled={submitting}
+                              onClick={() => onDeleteLevel4(item.id)}
+                              type="button"
+                            >
+                              Eliminar
+                            </button>
+                          </>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                  {!loading && items.length === 0 ? (
+                    <tr>
+                      <td className="px-3 py-3" colSpan={7}>
+                        Sin resultados
+                      </td>
+                    </tr>
+                  ) : null}
+                </tbody>
+              </table>
+            </div>
             <div className="mt-2 flex items-center justify-end gap-2 text-xs">
               <button
                 className="rounded-md border px-2 py-1 disabled:opacity-60"
@@ -2013,33 +2082,213 @@ export default function PatrimonioForestalPage() {
               </button>
             </div>
           </div>
-          
-          
+
+
         </div>
       </section>
 
 
 
-      <section className="rounded-lg border p-4">        
+      <section className="rounded-lg border p-4">
         <h3 className="font-medium">Crear Nivel 5</h3>
         <form className="mt-4 grid gap-3 md:grid-cols-2" onSubmit={onSubmitLevel5}>
-            
+          <select
+            className="w-full rounded-md border px-3 py-2 text-sm"
+            value={selectedLevel4Id}
+            onChange={(event) => {
+              setPageAdjustReason("navegación");
+              setSelectedLevel4Id(event.target.value);
+              setPageLevel5(1);
+            }}
+            required
+          >
+            <option value="">Seleccione Nivel 4 Padre</option>
+            {level4Items.map((item) => (
+              <option key={item.id} value={item.id}>
+                {item.code} - {item.name}
+              </option>
+            ))}
+          </select>
+          <input
+            className="w-full rounded-md border px-3 py-2 text-sm"
+            placeholder="Código"
+            value={level5Form.code}
+            onChange={(event) => setLevel5Form((prev) => ({ ...prev, code: event.target.value }))}
+          />
+          <input
+            className="w-full rounded-md border px-3 py-2 text-sm"
+            placeholder="Nombre"
+            value={level5Form.name}
+            onChange={(event) => setLevel5Form((prev) => ({ ...prev, name: event.target.value }))}
+          />
+          <select
+            className="w-full rounded-md border px-3 py-2 text-sm"
+            value={level5Form.type}
+            onChange={(event) => setLevel5Form((prev) => ({ ...prev, type: event.target.value }))}
+          >
+            <option value="REFERENCIA">Referencia</option>
+            <option value="SUBUNIDAD">Subunidad</option>
+            <option value="SUBPARCELA">Subparcela</option>
+            <option value="MUESTRA">Muestra</option>
+            <option value="SUBMUESTRA">Submuestra</option>
+          </select>
+          <select
+            className="w-full rounded-md border px-3 py-2 text-sm"
+            value={level5Form.shapeType}
+            onChange={(event) => setLevel5Form((prev) => ({ ...prev, shapeType: event.target.value }))}
+          >
+            <option value="RECTANGULAR">Rectangular</option>
+            <option value="CUADRADA">Cuadrada</option>
+            <option value="CIRCULAR">Circular</option>
+            <option value="HEXAGONAL">Hexagonal</option>
+          </select>
+          <input
+            className="w-full rounded-md border px-3 py-2 text-sm"
+            type="number"
+            min="0"
+            step="0.0001"
+            placeholder="Dimensión 1"
+            value={level5Form.dimension1M}
+            onChange={(event) => setLevel5Form((prev) => ({ ...prev, dimension1M: event.target.value }))}
+          />
+          <input
+            className="w-full rounded-md border px-3 py-2 text-sm"
+            type="number"
+            min="0"
+            step="0.0001"
+            placeholder="Dimensión 2"
+            value={level5Form.dimension2M}
+            onChange={(event) => setLevel5Form((prev) => ({ ...prev, dimension2M: event.target.value }))}
+          />
+          <input
+            className="w-full rounded-md border px-3 py-2 text-sm"
+            type="number"
+            min="0"
+            step="0.0001"
+            placeholder="Dimensión 3"
+            value={level5Form.dimension3M}
+            onChange={(event) => setLevel5Form((prev) => ({ ...prev, dimension3M: event.target.value }))}
+          />
+          <input
+            className="w-full rounded-md border px-3 py-2 text-sm"
+            type="number"
+            min="0"
+            step="0.0001"
+            placeholder="Dimensión 4"
+            value={level5Form.dimension4M}
+            onChange={(event) => setLevel5Form((prev) => ({ ...prev, dimension4M: event.target.value }))}
+          />
+          <button className="rounded-md border px-3 py-2 text-sm" disabled={!selectedLevel4Id || submitting} type="submit">
+            Guardar nivel 5
+          </button>
+        </form>
+        <div className="rounded-md border p-3">
+          <h3 className="font-medium">Nivel 5</h3>
+          <div className="mt-2 flex items-center justify-between gap-2">
+            <p className="text-xs text-muted-foreground">Total: {paginationLevel5.total}</p>
+            <label className="text-xs">
+              <span className="mr-1">Límite</span>
+              <select
+                className="rounded-md border px-2 py-1"
+                onChange={(event) => {
+                  setPageAdjustReason("límite");
+                  setPageLevel5(1);
+                  setLimitLevel5(Number(event.target.value));
+                }}
+                value={limitLevel5}
+              >
+                <option value={10}>10</option>
+                <option value={25}>25</option>
+                <option value={50}>50</option>
+              </select>
+            </label>
+          </div>
+          <input
+            className="mt-2 w-full rounded-md border px-2 py-1 text-xs"
+            onChange={(event) => {
+              setPageAdjustReason("filtro");
+              setPageLevel5(1);
+              setSearchLevel5(event.target.value);
+            }}
+            placeholder="Buscar nivel 5"
+            value={searchLevel5}
+          />
+          <div className="mt-3 overflow-x-auto rounded-lg border">
+            <table className="w-full text-left text-sm">
+              <thead>
+                <tr className="border-b">
+                  <th className="px-3 py-2">Codigo</th>
+                  <th className="px-3 py-2">Nombre</th>
+                  <th className="px-3 py-2">Tipo</th>
+                  <th className="px-3 py-2">Area (m2)</th>
+                  <th className="px-3 py-2">Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                {level5Items.map((item) => (
+                  <tr className="border-b" key={item.id}>
+                    <td className="px-3 py-2">{item.code}</td>
+                    <td className="px-3 py-2">{item.name}</td>
+                    <td className="px-3 py-2">{item.type}</td>
+                    <td className="px-3 py-2">{String(item.areaM2)}</td>
+                    <td className="px-3 py-2">
+                      <button className="mr-2 rounded-md border px-2 py-0.5 text-xs" onClick={() => onEditLevel5(item)} type="button">
+                        Editar
+                      </button>
+                      <button className="rounded-md border px-2 py-0.5 text-xs" onClick={() => onDeleteLevel5(item.id)} type="button">
+                        Eliminar
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+                {level5Items.length === 0 ? (
+                  <tr>
+                    <td className="px-3 py-3" colSpan={5}>
+                      Sin registros
+                    </td>
+                  </tr>
+                ) : null}
+              </tbody>
+            </table>
+          </div>
+          <div className="mt-2 flex items-center justify-end gap-2 text-xs">
+            <button
+              className="rounded-md border px-2 py-1 disabled:opacity-60"
+              disabled={pageLevel5 <= 1 || submitting}
+              onClick={() => setPageLevel5((current) => Math.max(1, current - 1))}
+              type="button"
+            >
+              Anterior
+            </button>
+            <span>
+              {paginationLevel5.page}/{paginationLevel5.totalPages} · {paginationLevel5.total}
+            </span>
+            <button
+              className="rounded-md border px-2 py-1 disabled:opacity-60"
+              disabled={pageLevel5 >= paginationLevel5.totalPages || submitting}
+              onClick={() => setPageLevel5((current) => Math.min(paginationLevel5.totalPages, current + 1))}
+              type="button"
+            >
+              Siguiente
+            </button>
+          </div>
+        </div>
+        {editingLevel5Id ? (
+          <form className="mt-4 grid gap-3 rounded-lg border p-3 md:grid-cols-4" onSubmit={onSubmitLevel5Edit}>
             <input
-              className="w-full rounded-md border px-3 py-2 text-sm"
-              placeholder="Código"
-              value={level5Form.code}
-              onChange={(event) => setLevel5Form((prev) => ({ ...prev, code: event.target.value }))}
+              className="rounded-md border px-3 py-2"
+              value={editLevel5Form.code}
+              onChange={(event) => setEditLevel5Form((prev) => ({ ...prev, code: event.target.value }))}
             />
             <input
-              className="w-full rounded-md border px-3 py-2 text-sm"
-              placeholder="Nombre"
-              value={level5Form.name}
-              onChange={(event) => setLevel5Form((prev) => ({ ...prev, name: event.target.value }))}
+              className="rounded-md border px-3 py-2 md:col-span-2"
+              value={editLevel5Form.name}
+              onChange={(event) => setEditLevel5Form((prev) => ({ ...prev, name: event.target.value }))}
             />
             <select
-              className="w-full rounded-md border px-3 py-2 text-sm"
-              value={level5Form.type}
-              onChange={(event) => setLevel5Form((prev) => ({ ...prev, type: event.target.value }))}
+              className="rounded-md border px-3 py-2"
+              value={editLevel5Form.type}
+              onChange={(event) => setEditLevel5Form((prev) => ({ ...prev, type: event.target.value }))}
             >
               <option value="REFERENCIA">Referencia</option>
               <option value="SUBUNIDAD">Subunidad</option>
@@ -2048,9 +2297,9 @@ export default function PatrimonioForestalPage() {
               <option value="SUBMUESTRA">Submuestra</option>
             </select>
             <select
-              className="w-full rounded-md border px-3 py-2 text-sm"
-              value={level5Form.shapeType}
-              onChange={(event) => setLevel5Form((prev) => ({ ...prev, shapeType: event.target.value }))}
+              className="rounded-md border px-3 py-2"
+              value={editLevel5Form.shapeType}
+              onChange={(event) => setEditLevel5Form((prev) => ({ ...prev, shapeType: event.target.value }))}
             >
               <option value="RECTANGULAR">Rectangular</option>
               <option value="CUADRADA">Cuadrada</option>
@@ -2058,227 +2307,63 @@ export default function PatrimonioForestalPage() {
               <option value="HEXAGONAL">Hexagonal</option>
             </select>
             <input
-              className="w-full rounded-md border px-3 py-2 text-sm"
+              className="rounded-md border px-3 py-2"
+              placeholder="Dimension 1"
               type="number"
               min="0"
               step="0.0001"
-              placeholder="Dimensión 1"
-              value={level5Form.dimension1M}
-              onChange={(event) => setLevel5Form((prev) => ({ ...prev, dimension1M: event.target.value }))}
+              value={editLevel5Form.dimension1M}
+              onChange={(event) => setEditLevel5Form((prev) => ({ ...prev, dimension1M: event.target.value }))}
             />
             <input
-              className="w-full rounded-md border px-3 py-2 text-sm"
+              className="rounded-md border px-3 py-2"
+              placeholder="Dimension 2"
               type="number"
               min="0"
               step="0.0001"
-              placeholder="Dimensión 2"
-              value={level5Form.dimension2M}
-              onChange={(event) => setLevel5Form((prev) => ({ ...prev, dimension2M: event.target.value }))}
+              value={editLevel5Form.dimension2M}
+              onChange={(event) => setEditLevel5Form((prev) => ({ ...prev, dimension2M: event.target.value }))}
             />
             <input
-              className="w-full rounded-md border px-3 py-2 text-sm"
+              className="rounded-md border px-3 py-2"
+              placeholder="Dimension 3"
               type="number"
               min="0"
               step="0.0001"
-              placeholder="Dimensión 3"
-              value={level5Form.dimension3M}
-              onChange={(event) => setLevel5Form((prev) => ({ ...prev, dimension3M: event.target.value }))}
+              value={editLevel5Form.dimension3M}
+              onChange={(event) => setEditLevel5Form((prev) => ({ ...prev, dimension3M: event.target.value }))}
             />
             <input
-              className="w-full rounded-md border px-3 py-2 text-sm"
+              className="rounded-md border px-3 py-2"
+              placeholder="Dimension 4"
               type="number"
               min="0"
               step="0.0001"
-              placeholder="Dimensión 4"
-              value={level5Form.dimension4M}
-              onChange={(event) => setLevel5Form((prev) => ({ ...prev, dimension4M: event.target.value }))}
+              value={editLevel5Form.dimension4M}
+              onChange={(event) => setEditLevel5Form((prev) => ({ ...prev, dimension4M: event.target.value }))}
             />
-            <button className="rounded-md border px-3 py-2 text-sm" disabled={!selectedLevel4Id || submitting} type="submit">
-              Guardar nivel 5
-            </button>
+            <label className="flex items-center gap-2 rounded-md border px-3 py-2 text-sm">
+              <input
+                checked={editLevel5Form.isActive}
+                onChange={(event) => setEditLevel5Form((prev) => ({ ...prev, isActive: event.target.checked }))}
+                type="checkbox"
+              />
+              Activo
+            </label>
+            <div className="flex gap-2">
+              <button className="rounded-md border px-3 py-2 text-sm" disabled={submitting} type="submit">
+                Guardar
+              </button>
+              <button className="rounded-md border px-3 py-2 text-sm" onClick={() => setEditingLevel5Id(null)} type="button">
+                Cancelar
+              </button>
+            </div>
           </form>
-          <div className="rounded-md border p-3">
-            <h3 className="font-medium">Nivel 5</h3>
-            <div className="mt-2 flex items-center justify-between gap-2">
-              <p className="text-xs text-muted-foreground">Total: {paginationLevel5.total}</p>
-              <label className="text-xs">
-                <span className="mr-1">Límite</span>
-                <select
-                  className="rounded-md border px-2 py-1"
-                  onChange={(event) => {
-                    setPageAdjustReason("límite");
-                    setPageLevel5(1);
-                    setLimitLevel5(Number(event.target.value));
-                  }}
-                  value={limitLevel5}
-                >
-                  <option value={10}>10</option>
-                  <option value={25}>25</option>
-                  <option value={50}>50</option>
-                </select>
-              </label>
-            </div>
-            <input
-              className="mt-2 w-full rounded-md border px-2 py-1 text-xs"
-              onChange={(event) => {
-                setPageAdjustReason("filtro");
-                setPageLevel5(1);
-                setSearchLevel5(event.target.value);
-              }}
-              placeholder="Buscar nivel 5"
-              value={searchLevel5}
-            />
-            <div className="mt-3 overflow-x-auto rounded-lg border">
-              <table className="w-full text-left text-sm">
-                <thead>
-                  <tr className="border-b">
-                    <th className="px-3 py-2">Codigo</th>
-                    <th className="px-3 py-2">Nombre</th>
-                    <th className="px-3 py-2">Tipo</th>
-                    <th className="px-3 py-2">Area (m2)</th>
-                    <th className="px-3 py-2">Acciones</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {level5Items.map((item) => (
-                    <tr className="border-b" key={item.id}>
-                      <td className="px-3 py-2">{item.code}</td>
-                      <td className="px-3 py-2">{item.name}</td>
-                      <td className="px-3 py-2">{item.type}</td>
-                      <td className="px-3 py-2">{String(item.areaM2)}</td>
-                      <td className="px-3 py-2">
-                        <button className="mr-2 rounded-md border px-2 py-0.5 text-xs" onClick={() => onEditLevel5(item)} type="button">
-                          Editar
-                        </button>
-                        <button className="rounded-md border px-2 py-0.5 text-xs" onClick={() => onDeleteLevel5(item.id)} type="button">
-                          Eliminar
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                  {level5Items.length === 0 ? (
-                    <tr>
-                      <td className="px-3 py-3" colSpan={5}>
-                        Sin registros
-                      </td>
-                    </tr>
-                  ) : null}
-                </tbody>
-              </table>
-            </div>
-            <div className="mt-2 flex items-center justify-end gap-2 text-xs">
-              <button
-                className="rounded-md border px-2 py-1 disabled:opacity-60"
-                disabled={pageLevel5 <= 1 || submitting}
-                onClick={() => setPageLevel5((current) => Math.max(1, current - 1))}
-                type="button"
-              >
-                Anterior
-              </button>
-              <span>
-                {paginationLevel5.page}/{paginationLevel5.totalPages} · {paginationLevel5.total}
-              </span>
-              <button
-                className="rounded-md border px-2 py-1 disabled:opacity-60"
-                disabled={pageLevel5 >= paginationLevel5.totalPages || submitting}
-                onClick={() => setPageLevel5((current) => Math.min(paginationLevel5.totalPages, current + 1))}
-                type="button"
-              >
-                Siguiente
-              </button>
-            </div>
-          </div>
-          {editingLevel5Id ? (
-            <form className="mt-4 grid gap-3 rounded-lg border p-3 md:grid-cols-4" onSubmit={onSubmitLevel5Edit}>
-              <input
-                className="rounded-md border px-3 py-2"
-                value={editLevel5Form.code}
-                onChange={(event) => setEditLevel5Form((prev) => ({ ...prev, code: event.target.value }))}
-              />
-              <input
-                className="rounded-md border px-3 py-2 md:col-span-2"
-                value={editLevel5Form.name}
-                onChange={(event) => setEditLevel5Form((prev) => ({ ...prev, name: event.target.value }))}
-              />
-              <select
-                className="rounded-md border px-3 py-2"
-                value={editLevel5Form.type}
-                onChange={(event) => setEditLevel5Form((prev) => ({ ...prev, type: event.target.value }))}
-              >
-                <option value="REFERENCIA">Referencia</option>
-                <option value="SUBUNIDAD">Subunidad</option>
-                <option value="SUBPARCELA">Subparcela</option>
-                <option value="MUESTRA">Muestra</option>
-                <option value="SUBMUESTRA">Submuestra</option>
-              </select>
-              <select
-                className="rounded-md border px-3 py-2"
-                value={editLevel5Form.shapeType}
-                onChange={(event) => setEditLevel5Form((prev) => ({ ...prev, shapeType: event.target.value }))}
-              >
-                <option value="RECTANGULAR">Rectangular</option>
-                <option value="CUADRADA">Cuadrada</option>
-                <option value="CIRCULAR">Circular</option>
-                <option value="HEXAGONAL">Hexagonal</option>
-              </select>
-              <input
-                className="rounded-md border px-3 py-2"
-                placeholder="Dimension 1"
-                type="number"
-                min="0"
-                step="0.0001"
-                value={editLevel5Form.dimension1M}
-                onChange={(event) => setEditLevel5Form((prev) => ({ ...prev, dimension1M: event.target.value }))}
-              />
-              <input
-                className="rounded-md border px-3 py-2"
-                placeholder="Dimension 2"
-                type="number"
-                min="0"
-                step="0.0001"
-                value={editLevel5Form.dimension2M}
-                onChange={(event) => setEditLevel5Form((prev) => ({ ...prev, dimension2M: event.target.value }))}
-              />
-              <input
-                className="rounded-md border px-3 py-2"
-                placeholder="Dimension 3"
-                type="number"
-                min="0"
-                step="0.0001"
-                value={editLevel5Form.dimension3M}
-                onChange={(event) => setEditLevel5Form((prev) => ({ ...prev, dimension3M: event.target.value }))}
-              />
-              <input
-                className="rounded-md border px-3 py-2"
-                placeholder="Dimension 4"
-                type="number"
-                min="0"
-                step="0.0001"
-                value={editLevel5Form.dimension4M}
-                onChange={(event) => setEditLevel5Form((prev) => ({ ...prev, dimension4M: event.target.value }))}
-              />
-              <label className="flex items-center gap-2 rounded-md border px-3 py-2 text-sm">
-                <input
-                  checked={editLevel5Form.isActive}
-                  onChange={(event) => setEditLevel5Form((prev) => ({ ...prev, isActive: event.target.checked }))}
-                  type="checkbox"
-                />
-                Activo
-              </label>
-              <div className="flex gap-2">
-                <button className="rounded-md border px-3 py-2 text-sm" disabled={submitting} type="submit">
-                  Guardar
-                </button>
-                <button className="rounded-md border px-3 py-2 text-sm" onClick={() => setEditingLevel5Id(null)} type="button">
-                  Cancelar
-                </button>
-              </div>
-            </form>
-          ) : null}
+        ) : null}
       </section>
     </div>
 
-    
-    
+
+
   );
 }

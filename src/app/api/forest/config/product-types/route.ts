@@ -60,14 +60,19 @@ export async function GET(req: NextRequest) {
   if (!query.success) return fail("Parámetros inválidos", 400, query.error.flatten());
 
   const { page, limit, search } = query.data;
-  const where = search
+  const where: any = search
     ? {
         OR: [
           { code: { contains: search, mode: "insensitive" as const } },
           { name: { contains: search, mode: "insensitive" as const } },
         ],
       }
-    : {};
+    :
+    {};
+
+  if (authResult.session.user.organizationId) {
+    where.organizationId = authResult.session.user.organizationId;
+  }
 
   const [total, items] = await Promise.all([
     prisma.productType.count({ where }),
@@ -107,6 +112,7 @@ export async function POST(req: NextRequest) {
   try {
     const created = await prisma.productType.create({
       data: {
+        organizationId: authResult.session.user.organizationId || null,
         code: parsed.data.code,
         name: parsed.data.name,
         minLengthM: parsed.data.minLengthM ?? null,

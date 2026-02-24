@@ -137,22 +137,35 @@ export default function LoginPage() {
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-md items-center p-6">
       <form onSubmit={onSubmit} className="w-full rounded-xl border p-6">
-        <div className="mb-8 flex flex-col items-center gap-4">
-          <div className="flex h-16 w-32 items-center justify-center overflow-hidden rounded-lg border bg-white p-2 shadow-sm">
-            {branding?.organization?.logoUrl ? (
-              <Image
-                alt={branding.organization.name ?? "Logo"}
-                className="h-full w-full object-contain"
-                height={64}
-                src={branding.organization.logoUrl}
-                width={128}
-              />
-            ) : (
-              <div className="flex h-full w-full items-center justify-center text-xs font-bold uppercase tracking-wider text-muted-foreground/60">
-                {branding?.organization?.name ?? "Confor"}
+        <div className="mb-6 flex flex-col items-center gap-4">
+          <div className="flex items-center gap-4">
+            <div className="flex h-16 w-32 items-center justify-center overflow-hidden rounded-lg border bg-white p-2 shadow-sm">
+              {branding?.organization?.logoUrl ? (
+                <Image
+                  alt={branding.organization.name ?? "Logo"}
+                  className="h-full w-full object-contain"
+                  height={64}
+                  src={branding.organization.logoUrl}
+                  width={128}
+                />
+              ) : (
+                <div className="flex h-full w-full items-center justify-center text-xs font-bold uppercase tracking-wider text-muted-foreground/60">
+                  {branding?.organization?.name ?? "Confor"}
+                </div>
+              )}
+            </div>
+
+            {(branding?.organization as any)?.country?.flagUrl && (
+              <div className="flex h-12 w-20 items-center justify-center overflow-hidden rounded border bg-white p-0.5 shadow-md">
+                <img
+                  src={(branding?.organization as any).country.flagUrl}
+                  alt="Flag"
+                  className="h-full w-full object-cover rounded-[1px]"
+                />
               </div>
             )}
           </div>
+
           <div className="text-center">
             {branding?.appTitle ? (
               <div className="text-xl font-bold tracking-tight text-primary-foreground bg-primary/50 px-3 py-1 rounded-full mb-1">

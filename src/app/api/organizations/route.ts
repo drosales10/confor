@@ -10,14 +10,17 @@ function canManageOrganizations(roles: string[]) {
 
 export async function GET() {
   const organizations = await prisma.organization.findMany({
+    where: { deletedAt: null },
+    include: { country: true } as any,
     orderBy: { createdAt: "desc" },
   });
 
   return ok({
-    items: organizations.map((organization) => ({
+    items: (organizations as any[]).map((organization) => ({
       id: organization.id,
       name: organization.name,
       rif: (organization.settings as { rif?: string } | null)?.rif ?? "",
+      countryId: organization.countryId,
       createdAt: organization.createdAt,
     })),
   });
@@ -49,14 +52,16 @@ export async function POST(req: NextRequest) {
     data: {
       name: parsed.data.name,
       slug,
+      countryId: parsed.data.countryId || null,
       settings: { rif: parsed.data.rif },
-    },
+    } as any,
   });
 
   return ok({
     id: created.id,
     name: created.name,
     rif: parsed.data.rif,
+    countryId: (created as any).countryId,
     createdAt: created.createdAt,
   }, 201);
 }

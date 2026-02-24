@@ -39,8 +39,14 @@ async function main() {
     },
     { name: "Profile", slug: "profile", routePath: "/profile", displayOrder: 8 },
     { name: "Analytics", slug: "analytics", routePath: "/analytics", displayOrder: 9 },
-    { name: "Settings", slug: "settings", routePath: "/settings", displayOrder: 10 },
-    { name: "Audit", slug: "audit", routePath: "/audit", displayOrder: 11 },
+    {
+      name: "General Configuration",
+      slug: "general-config",
+      routePath: "/configuracion-general",
+      displayOrder: 10,
+    },
+    { name: "Settings", slug: "settings", routePath: "/settings", displayOrder: 11 },
+    { name: "Audit", slug: "audit", routePath: "/audit", displayOrder: 12 },
   ] as const;
 
   for (const moduleData of modules) {

@@ -42,7 +42,7 @@ export function getRolePermissions(role: AppRole | null) {
   }
 
   if (role === "SUPER_ADMIN") {
-    return ["dashboard:READ", "users:ADMIN", "organizations:ADMIN", "forest-patrimony:ADMIN", "forest-biological-asset:ADMIN", "forest-config:ADMIN", "profile:ADMIN", "analytics:ADMIN", "settings:ADMIN", "audit:ADMIN"];
+    return ["dashboard:READ", "users:ADMIN", "organizations:ADMIN", "forest-patrimony:ADMIN", "forest-biological-asset:ADMIN", "forest-config:ADMIN", "general-config:ADMIN", "profile:ADMIN", "analytics:ADMIN", "settings:ADMIN", "audit:ADMIN"];
   }
 
   if (role === "GERENTE_CAMPO") {

@@ -6,8 +6,8 @@ import { hasPermission } from "@/lib/permissions";
 import {
   deleteByIdSchema,
   forestConfigQuerySchema,
-  stateDepartmentCreateSchema,
-  stateDepartmentUpdateSchema,
+  regionCreateSchema,
+  regionUpdateSchema,
 } from "@/validations/forest-config.schema";
 
 async function safeAuditLog(data: Prisma.AuditLogUncheckedCreateInput) {
@@ -19,13 +19,13 @@ async function safeAuditLog(data: Prisma.AuditLogUncheckedCreateInput) {
 function ensureReadPermission(permissions: string[], isSuperAdmin: boolean) {
   if (isSuperAdmin) return null;
 
-  const canReadForestConfig = hasPermission(permissions, "forest-config", "READ");
-  const canWriteForestConfig = ["CREATE", "UPDATE", "DELETE"].some((action) =>
-    hasPermission(permissions, "forest-config", action),
+  const canReadGeneralConfig = hasPermission(permissions, "general-config", "READ");
+  const canWriteGeneralConfig = ["CREATE", "UPDATE", "DELETE"].some((action) =>
+    hasPermission(permissions, "general-config", action),
   );
 
-  if (!canReadForestConfig && !canWriteForestConfig) {
-    return requirePermission(permissions, "forest-config", "READ");
+  if (!canReadGeneralConfig && !canWriteGeneralConfig) {
+    return requirePermission(permissions, "general-config", "READ");
   }
 
   return null;
@@ -71,8 +71,8 @@ export async function GET(req: NextRequest) {
     : {};
 
   const [total, items] = await Promise.all([
-    prisma.stateDepartment.count({ where }),
-    prisma.stateDepartment.findMany({
+    prisma.region.count({ where }),
+    prisma.region.findMany({
       where,
       skip: (page - 1) * limit,
       take: limit,
@@ -100,19 +100,19 @@ export async function POST(req: NextRequest) {
 
   const isSuperAdmin = authResult.session.user.roles?.includes("SUPER_ADMIN") ?? false;
   if (!isSuperAdmin) {
-    const permissionError = requirePermission(authResult.session.user.permissions ?? [], "forest-config", "CREATE");
+    const permissionError = requirePermission(authResult.session.user.permissions ?? [], "general-config", "CREATE");
     if (permissionError) return permissionError;
   }
 
   const body = await req.json();
-  const parsed = stateDepartmentCreateSchema.safeParse(body);
+  const parsed = regionCreateSchema.safeParse(body);
   if (!parsed.success) return fail("Datos inválidos", 400, parsed.error.flatten());
 
   const country = await prisma.country.findUnique({ where: { id: parsed.data.countryId } });
   if (!country) return fail("País no encontrado", 404);
 
   try {
-    const created = await prisma.stateDepartment.create({
+    const created = await prisma.region.create({
       data: {
         countryId: parsed.data.countryId,
         code: parsed.data.code,
@@ -127,14 +127,14 @@ export async function POST(req: NextRequest) {
     await safeAuditLog({
       userId: authResult.session.user.id,
       action: "CREATE",
-      entityType: "StateDepartment",
+      entityType: "Region",
       entityId: created.id,
       newValues: parsed.data,
     });
 
     return ok(created, 201);
   } catch (error) {
-    return mapPrismaError(error, "No fue posible crear el estado/departamento");
+    return mapPrismaError(error, "No fue posible crear la región");
   }
 }
 
@@ -144,12 +144,12 @@ export async function PATCH(req: NextRequest) {
 
   const isSuperAdmin = authResult.session.user.roles?.includes("SUPER_ADMIN") ?? false;
   if (!isSuperAdmin) {
-    const permissionError = requirePermission(authResult.session.user.permissions ?? [], "forest-config", "UPDATE");
+    const permissionError = requirePermission(authResult.session.user.permissions ?? [], "general-config", "UPDATE");
     if (permissionError) return permissionError;
   }
 
   const body = await req.json();
-  const parsed = stateDepartmentUpdateSchema.safeParse(body);
+  const parsed = regionUpdateSchema.safeParse(body);
   if (!parsed.success) return fail("Datos inválidos", 400, parsed.error.flatten());
 
   if (parsed.data.countryId) {
@@ -158,7 +158,7 @@ export async function PATCH(req: NextRequest) {
   }
 
   try {
-    const updated = await prisma.stateDepartment.update({
+    const updated = await prisma.region.update({
       where: { id: parsed.data.id },
       data: {
         countryId: parsed.data.countryId,
@@ -174,14 +174,14 @@ export async function PATCH(req: NextRequest) {
     await safeAuditLog({
       userId: authResult.session.user.id,
       action: "UPDATE",
-      entityType: "StateDepartment",
+      entityType: "Region",
       entityId: updated.id,
       newValues: parsed.data,
     });
 
     return ok(updated);
   } catch (error) {
-    return mapPrismaError(error, "No fue posible actualizar el estado/departamento");
+    return mapPrismaError(error, "No fue posible actualizar la región");
   }
 }
 
@@ -191,7 +191,7 @@ export async function DELETE(req: NextRequest) {
 
   const isSuperAdmin = authResult.session.user.roles?.includes("SUPER_ADMIN") ?? false;
   if (!isSuperAdmin) {
-    const permissionError = requirePermission(authResult.session.user.permissions ?? [], "forest-config", "DELETE");
+    const permissionError = requirePermission(authResult.session.user.permissions ?? [], "general-config", "DELETE");
     if (permissionError) return permissionError;
   }
 
@@ -199,23 +199,18 @@ export async function DELETE(req: NextRequest) {
   const parsed = deleteByIdSchema.safeParse(body);
   if (!parsed.success) return fail("Datos inválidos", 400, parsed.error.flatten());
 
-  const municipalityCount = await prisma.municipalityDistrict.count({ where: { stateId: parsed.data.id } });
-  if (municipalityCount > 0) {
-    return fail("No se puede eliminar el estado/departamento porque tiene municipios relacionados", 409);
-  }
-
   try {
-    await prisma.stateDepartment.delete({ where: { id: parsed.data.id } });
+    await prisma.region.delete({ where: { id: parsed.data.id } });
 
     await safeAuditLog({
       userId: authResult.session.user.id,
       action: "DELETE",
-      entityType: "StateDepartment",
+      entityType: "Region",
       entityId: parsed.data.id,
     });
 
     return ok({ id: parsed.data.id });
   } catch (error) {
-    return mapPrismaError(error, "No fue posible eliminar el estado/departamento");
+    return mapPrismaError(error, "No fue posible eliminar la región");
   }
 }

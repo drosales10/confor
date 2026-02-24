@@ -168,23 +168,34 @@ enum RecommendedHarvestType {
 }
 
 model Organization {
-  id                   String                @id @default(uuid()) @db.Uuid
-  name                 String                @db.VarChar(255)
-  slug                 String                @unique @db.VarChar(100)
-  description          String?
-  logoUrl              String?               @db.VarChar(500)
-  website              String?               @db.VarChar(255)
-  isActive             Boolean               @default(true)
-  settings             Json?
-  createdAt            DateTime              @default(now())
-  updatedAt            DateTime              @updatedAt
-  deletedAt            DateTime?
-  roles                Role[]
-  users                User[]
-  systemConfigurations SystemConfiguration[]
-  auditLogs            AuditLog[]
-  fileUploads          FileUpload[]
+  id                         String                       @id @default(uuid()) @db.Uuid
+  name                       String                       @db.VarChar(255)
+  slug                       String                       @unique @db.VarChar(100)
+  description                String?
+  logoUrl                    String?                      @db.VarChar(500)
+  countryId                  String?                      @db.Uuid
+  website                    String?                      @db.VarChar(255)
+  isActive                   Boolean                      @default(true)
+  settings                   Json?
+  country                    Country?                     @relation(fields: [countryId], references: [id])
+  createdAt                  DateTime                     @default(now())
+  updatedAt                  DateTime                     @updatedAt
+  deletedAt                  DateTime?
+  roles                      Role[]
+  users                      User[]
+  systemConfigurations       SystemConfiguration[]
+  auditLogs                  AuditLog[]
+  fileUploads                FileUpload[]
   forestPatrimonyLevel2Units ForestPatrimonyLevel2[]
+  managementSchemes          ManagementScheme[]
+  inventoryTypes             ForestInventoryTypeCatalog[]
+  imaClasses                 ImaClass[]
+  species                    Species[]
+  provenances                Provenance[]
+  vegetalMaterials           VegetalMaterial[]
+  landUseTypes               LandUseType[]
+  spacings                   Spacing[]
+  productTypes               ProductType[]
 }
 
 model Role {
@@ -303,19 +314,19 @@ model UserRole {
 }
 
 model Session {
-  id           String    @id @default(uuid()) @db.Uuid
-  userId       String    @db.Uuid
-  tokenHash    String    @unique @db.VarChar(255)
-  refreshToken String?   @unique @db.VarChar(255)
-  ipAddress    String?   @db.VarChar(45)
+  id           String     @id @default(uuid()) @db.Uuid
+  userId       String     @db.Uuid
+  tokenHash    String     @unique @db.VarChar(255)
+  refreshToken String?    @unique @db.VarChar(255)
+  ipAddress    String?    @db.VarChar(45)
   userAgent    String?
   deviceInfo   Json?
-  isActive     Boolean   @default(true)
+  isActive     Boolean    @default(true)
   expiresAt    DateTime
-  lastActivity DateTime  @default(now())
-  createdAt    DateTime  @default(now())
+  lastActivity DateTime   @default(now())
+  createdAt    DateTime   @default(now())
   revokedAt    DateTime?
-  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   auditLogs    AuditLog[]
 }
 
@@ -341,42 +352,42 @@ model EmailVerificationToken {
 }
 
 model UserProfile {
-  id          String   @id @default(uuid()) @db.Uuid
-  userId      String   @unique @db.Uuid
-  bio         String?
-  jobTitle    String?  @db.VarChar(150)
-  department  String?  @db.VarChar(150)
-  company     String?  @db.VarChar(150)
-  addressLine1 String? @db.VarChar(255)
-  addressLine2 String? @db.VarChar(255)
-  city        String?  @db.VarChar(100)
-  state       String?  @db.VarChar(100)
-  postalCode  String?  @db.VarChar(20)
-  country     String?  @db.VarChar(100)
-  socialLinks Json?
-  preferences Json?
+  id           String   @id @default(uuid()) @db.Uuid
+  userId       String   @unique @db.Uuid
+  bio          String?
+  jobTitle     String?  @db.VarChar(150)
+  department   String?  @db.VarChar(150)
+  company      String?  @db.VarChar(150)
+  addressLine1 String?  @db.VarChar(255)
+  addressLine2 String?  @db.VarChar(255)
+  city         String?  @db.VarChar(100)
+  state        String?  @db.VarChar(100)
+  postalCode   String?  @db.VarChar(20)
+  country      String?  @db.VarChar(100)
+  socialLinks  Json?
+  preferences  Json?
   customFields Json?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model Notification {
-  id           String             @id @default(uuid()) @db.Uuid
-  userId       String             @db.Uuid
-  title        String             @db.VarChar(255)
+  id           String              @id @default(uuid()) @db.Uuid
+  userId       String              @db.Uuid
+  title        String              @db.VarChar(255)
   body         String
-  type         String             @db.VarChar(100)
+  type         String              @db.VarChar(100)
   channel      NotificationChannel @default(IN_APP)
-  status       NotificationStatus @default(PENDING)
+  status       NotificationStatus  @default(PENDING)
   data         Json?
-  actionUrl    String?            @db.VarChar(500)
+  actionUrl    String?             @db.VarChar(500)
   readAt       DateTime?
   sentAt       DateTime?
   scheduledFor DateTime?
   expiresAt    DateTime?
-  createdAt    DateTime           @default(now())
-  user         User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt    DateTime            @default(now())
+  user         User                @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model NotificationPreference {
@@ -393,47 +404,47 @@ model NotificationPreference {
 }
 
 model SystemConfiguration {
-  id              String       @id @default(uuid()) @db.Uuid
-  organizationId  String?      @db.Uuid
-  category        String       @db.VarChar(100)
-  key             String       @db.VarChar(150)
+  id              String        @id @default(uuid()) @db.Uuid
+  organizationId  String?       @db.Uuid
+  category        String        @db.VarChar(100)
+  key             String        @db.VarChar(150)
   value           String?
-  configType      ConfigType   @default(STRING)
+  configType      ConfigType    @default(STRING)
   description     String?
-  isPublic        Boolean      @default(false)
-  isEditable      Boolean      @default(true)
+  isPublic        Boolean       @default(false)
+  isEditable      Boolean       @default(true)
   validationRules Json?
-  createdAt       DateTime     @default(now())
-  updatedAt       DateTime     @updatedAt
-  updatedBy       String?      @db.Uuid
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  updatedBy       String?       @db.Uuid
   organization    Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@unique([organizationId, category, key])
 }
 
 model AuditLog {
-  id             String      @id @default(uuid()) @db.Uuid
-  organizationId String?     @db.Uuid
-  userId         String?     @db.Uuid
-  sessionId      String?     @db.Uuid
+  id             String        @id @default(uuid()) @db.Uuid
+  organizationId String?       @db.Uuid
+  userId         String?       @db.Uuid
+  sessionId      String?       @db.Uuid
   action         AuditAction
-  entityType     String?     @db.VarChar(100)
-  entityId       String?     @db.Uuid
-  entityName     String?     @db.VarChar(255)
+  entityType     String?       @db.VarChar(100)
+  entityId       String?       @db.Uuid
+  entityName     String?       @db.VarChar(255)
   oldValues      Json?
   newValues      Json?
   changedFields  String[]
-  ipAddress      String?     @db.VarChar(45)
+  ipAddress      String?       @db.VarChar(45)
   userAgent      String?
-  requestId      String?     @db.Uuid
+  requestId      String?       @db.Uuid
   durationMs     Int?
   statusCode     Int?
   errorMessage   String?
   metadata       Json?
-  createdAt      DateTime    @default(now())
+  createdAt      DateTime      @default(now())
   organization   Organization? @relation(fields: [organizationId], references: [id])
-  user           User?       @relation(fields: [userId], references: [id], onDelete: SetNull)
-  session        Session?    @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+  user           User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+  session        Session?      @relation(fields: [sessionId], references: [id], onDelete: SetNull)
 }
 
 model DashboardWidget {
@@ -489,25 +500,25 @@ model FileUpload {
 }
 
 model ForestPatrimonyLevel2 {
-  id                   String                 @id @default(uuid()) @db.Uuid
-  organizationId       String?                @db.Uuid
-  code                 String                 @unique @db.VarChar(80)
-  name                 String                 @db.VarChar(255)
+  id                   String                    @id @default(uuid()) @db.Uuid
+  organizationId       String?                   @db.Uuid
+  code                 String                    @unique @db.VarChar(80)
+  name                 String                    @db.VarChar(255)
   type                 PatrimonyLevel2Type
   legalDocumentDate    DateTime?
   legalStatus          LegalStatus?
-  totalAreaHa          Decimal                @db.Decimal(12, 2)
-  centroidLatitude     Decimal?               @db.Decimal(10, 7)
-  centroidLongitude    Decimal?               @db.Decimal(10, 7)
-  ownerRepresentative  String?                @db.VarChar(255)
-  publicRegistryNumber String?                @db.VarChar(120)
+  totalAreaHa          Decimal                   @db.Decimal(12, 2)
+  centroidLatitude     Decimal?                  @db.Decimal(10, 7)
+  centroidLongitude    Decimal?                  @db.Decimal(10, 7)
+  ownerRepresentative  String?                   @db.VarChar(255)
+  publicRegistryNumber String?                   @db.VarChar(120)
   publicRegistryDate   DateTime?
   address              String?
   lastInfoDate         DateTime?
-  isActive             Boolean                @default(true)
-  createdAt            DateTime               @default(now())
-  updatedAt            DateTime               @updatedAt
-  organization         Organization?          @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  isActive             Boolean                   @default(true)
+  createdAt            DateTime                  @default(now())
+  updatedAt            DateTime                  @updatedAt
+  organization         Organization?             @relation(fields: [organizationId], references: [id], onDelete: Restrict)
   neighbors            ForestPatrimonyNeighbor[]
   level3Units          ForestPatrimonyLevel3[]
 
@@ -515,53 +526,53 @@ model ForestPatrimonyLevel2 {
 }
 
 model ForestPatrimonyNeighbor {
-  id        String               @id @default(uuid()) @db.Uuid
-  level2Id  String               @db.Uuid
-  code      String               @db.VarChar(80)
-  name      String               @db.VarChar(255)
-  type      String               @db.VarChar(80)
-  createdAt DateTime             @default(now())
+  id        String                @id @default(uuid()) @db.Uuid
+  level2Id  String                @db.Uuid
+  code      String                @db.VarChar(80)
+  name      String                @db.VarChar(255)
+  type      String                @db.VarChar(80)
+  createdAt DateTime              @default(now())
   level2    ForestPatrimonyLevel2 @relation(fields: [level2Id], references: [id], onDelete: Cascade)
 
   @@unique([level2Id, code])
 }
 
 model ForestPatrimonyLevel3 {
-  id                String                 @id @default(uuid()) @db.Uuid
-  level2Id          String                 @db.Uuid
-  code              String                 @db.VarChar(80)
-  name              String                 @db.VarChar(255)
+  id                String                  @id @default(uuid()) @db.Uuid
+  level2Id          String                  @db.Uuid
+  code              String                  @db.VarChar(80)
+  name              String                  @db.VarChar(255)
   type              PatrimonyLevel3Type
-  totalAreaHa       Decimal                @db.Decimal(12, 2)
-  centroidLatitude  Decimal?               @db.Decimal(10, 7)
-  centroidLongitude Decimal?               @db.Decimal(10, 7)
+  totalAreaHa       Decimal                 @db.Decimal(12, 2)
+  centroidLatitude  Decimal?                @db.Decimal(10, 7)
+  centroidLongitude Decimal?                @db.Decimal(10, 7)
   lastInfoDate      DateTime?
-  isActive          Boolean                @default(true)
-  createdAt         DateTime               @default(now())
-  updatedAt         DateTime               @updatedAt
-  level2            ForestPatrimonyLevel2  @relation(fields: [level2Id], references: [id], onDelete: Restrict)
+  isActive          Boolean                 @default(true)
+  createdAt         DateTime                @default(now())
+  updatedAt         DateTime                @updatedAt
+  level2            ForestPatrimonyLevel2   @relation(fields: [level2Id], references: [id], onDelete: Restrict)
   level4Units       ForestPatrimonyLevel4[]
 
   @@unique([level2Id, code])
 }
 
 model ForestPatrimonyLevel4 {
-  id                String                 @id @default(uuid()) @db.Uuid
-  level3Id          String                 @db.Uuid
-  code              String                 @db.VarChar(80)
-  name              String                 @db.VarChar(255)
+  id                String                        @id @default(uuid()) @db.Uuid
+  level3Id          String                        @db.Uuid
+  code              String                        @db.VarChar(80)
+  name              String                        @db.VarChar(255)
   type              PatrimonyLevel4Type
-  totalAreaHa       Decimal                @db.Decimal(12, 2)
-  plantableAreaHa   Decimal?               @db.Decimal(12, 2)
-  rotationPhase     String?                @db.VarChar(120)
-  previousUse       String?                @db.VarChar(255)
-  centroidLatitude  Decimal?               @db.Decimal(10, 7)
-  centroidLongitude Decimal?               @db.Decimal(10, 7)
+  totalAreaHa       Decimal                       @db.Decimal(12, 2)
+  plantableAreaHa   Decimal?                      @db.Decimal(12, 2)
+  rotationPhase     String?                       @db.VarChar(120)
+  previousUse       String?                       @db.VarChar(255)
+  centroidLatitude  Decimal?                      @db.Decimal(10, 7)
+  centroidLongitude Decimal?                      @db.Decimal(10, 7)
   lastInfoDate      DateTime?
-  isActive          Boolean                @default(true)
-  createdAt         DateTime               @default(now())
-  updatedAt         DateTime               @updatedAt
-  level3            ForestPatrimonyLevel3  @relation(fields: [level3Id], references: [id], onDelete: Restrict)
+  isActive          Boolean                       @default(true)
+  createdAt         DateTime                      @default(now())
+  updatedAt         DateTime                      @updatedAt
+  level3            ForestPatrimonyLevel3         @relation(fields: [level3Id], references: [id], onDelete: Restrict)
   level5Units       ForestPatrimonyLevel5[]
   level6Assets      ForestBiologicalAssetLevel6[]
   level4Costs       Level4AdministrativeCost[]
@@ -570,24 +581,24 @@ model ForestPatrimonyLevel4 {
 }
 
 model ForestPatrimonyLevel5 {
-  id                String                 @id @default(uuid()) @db.Uuid
-  level4Id          String                 @db.Uuid
-  code              String                 @db.VarChar(80)
-  name              String                 @db.VarChar(255)
+  id                String                @id @default(uuid()) @db.Uuid
+  level4Id          String                @db.Uuid
+  code              String                @db.VarChar(80)
+  name              String                @db.VarChar(255)
   type              PatrimonyLevel5Type
   shapeType         PlotShapeType
-  dimension1M       Decimal?               @db.Decimal(12, 4)
-  dimension2M       Decimal?               @db.Decimal(12, 4)
-  dimension3M       Decimal?               @db.Decimal(12, 4)
-  dimension4M       Decimal?               @db.Decimal(12, 4)
-  areaM2            Decimal                @db.Decimal(12, 4)
-  centroidLatitude  Decimal?               @db.Decimal(10, 7)
-  centroidLongitude Decimal?               @db.Decimal(10, 7)
+  dimension1M       Decimal?              @db.Decimal(12, 4)
+  dimension2M       Decimal?              @db.Decimal(12, 4)
+  dimension3M       Decimal?              @db.Decimal(12, 4)
+  dimension4M       Decimal?              @db.Decimal(12, 4)
+  areaM2            Decimal               @db.Decimal(12, 4)
+  centroidLatitude  Decimal?              @db.Decimal(10, 7)
+  centroidLongitude Decimal?              @db.Decimal(10, 7)
   lastInfoDate      DateTime?
-  isActive          Boolean                @default(true)
-  createdAt         DateTime               @default(now())
-  updatedAt         DateTime               @updatedAt
-  level4            ForestPatrimonyLevel4  @relation(fields: [level4Id], references: [id], onDelete: Restrict)
+  isActive          Boolean               @default(true)
+  createdAt         DateTime              @default(now())
+  updatedAt         DateTime              @updatedAt
+  level4            ForestPatrimonyLevel4 @relation(fields: [level4Id], references: [id], onDelete: Restrict)
 
   @@unique([level4Id, code])
 }
@@ -595,13 +606,13 @@ model ForestPatrimonyLevel5 {
 model ForestBiologicalAssetLevel6 {
   id                            String                @id @default(uuid()) @db.Uuid
   level4Id                      String                @map("level4_id") @db.Uuid
-  biologicalAssetKey            String                @map("biological_asset_key") @unique(map: "uq_forest_bio_asset_l6_biological_asset_key") @db.VarChar(220)
+  biologicalAssetKey            String                @unique(map: "uq_forest_bio_asset_l6_biological_asset_key") @map("biological_asset_key") @db.VarChar(220)
   accountingKey                 String?               @map("accounting_key") @db.VarChar(220)
   establishmentDate             DateTime?             @map("establishment_date")
   plantingYear                  Int?                  @map("planting_year")
   geneticMaterialCode           String?               @map("genetic_material_code") @db.VarChar(80)
   geneticMaterialName           String?               @map("genetic_material_name") @db.VarChar(255)
-  assetType                     BiologicalAssetType   @map("asset_type") @default(COMERCIAL)
+  assetType                     BiologicalAssetType   @default(COMERCIAL) @map("asset_type")
   managementSchemeCode          String?               @map("management_scheme_code") @db.VarChar(80)
   managementSchemeName          String?               @map("management_scheme_name") @db.VarChar(255)
   inventoryCode                 String?               @map("inventory_code") @db.VarChar(80)
@@ -628,9 +639,9 @@ model ForestBiologicalAssetLevel6 {
   imaClassCode                  String?               @map("ima_class_code") @db.VarChar(80)
   imaClassName                  String?               @map("ima_class_name") @db.VarChar(120)
   actualCostUsd                 Decimal?              @map("actual_cost_usd") @db.Decimal(18, 2)
-  isActive                      Boolean               @map("is_active") @default(true)
-  createdAt                     DateTime              @map("created_at") @default(now())
-  updatedAt                     DateTime              @map("updated_at") @updatedAt
+  isActive                      Boolean               @default(true) @map("is_active")
+  createdAt                     DateTime              @default(now()) @map("created_at")
+  updatedAt                     DateTime              @updatedAt @map("updated_at")
   level4                        ForestPatrimonyLevel4 @relation(fields: [level4Id], references: [id], onDelete: Restrict, map: "fk_forest_bio_asset_l6_level4")
 
   @@index([level4Id, createdAt], map: "idx_forest_bio_asset_l6_level4_created_at")
@@ -638,34 +649,46 @@ model ForestBiologicalAssetLevel6 {
 }
 
 model ManagementScheme {
-  id        String   @id @default(uuid()) @db.Uuid
-  code      String   @unique @db.VarChar(80)
-  name      String   @db.VarChar(255)
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id             String        @id @default(uuid()) @db.Uuid
+  code           String        @db.VarChar(80)
+  name           String        @db.VarChar(255)
+  isActive       Boolean       @default(true)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  organizationId String?       @db.Uuid
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, code])
 }
 
 model ForestInventoryTypeCatalog {
-  id        String   @id @default(uuid()) @db.Uuid
-  code      String   @unique @db.VarChar(80)
-  name      String   @db.VarChar(255)
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id             String        @id @default(uuid()) @db.Uuid
+  code           String        @db.VarChar(80)
+  name           String        @db.VarChar(255)
+  isActive       Boolean       @default(true)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  organizationId String?       @db.Uuid
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, code])
 }
 
 model ImaClass {
-  id            String            @id @default(uuid()) @db.Uuid
-  code          String            @unique @db.VarChar(80)
+  id             String            @id @default(uuid()) @db.Uuid
+  code           String            @db.VarChar(80)
   classification ImaClassification
-  name          String            @db.VarChar(120)
-  description   String?
-  rangeMin      Decimal?          @db.Decimal(12, 4)
-  rangeMax      Decimal?          @db.Decimal(12, 4)
-  isActive      Boolean           @default(true)
-  createdAt     DateTime          @default(now())
-  updatedAt     DateTime          @updatedAt
+  name           String            @db.VarChar(120)
+  description    String?
+  rangeMin       Decimal?          @db.Decimal(12, 4)
+  rangeMax       Decimal?          @db.Decimal(12, 4)
+  isActive       Boolean           @default(true)
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+  organizationId String?           @db.Uuid
+  organization   Organization?     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, code])
 }
 
 model Continent {
@@ -680,17 +703,19 @@ model Continent {
 }
 
 model Country {
-  id            String       @id @default(uuid()) @db.Uuid
-  continentId   String       @db.Uuid
-  code          String       @db.VarChar(20)
-  name          String       @db.VarChar(120)
-  isActive      Boolean      @default(true)
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
-  continent     Continent    @relation(fields: [continentId], references: [id], onDelete: Restrict)
+  id            String            @id @default(uuid()) @db.Uuid
+  continentId   String            @db.Uuid
+  code          String            @db.VarChar(20)
+  name          String            @db.VarChar(120)
+  flagUrl       String?           @db.VarChar(500)
+  isActive      Boolean           @default(true)
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+  continent     Continent         @relation(fields: [continentId], references: [id], onDelete: Restrict)
   regions       Region[]
   states        StateDepartment[]
   provenances   Provenance[]
+  organizations Organization[]
 
   @@unique([continentId, code])
 }
@@ -709,27 +734,27 @@ model Region {
 }
 
 model StateDepartment {
-  id             String                @id @default(uuid()) @db.Uuid
-  countryId      String                @db.Uuid
-  code           String                @db.VarChar(20)
-  name           String                @db.VarChar(120)
-  isActive       Boolean               @default(true)
-  createdAt      DateTime              @default(now())
-  updatedAt      DateTime              @updatedAt
-  country        Country               @relation(fields: [countryId], references: [id], onDelete: Restrict)
+  id             String                 @id @default(uuid()) @db.Uuid
+  countryId      String                 @db.Uuid
+  code           String                 @db.VarChar(20)
+  name           String                 @db.VarChar(120)
+  isActive       Boolean                @default(true)
+  createdAt      DateTime               @default(now())
+  updatedAt      DateTime               @updatedAt
+  country        Country                @relation(fields: [countryId], references: [id], onDelete: Restrict)
   municipalities MunicipalityDistrict[]
 
   @@unique([countryId, code])
 }
 
 model MunicipalityDistrict {
-  id        String      @id @default(uuid()) @db.Uuid
-  stateId   String      @db.Uuid
-  code      String      @db.VarChar(20)
-  name      String      @db.VarChar(120)
-  isActive  Boolean     @default(true)
-  createdAt DateTime    @default(now())
-  updatedAt DateTime    @updatedAt
+  id        String          @id @default(uuid()) @db.Uuid
+  stateId   String          @db.Uuid
+  code      String          @db.VarChar(20)
+  name      String          @db.VarChar(120)
+  isActive  Boolean         @default(true)
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
   state     StateDepartment @relation(fields: [stateId], references: [id], onDelete: Restrict)
   cities    City[]
 
@@ -737,14 +762,14 @@ model MunicipalityDistrict {
 }
 
 model City {
-  id             String                @id @default(uuid()) @db.Uuid
-  municipalityId String                @db.Uuid
-  code           String                @db.VarChar(20)
-  name           String                @db.VarChar(120)
-  isActive       Boolean               @default(true)
-  createdAt      DateTime              @default(now())
-  updatedAt      DateTime              @updatedAt
-  municipality   MunicipalityDistrict  @relation(fields: [municipalityId], references: [id], onDelete: Restrict)
+  id             String               @id @default(uuid()) @db.Uuid
+  municipalityId String               @db.Uuid
+  code           String               @db.VarChar(20)
+  name           String               @db.VarChar(120)
+  isActive       Boolean              @default(true)
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+  municipality   MunicipalityDistrict @relation(fields: [municipalityId], references: [id], onDelete: Restrict)
   communities    CommunityTerritory[]
 
   @@unique([municipalityId, code])
@@ -765,17 +790,21 @@ model CommunityTerritory {
 }
 
 model Species {
-  id              String            @id @default(uuid()) @db.Uuid
-  code            String            @unique @db.VarChar(80)
-  scientificName  String            @db.VarChar(255)
-  commonName      String?           @db.VarChar(255)
-  genus           String?           @db.VarChar(120)
-  family          String?           @db.VarChar(120)
-  taxonomicOrder  String?           @db.VarChar(120)
-  isActive        Boolean           @default(true)
-  createdAt       DateTime          @default(now())
-  updatedAt       DateTime          @updatedAt
+  id               String            @id @default(uuid()) @db.Uuid
+  code             String            @db.VarChar(80)
+  scientificName   String            @db.VarChar(255)
+  commonName       String?           @db.VarChar(255)
+  genus            String?           @db.VarChar(120)
+  family           String?           @db.VarChar(120)
+  taxonomicOrder   String?           @db.VarChar(120)
+  isActive         Boolean           @default(true)
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
   vegetalMaterials VegetalMaterial[]
+  organizationId   String?           @db.Uuid
+  organization     Organization?     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, code])
 }
 
 model Provenance {
@@ -788,49 +817,64 @@ model Provenance {
   updatedAt        DateTime          @updatedAt
   country          Country           @relation(fields: [countryId], references: [id], onDelete: Restrict)
   vegetalMaterials VegetalMaterial[]
+  organizationId   String?           @db.Uuid
+  organization     Organization?     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@unique([countryId, code])
+  @@unique([organizationId, code])
 }
 
 model VegetalMaterial {
-  id              String             @id @default(uuid()) @db.Uuid
-  code            String             @unique @db.VarChar(80)
-  name            String             @db.VarChar(255)
-  speciesId       String             @db.Uuid
-  materialType    VegetalMaterialType
-  plantType       PlantType
-  plantOrigin     PlantOrigin
-  provenanceId    String?            @db.Uuid
-  isActive        Boolean            @default(true)
-  createdAt       DateTime           @default(now())
-  updatedAt       DateTime           @updatedAt
-  species         Species            @relation(fields: [speciesId], references: [id], onDelete: Restrict)
-  provenance      Provenance?        @relation(fields: [provenanceId], references: [id], onDelete: SetNull)
+  id             String              @id @default(uuid()) @db.Uuid
+  code           String              @db.VarChar(80)
+  name           String              @db.VarChar(255)
+  speciesId      String              @db.Uuid
+  materialType   VegetalMaterialType
+  plantType      PlantType
+  plantOrigin    PlantOrigin
+  provenanceId   String?             @db.Uuid
+  isActive       Boolean             @default(true)
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+  species        Species             @relation(fields: [speciesId], references: [id], onDelete: Restrict)
+  provenance     Provenance?         @relation(fields: [provenanceId], references: [id], onDelete: SetNull)
+  organizationId String?             @db.Uuid
+  organization   Organization?       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, code])
 }
 
 model LandUseType {
-  id          String     @id @default(uuid()) @db.Uuid
-  continentId String?    @db.Uuid
-  code        String     @unique @db.VarChar(80)
-  name        String     @db.VarChar(150)
-  isProductive Boolean   @default(false)
-  isActive    Boolean    @default(true)
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
-  continent   Continent? @relation(fields: [continentId], references: [id], onDelete: SetNull)
+  id             String        @id @default(uuid()) @db.Uuid
+  continentId    String?       @db.Uuid
+  code           String        @db.VarChar(80)
+  name           String        @db.VarChar(150)
+  isProductive   Boolean       @default(false)
+  isActive       Boolean       @default(true)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  continent      Continent?    @relation(fields: [continentId], references: [id], onDelete: SetNull)
+  organizationId String?       @db.Uuid
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, code])
 }
 
 model Spacing {
-  id                 String   @id @default(uuid()) @db.Uuid
-  code               String   @unique @db.VarChar(80)
-  name               String   @db.VarChar(150)
-  description        String?  @db.VarChar(255)
-  betweenRowsM       Decimal? @db.Decimal(12, 4)
-  betweenTreesM      Decimal? @db.Decimal(12, 4)
-  treeDensityPerHa   Decimal? @db.Decimal(12, 0)
-  isActive           Boolean  @default(true)
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+  id               String        @id @default(uuid()) @db.Uuid
+  code             String        @db.VarChar(80)
+  name             String        @db.VarChar(150)
+  description      String?       @db.VarChar(255)
+  betweenRowsM     Decimal?      @db.Decimal(12, 4)
+  betweenTreesM    Decimal?      @db.Decimal(12, 4)
+  treeDensityPerHa Decimal?      @db.Decimal(12, 0)
+  isActive         Boolean       @default(true)
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+  organizationId   String?       @db.Uuid
+  organization     Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, code])
 }
 
 model PlantationDirection {
@@ -843,45 +887,49 @@ model PlantationDirection {
 }
 
 model AccountingDocument {
-  id             String   @id @default(uuid()) @db.Uuid
-  code           String   @unique @db.VarChar(80)
-  documentNumber String   @db.VarChar(80)
-  documentDate   DateTime
-  description    String?
-  bookValueUsd   Decimal  @db.Decimal(18, 2)
-  bookValuePerHaUsd Decimal? @db.Decimal(18, 2)
-  isActive       Boolean  @default(true)
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-  level4Costs    Level4AdministrativeCost[]
+  id                String                     @id @default(uuid()) @db.Uuid
+  code              String                     @unique @db.VarChar(80)
+  documentNumber    String                     @db.VarChar(80)
+  documentDate      DateTime
+  description       String?
+  bookValueUsd      Decimal                    @db.Decimal(18, 2)
+  bookValuePerHaUsd Decimal?                   @db.Decimal(18, 2)
+  isActive          Boolean                    @default(true)
+  createdAt         DateTime                   @default(now())
+  updatedAt         DateTime                   @updatedAt
+  level4Costs       Level4AdministrativeCost[]
 }
 
 model Level4AdministrativeCost {
-  id                  String               @id @default(uuid()) @db.Uuid
-  level4Id            String               @db.Uuid
-  code                String               @db.VarChar(80)
-  plantationAreaHa    Decimal              @db.Decimal(12, 2)
-  rotationPhase       String?              @db.VarChar(120)
-  accountingDocumentId String?             @db.Uuid
-  isActive            Boolean              @default(true)
-  createdAt           DateTime             @default(now())
-  updatedAt           DateTime             @updatedAt
-  level4              ForestPatrimonyLevel4 @relation(fields: [level4Id], references: [id], onDelete: Restrict)
-  accountingDocument  AccountingDocument?  @relation(fields: [accountingDocumentId], references: [id], onDelete: SetNull)
+  id                   String                @id @default(uuid()) @db.Uuid
+  level4Id             String                @db.Uuid
+  code                 String                @db.VarChar(80)
+  plantationAreaHa     Decimal               @db.Decimal(12, 2)
+  rotationPhase        String?               @db.VarChar(120)
+  accountingDocumentId String?               @db.Uuid
+  isActive             Boolean               @default(true)
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
+  level4               ForestPatrimonyLevel4 @relation(fields: [level4Id], references: [id], onDelete: Restrict)
+  accountingDocument   AccountingDocument?   @relation(fields: [accountingDocumentId], references: [id], onDelete: SetNull)
 
   @@unique([level4Id, code])
 }
 
 model ProductType {
-  id                        String                 @id @default(uuid()) @db.Uuid
-  code                      String                 @unique @db.VarChar(80)
-  name                      String                 @db.VarChar(150)
-  minLengthM                Decimal?               @db.Decimal(12, 4)
-  maxLengthM                Decimal?               @db.Decimal(12, 4)
-  minSmallEndDiameterCm     Decimal?               @db.Decimal(12, 4)
-  maxSmallEndDiameterCm     Decimal?               @db.Decimal(12, 4)
-  recommendedHarvestType    RecommendedHarvestType
-  isActive                  Boolean                @default(true)
-  createdAt                 DateTime               @default(now())
-  updatedAt                 DateTime               @updatedAt
+  id                     String                 @id @default(uuid()) @db.Uuid
+  code                   String                 @db.VarChar(80)
+  name                   String                 @db.VarChar(150)
+  minLengthM             Decimal?               @db.Decimal(12, 4)
+  maxLengthM             Decimal?               @db.Decimal(12, 4)
+  minSmallEndDiameterCm  Decimal?               @db.Decimal(12, 4)
+  maxSmallEndDiameterCm  Decimal?               @db.Decimal(12, 4)
+  recommendedHarvestType RecommendedHarvestType
+  isActive               Boolean                @default(true)
+  createdAt              DateTime               @default(now())
+  updatedAt              DateTime               @updatedAt
+  organizationId         String?                @db.Uuid
+  organization           Organization?          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, code])
 }

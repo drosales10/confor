@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { ok, requireAuth, requirePermission } from "@/lib/api-helpers";
+import { ok, requireAuth, requirePermission, fail } from "@/lib/api-helpers";
 
 export async function GET(req: NextRequest) {
   const authResult = await requireAuth();
@@ -84,3 +84,19 @@ export async function POST(req: NextRequest) {
 
   return ok({ checksum: `audit-${Date.now()}`, csv: [header, ...rows].join("\n") });
 }
+
+export async function DELETE(req: NextRequest) {
+  const authResult = await requireAuth();
+  if ("error" in authResult) return authResult.error;
+
+  const permissionError = requirePermission(authResult.session.user.permissions, "audit", "DELETE");
+  if (permissionError) return permissionError;
+
+  try {
+    await prisma.auditLog.deleteMany({});
+    return ok({ success: true });
+  } catch (error) {
+    return fail("No se pudieron eliminar los registros de auditoría", 500);
+  }
+}
+
