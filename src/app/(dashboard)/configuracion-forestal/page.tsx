@@ -5,6 +5,8 @@
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { useDebounce } from "@/hooks/useDebounce";
 import { ApiResponse, PaginatedResponse } from "@/types/api.types";
+import { TablePagination } from "@/components/tables/TablePagination";
+import { TableToolbar } from "@/components/tables/TableToolbar";
 import { sileo } from "sileo";
 
 type PaginationState = {
@@ -2445,7 +2447,20 @@ export default function ConfiguracionForestalPage() {
           </button>
         </form>
 
-        <input className="w-full rounded-md border px-3 py-2" placeholder="Buscar por código o nombre" value={schemeSearch} onChange={(event) => setSchemeSearch(event.target.value)} />
+        <TableToolbar
+          limit={schemePagination.limit}
+          onLimitChange={(value) => {
+            setSchemePage(1);
+            setSchemePagination((prev) => ({ ...prev, limit: value }));
+          }}
+          onSearchChange={(value) => {
+            setSchemePage(1);
+            setSchemeSearch(value);
+          }}
+          search={schemeSearch}
+          searchPlaceholder="Buscar por código o nombre"
+          total={schemePagination.total}
+        />
         {schemeError ? <p className="text-sm text-red-600">{schemeError}</p> : null}
         {schemeLoading ? <p className="text-sm">Cargando...</p> : null}
 
@@ -2477,16 +2492,14 @@ export default function ConfiguracionForestalPage() {
           </table>
         </div>
 
-        <div className="flex items-center justify-between text-sm">
-          <span>Total: {schemePagination.total}</span>
-          <div className="flex items-center gap-2">
-            <button className="rounded border px-2 py-1" disabled={schemePagination.page <= 1} onClick={() => setSchemePage((prev) => Math.max(1, prev - 1))} type="button">Anterior</button>
-            <span>
-              Página {schemePagination.page} de {Math.max(1, schemePagination.totalPages)}
-            </span>
-            <button className="rounded border px-2 py-1" disabled={schemePagination.page >= schemePagination.totalPages} onClick={() => setSchemePage((prev) => prev + 1)} type="button">Siguiente</button>
-          </div>
-        </div>
+        <TablePagination
+          loading={schemeLoading}
+          onNext={() => setSchemePage((prev) => Math.min(schemePagination.totalPages, prev + 1))}
+          onPrev={() => setSchemePage((prev) => Math.max(1, prev - 1))}
+          page={schemePagination.page}
+          total={schemePagination.total}
+          totalPages={Math.max(1, schemePagination.totalPages)}
+        />
 
         {editingScheme ? (
           <form className="grid gap-3 rounded-lg border p-3 md:grid-cols-4" onSubmit={updateScheme}>
@@ -2518,7 +2531,20 @@ export default function ConfiguracionForestalPage() {
           </button>
         </form>
 
-        <input className="w-full rounded-md border px-3 py-2" placeholder="Buscar por código o nombre" value={inventorySearch} onChange={(event) => setInventorySearch(event.target.value)} />
+        <TableToolbar
+          limit={inventoryPagination.limit}
+          onLimitChange={(value) => {
+            setInventoryPage(1);
+            setInventoryPagination((prev) => ({ ...prev, limit: value }));
+          }}
+          onSearchChange={(value) => {
+            setInventoryPage(1);
+            setInventorySearch(value);
+          }}
+          search={inventorySearch}
+          searchPlaceholder="Buscar por código o nombre"
+          total={inventoryPagination.total}
+        />
         {inventoryError ? <p className="text-sm text-red-600">{inventoryError}</p> : null}
         {inventoryLoading ? <p className="text-sm">Cargando...</p> : null}
 
@@ -2550,16 +2576,14 @@ export default function ConfiguracionForestalPage() {
           </table>
         </div>
 
-        <div className="flex items-center justify-between text-sm">
-          <span>Total: {inventoryPagination.total}</span>
-          <div className="flex items-center gap-2">
-            <button className="rounded border px-2 py-1" disabled={inventoryPagination.page <= 1} onClick={() => setInventoryPage((prev) => Math.max(1, prev - 1))} type="button">Anterior</button>
-            <span>
-              Página {inventoryPagination.page} de {Math.max(1, inventoryPagination.totalPages)}
-            </span>
-            <button className="rounded border px-2 py-1" disabled={inventoryPagination.page >= inventoryPagination.totalPages} onClick={() => setInventoryPage((prev) => prev + 1)} type="button">Siguiente</button>
-          </div>
-        </div>
+        <TablePagination
+          loading={inventoryLoading}
+          onNext={() => setInventoryPage((prev) => Math.min(inventoryPagination.totalPages, prev + 1))}
+          onPrev={() => setInventoryPage((prev) => Math.max(1, prev - 1))}
+          page={inventoryPagination.page}
+          total={inventoryPagination.total}
+          totalPages={Math.max(1, inventoryPagination.totalPages)}
+        />
 
         {editingInventory ? (
           <form className="grid gap-3 rounded-lg border p-3 md:grid-cols-4" onSubmit={updateInventoryType}>
@@ -2601,7 +2625,20 @@ export default function ConfiguracionForestalPage() {
           </button>
         </form>
 
-        <input className="w-full rounded-md border px-3 py-2" placeholder="Buscar por código, nombre o descripción" value={imaSearch} onChange={(event) => setImaSearch(event.target.value)} />
+        <TableToolbar
+          limit={imaPagination.limit}
+          onLimitChange={(value) => {
+            setImaPage(1);
+            setImaPagination((prev) => ({ ...prev, limit: value }));
+          }}
+          onSearchChange={(value) => {
+            setImaPage(1);
+            setImaSearch(value);
+          }}
+          search={imaSearch}
+          searchPlaceholder="Buscar por código, nombre o descripción"
+          total={imaPagination.total}
+        />
         {imaError ? <p className="text-sm text-red-600">{imaError}</p> : null}
         {imaLoading ? <p className="text-sm">Cargando...</p> : null}
 
@@ -2639,16 +2676,14 @@ export default function ConfiguracionForestalPage() {
           </table>
         </div>
 
-        <div className="flex items-center justify-between text-sm">
-          <span>Total: {imaPagination.total}</span>
-          <div className="flex items-center gap-2">
-            <button className="rounded border px-2 py-1" disabled={imaPagination.page <= 1} onClick={() => setImaPage((prev) => Math.max(1, prev - 1))} type="button">Anterior</button>
-            <span>
-              Página {imaPagination.page} de {Math.max(1, imaPagination.totalPages)}
-            </span>
-            <button className="rounded border px-2 py-1" disabled={imaPagination.page >= imaPagination.totalPages} onClick={() => setImaPage((prev) => prev + 1)} type="button">Siguiente</button>
-          </div>
-        </div>
+        <TablePagination
+          loading={imaLoading}
+          onNext={() => setImaPage((prev) => Math.min(imaPagination.totalPages, prev + 1))}
+          onPrev={() => setImaPage((prev) => Math.max(1, prev - 1))}
+          page={imaPagination.page}
+          total={imaPagination.total}
+          totalPages={Math.max(1, imaPagination.totalPages)}
+        />
 
         {editingIma ? (
           <form className="grid gap-3 rounded-lg border p-3 md:grid-cols-6" onSubmit={updateImaClass}>
@@ -2694,7 +2729,20 @@ export default function ConfiguracionForestalPage() {
           </button>
         </form>
 
-        <input className="w-full rounded-md border px-3 py-2" placeholder="Buscar por código o nombre" value={spacingSearch} onChange={(event) => setSpacingSearch(event.target.value)} />
+        <TableToolbar
+          limit={spacingPagination.limit}
+          onLimitChange={(value) => {
+            setSpacingPage(1);
+            setSpacingPagination((prev) => ({ ...prev, limit: value }));
+          }}
+          onSearchChange={(value) => {
+            setSpacingPage(1);
+            setSpacingSearch(value);
+          }}
+          search={spacingSearch}
+          searchPlaceholder="Buscar por código o nombre"
+          total={spacingPagination.total}
+        />
         {spacingError ? <p className="text-sm text-red-600">{spacingError}</p> : null}
         {spacingLoading ? <p className="text-sm">Cargando...</p> : null}
 
@@ -2732,16 +2780,14 @@ export default function ConfiguracionForestalPage() {
           </table>
         </div>
 
-        <div className="flex items-center justify-between text-sm">
-          <span>Total: {spacingPagination.total}</span>
-          <div className="flex items-center gap-2">
-            <button className="rounded border px-2 py-1" disabled={spacingPagination.page <= 1} onClick={() => setSpacingPage((prev) => Math.max(1, prev - 1))} type="button">Anterior</button>
-            <span>
-              Página {spacingPagination.page} de {Math.max(1, spacingPagination.totalPages)}
-            </span>
-            <button className="rounded border px-2 py-1" disabled={spacingPagination.page >= spacingPagination.totalPages} onClick={() => setSpacingPage((prev) => prev + 1)} type="button">Siguiente</button>
-          </div>
-        </div>
+        <TablePagination
+          loading={spacingLoading}
+          onNext={() => setSpacingPage((prev) => Math.min(spacingPagination.totalPages, prev + 1))}
+          onPrev={() => setSpacingPage((prev) => Math.max(1, prev - 1))}
+          page={spacingPagination.page}
+          total={spacingPagination.total}
+          totalPages={Math.max(1, spacingPagination.totalPages)}
+        />
 
         {editingSpacing ? (
           <form className="grid gap-3 rounded-lg border p-3 md:grid-cols-6" onSubmit={updateSpacing}>
@@ -2789,7 +2835,20 @@ export default function ConfiguracionForestalPage() {
 
         {level4Options.length === 0 ? <p className="text-xs text-muted-foreground">No hay unidades nivel 4 cargadas. Debes cargar unidades para registrar costos.</p> : null}
 
-        <input className="w-full rounded-md border px-3 py-2" placeholder="Buscar por código, fase o unidad" value={level4CostSearch} onChange={(event) => setLevel4CostSearch(event.target.value)} />
+        <TableToolbar
+          limit={level4CostPagination.limit}
+          onLimitChange={(value) => {
+            setLevel4CostPage(1);
+            setLevel4CostPagination((prev) => ({ ...prev, limit: value }));
+          }}
+          onSearchChange={(value) => {
+            setLevel4CostPage(1);
+            setLevel4CostSearch(value);
+          }}
+          search={level4CostSearch}
+          searchPlaceholder="Buscar por código, fase o unidad"
+          total={level4CostPagination.total}
+        />
         {level4CostError ? <p className="text-sm text-red-600">{level4CostError}</p> : null}
         {level4CostLoading ? <p className="text-sm">Cargando...</p> : null}
 
@@ -2829,16 +2888,14 @@ export default function ConfiguracionForestalPage() {
           </table>
         </div>
 
-        <div className="flex items-center justify-between text-sm">
-          <span>Total: {level4CostPagination.total}</span>
-          <div className="flex items-center gap-2">
-            <button className="rounded border px-2 py-1" disabled={level4CostPagination.page <= 1} onClick={() => setLevel4CostPage((prev) => Math.max(1, prev - 1))} type="button">Anterior</button>
-            <span>
-              Página {level4CostPagination.page} de {Math.max(1, level4CostPagination.totalPages)}
-            </span>
-            <button className="rounded border px-2 py-1" disabled={level4CostPagination.page >= level4CostPagination.totalPages} onClick={() => setLevel4CostPage((prev) => prev + 1)} type="button">Siguiente</button>
-          </div>
-        </div>
+        <TablePagination
+          loading={level4CostLoading}
+          onNext={() => setLevel4CostPage((prev) => Math.min(level4CostPagination.totalPages, prev + 1))}
+          onPrev={() => setLevel4CostPage((prev) => Math.max(1, prev - 1))}
+          page={level4CostPagination.page}
+          total={level4CostPagination.total}
+          totalPages={Math.max(1, level4CostPagination.totalPages)}
+        />
 
         {editingLevel4Cost ? (
           <form className="grid gap-3 rounded-lg border p-3 md:grid-cols-6" onSubmit={updateLevel4Cost}>
@@ -2888,7 +2945,20 @@ export default function ConfiguracionForestalPage() {
           </button>
         </form>
 
-        <input className="w-full rounded-md border px-3 py-2" placeholder="Buscar por código o nombre" value={productTypeSearch} onChange={(event) => setProductTypeSearch(event.target.value)} />
+        <TableToolbar
+          limit={productTypePagination.limit}
+          onLimitChange={(value) => {
+            setProductTypePage(1);
+            setProductTypePagination((prev) => ({ ...prev, limit: value }));
+          }}
+          onSearchChange={(value) => {
+            setProductTypePage(1);
+            setProductTypeSearch(value);
+          }}
+          search={productTypeSearch}
+          searchPlaceholder="Buscar por código o nombre"
+          total={productTypePagination.total}
+        />
         {productTypeError ? <p className="text-sm text-red-600">{productTypeError}</p> : null}
         {productTypeLoading ? <p className="text-sm">Cargando...</p> : null}
 
@@ -2930,16 +3000,14 @@ export default function ConfiguracionForestalPage() {
           </table>
         </div>
 
-        <div className="flex items-center justify-between text-sm">
-          <span>Total: {productTypePagination.total}</span>
-          <div className="flex items-center gap-2">
-            <button className="rounded border px-2 py-1" disabled={productTypePagination.page <= 1} onClick={() => setProductTypePage((prev) => Math.max(1, prev - 1))} type="button">Anterior</button>
-            <span>
-              Página {productTypePagination.page} de {Math.max(1, productTypePagination.totalPages)}
-            </span>
-            <button className="rounded border px-2 py-1" disabled={productTypePagination.page >= productTypePagination.totalPages} onClick={() => setProductTypePage((prev) => prev + 1)} type="button">Siguiente</button>
-          </div>
-        </div>
+        <TablePagination
+          loading={productTypeLoading}
+          onNext={() => setProductTypePage((prev) => Math.min(productTypePagination.totalPages, prev + 1))}
+          onPrev={() => setProductTypePage((prev) => Math.max(1, prev - 1))}
+          page={productTypePagination.page}
+          total={productTypePagination.total}
+          totalPages={Math.max(1, productTypePagination.totalPages)}
+        />
 
         {editingProductType ? (
           <form className="grid gap-3 rounded-lg border p-3 md:grid-cols-6" onSubmit={updateProductType}>
@@ -2991,7 +3059,20 @@ export default function ConfiguracionForestalPage() {
           </button>
         </form>
 
-        <input className="w-full rounded-md border px-3 py-2" placeholder="Buscar por código o nombre" value={landUseSearch} onChange={(event) => setLandUseSearch(event.target.value)} />
+        <TableToolbar
+          limit={landUsePagination.limit}
+          onLimitChange={(value) => {
+            setLandUsePage(1);
+            setLandUsePagination((prev) => ({ ...prev, limit: value }));
+          }}
+          onSearchChange={(value) => {
+            setLandUsePage(1);
+            setLandUseSearch(value);
+          }}
+          search={landUseSearch}
+          searchPlaceholder="Buscar por código o nombre"
+          total={landUsePagination.total}
+        />
         {landUseError ? <p className="text-sm text-red-600">{landUseError}</p> : null}
         {landUseLoading ? <p className="text-sm">Cargando...</p> : null}
 
@@ -3027,16 +3108,14 @@ export default function ConfiguracionForestalPage() {
           </table>
         </div>
 
-        <div className="flex items-center justify-between text-sm">
-          <span>Total: {landUsePagination.total}</span>
-          <div className="flex items-center gap-2">
-            <button className="rounded border px-2 py-1" disabled={landUsePagination.page <= 1} onClick={() => setLandUsePage((prev) => Math.max(1, prev - 1))} type="button">Anterior</button>
-            <span>
-              Página {landUsePagination.page} de {Math.max(1, landUsePagination.totalPages)}
-            </span>
-            <button className="rounded border px-2 py-1" disabled={landUsePagination.page >= landUsePagination.totalPages} onClick={() => setLandUsePage((prev) => prev + 1)} type="button">Siguiente</button>
-          </div>
-        </div>
+        <TablePagination
+          loading={landUseLoading}
+          onNext={() => setLandUsePage((prev) => Math.min(landUsePagination.totalPages, prev + 1))}
+          onPrev={() => setLandUsePage((prev) => Math.max(1, prev - 1))}
+          page={landUsePagination.page}
+          total={landUsePagination.total}
+          totalPages={Math.max(1, landUsePagination.totalPages)}
+        />
 
         {editingLandUse ? (
           <form className="grid gap-3 rounded-lg border p-3 md:grid-cols-6" onSubmit={updateLandUseType}>
@@ -3084,7 +3163,20 @@ export default function ConfiguracionForestalPage() {
           </button>
         </form>
 
-        <input className="w-full rounded-md border px-3 py-2" placeholder="Buscar por código, nombre científico o común" value={speciesSearch} onChange={(event) => setSpeciesSearch(event.target.value)} />
+        <TableToolbar
+          limit={speciesPagination.limit}
+          onLimitChange={(value) => {
+            setSpeciesPage(1);
+            setSpeciesPagination((prev) => ({ ...prev, limit: value }));
+          }}
+          onSearchChange={(value) => {
+            setSpeciesPage(1);
+            setSpeciesSearch(value);
+          }}
+          search={speciesSearch}
+          searchPlaceholder="Buscar por código, nombre científico o común"
+          total={speciesPagination.total}
+        />
         {speciesError ? <p className="text-sm text-red-600">{speciesError}</p> : null}
         {speciesLoading ? <p className="text-sm">Cargando...</p> : null}
 
@@ -3118,16 +3210,14 @@ export default function ConfiguracionForestalPage() {
           </table>
         </div>
 
-        <div className="flex items-center justify-between text-sm">
-          <span>Total: {speciesPagination.total}</span>
-          <div className="flex items-center gap-2">
-            <button className="rounded border px-2 py-1" disabled={speciesPagination.page <= 1} onClick={() => setSpeciesPage((prev) => Math.max(1, prev - 1))} type="button">Anterior</button>
-            <span>
-              Página {speciesPagination.page} de {Math.max(1, speciesPagination.totalPages)}
-            </span>
-            <button className="rounded border px-2 py-1" disabled={speciesPagination.page >= speciesPagination.totalPages} onClick={() => setSpeciesPage((prev) => prev + 1)} type="button">Siguiente</button>
-          </div>
-        </div>
+        <TablePagination
+          loading={speciesLoading}
+          onNext={() => setSpeciesPage((prev) => Math.min(speciesPagination.totalPages, prev + 1))}
+          onPrev={() => setSpeciesPage((prev) => Math.max(1, prev - 1))}
+          page={speciesPagination.page}
+          total={speciesPagination.total}
+          totalPages={Math.max(1, speciesPagination.totalPages)}
+        />
 
         {editingSpecies ? (
           <form className="grid gap-3 rounded-lg border p-3 md:grid-cols-4" onSubmit={updateSpecies}>
@@ -3173,7 +3263,20 @@ export default function ConfiguracionForestalPage() {
 
         {countryOptions.length === 0 ? <p className="text-xs text-muted-foreground">No hay países activos cargados. Debes cargar países para registrar procedencias.</p> : null}
 
-        <input className="w-full rounded-md border px-3 py-2" placeholder="Buscar por código, nombre o país" value={provenanceSearch} onChange={(event) => setProvenanceSearch(event.target.value)} />
+        <TableToolbar
+          limit={provenancePagination.limit}
+          onLimitChange={(value) => {
+            setProvenancePage(1);
+            setProvenancePagination((prev) => ({ ...prev, limit: value }));
+          }}
+          onSearchChange={(value) => {
+            setProvenancePage(1);
+            setProvenanceSearch(value);
+          }}
+          search={provenanceSearch}
+          searchPlaceholder="Buscar por código, nombre o país"
+          total={provenancePagination.total}
+        />
         {provenanceError ? <p className="text-sm text-red-600">{provenanceError}</p> : null}
         {provenanceLoading ? <p className="text-sm">Cargando...</p> : null}
 
@@ -3207,16 +3310,14 @@ export default function ConfiguracionForestalPage() {
           </table>
         </div>
 
-        <div className="flex items-center justify-between text-sm">
-          <span>Total: {provenancePagination.total}</span>
-          <div className="flex items-center gap-2">
-            <button className="rounded border px-2 py-1" disabled={provenancePagination.page <= 1} onClick={() => setProvenancePage((prev) => Math.max(1, prev - 1))} type="button">Anterior</button>
-            <span>
-              Página {provenancePagination.page} de {Math.max(1, provenancePagination.totalPages)}
-            </span>
-            <button className="rounded border px-2 py-1" disabled={provenancePagination.page >= provenancePagination.totalPages} onClick={() => setProvenancePage((prev) => prev + 1)} type="button">Siguiente</button>
-          </div>
-        </div>
+        <TablePagination
+          loading={provenanceLoading}
+          onNext={() => setProvenancePage((prev) => Math.min(provenancePagination.totalPages, prev + 1))}
+          onPrev={() => setProvenancePage((prev) => Math.max(1, prev - 1))}
+          page={provenancePagination.page}
+          total={provenancePagination.total}
+          totalPages={Math.max(1, provenancePagination.totalPages)}
+        />
 
         {editingProvenance ? (
           <form className="grid gap-3 rounded-lg border p-3 md:grid-cols-4" onSubmit={updateProvenance}>
@@ -3290,7 +3391,20 @@ export default function ConfiguracionForestalPage() {
           </button>
         </form>
 
-        <input className="w-full rounded-md border px-3 py-2" placeholder="Buscar por código, nombre, especie o procedencia" value={materialSearch} onChange={(event) => setMaterialSearch(event.target.value)} />
+        <TableToolbar
+          limit={materialPagination.limit}
+          onLimitChange={(value) => {
+            setMaterialPage(1);
+            setMaterialPagination((prev) => ({ ...prev, limit: value }));
+          }}
+          onSearchChange={(value) => {
+            setMaterialPage(1);
+            setMaterialSearch(value);
+          }}
+          search={materialSearch}
+          searchPlaceholder="Buscar por código, nombre, especie o procedencia"
+          total={materialPagination.total}
+        />
         {materialError ? <p className="text-sm text-red-600">{materialError}</p> : null}
         {materialLoading ? <p className="text-sm">Cargando...</p> : null}
 
@@ -3328,16 +3442,14 @@ export default function ConfiguracionForestalPage() {
           </table>
         </div>
 
-        <div className="flex items-center justify-between text-sm">
-          <span>Total: {materialPagination.total}</span>
-          <div className="flex items-center gap-2">
-            <button className="rounded border px-2 py-1" disabled={materialPagination.page <= 1} onClick={() => setMaterialPage((prev) => Math.max(1, prev - 1))} type="button">Anterior</button>
-            <span>
-              Página {materialPagination.page} de {Math.max(1, materialPagination.totalPages)}
-            </span>
-            <button className="rounded border px-2 py-1" disabled={materialPagination.page >= materialPagination.totalPages} onClick={() => setMaterialPage((prev) => prev + 1)} type="button">Siguiente</button>
-          </div>
-        </div>
+        <TablePagination
+          loading={materialLoading}
+          onNext={() => setMaterialPage((prev) => Math.min(materialPagination.totalPages, prev + 1))}
+          onPrev={() => setMaterialPage((prev) => Math.max(1, prev - 1))}
+          page={materialPagination.page}
+          total={materialPagination.total}
+          totalPages={Math.max(1, materialPagination.totalPages)}
+        />
 
         {editingMaterial ? (
           <form className="grid gap-3 rounded-lg border p-3 md:grid-cols-4" onSubmit={updateMaterial}>

@@ -1,8 +1,13 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { sileo } from "sileo";
+import { formatUserStatus, userStatusLabels } from "@/lib/enum-labels";
+import { useDebounce } from "@/hooks/useDebounce";
+import { TableToolbar } from "@/components/tables/TableToolbar";
+import { TablePagination } from "@/components/tables/TablePagination";
+import { SortableHeader } from "@/components/tables/SortableHeader";
 
 type OrganizationItem = {
   id: string;
@@ -46,14 +51,25 @@ type RoleOption = {
 
 export default function UsersPage() {
   const router = useRouter();
+  const importInputRef = useRef<HTMLInputElement | null>(null);
   const [organizations, setOrganizations] = useState<OrganizationItem[]>([]);
   const [roleOptions, setRoleOptions] = useState<RoleOption[]>([]);
   const [users, setUsers] = useState<InvitedUser[]>([]);
   const [permissions, setPermissions] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
+  const [importing, setImporting] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const [exportLimit, setExportLimit] = useState(100);
   const [error, setError] = useState<string | null>(null);
   const [showInviteForm, setShowInviteForm] = useState(false);
   const [editingUser, setEditingUser] = useState<InvitedUser | null>(null);
+  const [search, setSearch] = useState("");
+  const debouncedSearch = useDebounce(search, 300);
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(25);
+  const [pagination, setPagination] = useState({ page: 1, totalPages: 1, total: 0, limit: 25 });
+  const [sortBy, setSortBy] = useState<string | undefined>(undefined);
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [editForm, setEditForm] = useState({ role: "USER", organizationId: "", status: "ACTIVE" });
   const [form, setForm] = useState({
     email: "",
@@ -67,6 +83,176 @@ export default function UsersPage() {
   const canInvite = hasUsersAdmin || permissionSet.has("users:CREATE");
   const canApprove = hasUsersAdmin || permissionSet.has("users:UPDATE");
   const canManage = hasUsersAdmin || permissionSet.has("users:UPDATE") || permissionSet.has("users:DELETE");
+
+  const canExport = hasUsersAdmin || permissionSet.has("users:EXPORT");
+
+  const buildUsersQuery = useCallback(
+    (opts?: { page?: number; limit?: number; search?: string; sortBy?: string; sortOrder?: "asc" | "desc" }) => {
+      const params = new URLSearchParams({
+        page: String(opts?.page ?? page),
+        limit: String(opts?.limit ?? limit),
+        sortOrder: opts?.sortOrder ?? sortOrder,
+      });
+
+      const nextSearch = (opts?.search ?? debouncedSearch).trim();
+      if (nextSearch) params.set("search", nextSearch);
+      const nextSortBy = opts?.sortBy ?? sortBy;
+      if (nextSortBy) params.set("sortBy", nextSortBy);
+
+      return params;
+    },
+    [debouncedSearch, limit, page, sortBy, sortOrder],
+  );
+
+  async function refreshUsers(opts?: { page?: number; limit?: number; search?: string; sortBy?: string; sortOrder?: "asc" | "desc" }) {
+    const params = buildUsersQuery(opts);
+    const response = await fetch(`/api/users?${params.toString()}`, { cache: "no-store" });
+    if (!response.ok) {
+      const payload = await response.json().catch(() => null);
+      throw new Error(payload?.error ?? "No fue posible cargar usuarios");
+    }
+    const payload = await response.json();
+    const items = (payload?.data?.items ?? []) as ApiUser[];
+    const meta = payload?.data?.pagination;
+    const mapped = items.map((user) => ({
+      id: user.id,
+      email: user.email,
+      role: user.userRoles?.[0]?.role?.slug ?? "-",
+      organizationId: user.organization?.id ?? null,
+      organizationName: user.organization?.name ?? null,
+      registeredAt: user.createdAt,
+      status: user.status ?? "-",
+    }));
+    setUsers(mapped);
+    setPagination({
+      page: meta?.page ?? (opts?.page ?? page),
+      totalPages: meta?.totalPages ?? 1,
+      total: meta?.total ?? 0,
+      limit: meta?.limit ?? (opts?.limit ?? limit),
+    });
+  }
+
+  async function downloadExport(format: "csv" | "xlsx") {
+    try {
+      setExporting(true);
+      setError(null);
+
+      const params = buildUsersQuery({ page: 1, limit: exportLimit });
+      params.set("format", format);
+
+      const response = await fetch(`/api/users/export?${params.toString()}`, {
+        method: "GET",
+      });
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        throw new Error(payload?.error ?? "No fue posible exportar usuarios");
+      }
+
+      const blob = await response.blob();
+      const disposition = response.headers.get("content-disposition") ?? "";
+      const match = disposition.match(/filename=\"?([^\";]+)\"?/i);
+      const filename = match?.[1] ?? `users.${format}`;
+
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+
+      sileo.success({
+        title: "Exportación lista",
+        description: `Se generó el archivo correctamente (máx. ${exportLimit} registros).`,
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Error desconocido";
+      setError(message);
+      sileo.error({
+        title: "No se pudo exportar",
+        description: message,
+      });
+    } finally {
+      setExporting(false);
+    }
+  }
+
+  function toggleSort(nextSortBy: string) {
+    setPage(1);
+    setSortBy((current) => {
+      if (current !== nextSortBy) {
+        setSortOrder("asc");
+        return nextSortBy;
+      }
+
+      setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"));
+      return current;
+    });
+  }
+
+  async function onImportUsers(file: File) {
+    try {
+      setImporting(true);
+      setError(null);
+
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const response = await fetch("/api/users/import", {
+        method: "POST",
+        body: formData,
+      });
+
+      const payload = await response.json().catch(() => null);
+      if (!response.ok || !payload?.success) {
+        throw new Error(payload?.error ?? "No fue posible importar usuarios");
+      }
+
+      const result = payload?.data as
+        | {
+            created: number;
+            updated: number;
+            skipped: number;
+            errors: Array<{ row: number; email?: string; error: string }>;
+          }
+        | undefined;
+
+      await refreshUsers();
+
+      const created = result?.created ?? 0;
+      const updated = result?.updated ?? 0;
+      const skipped = result?.skipped ?? 0;
+      const errorCount = result?.errors?.length ?? 0;
+
+      const description = `Creados: ${created} · Actualizados: ${updated} · Omitidos: ${skipped}`;
+
+      if (errorCount > 0) {
+        sileo.warning({
+          title: "Importación parcial",
+          description: `${description} · Errores: ${errorCount}`,
+        });
+      } else {
+        sileo.success({
+          title: "Importación completada",
+          description,
+        });
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Error desconocido";
+      setError(message);
+      sileo.error({
+        title: "No se pudo importar",
+        description: message,
+      });
+    } finally {
+      setImporting(false);
+      if (importInputRef.current) {
+        importInputRef.current.value = "";
+      }
+    }
+  }
 
   useEffect(() => {
     const load = async () => {
@@ -134,6 +320,7 @@ export default function UsersPage() {
           status: user.status ?? "-",
         }));
         setUsers(mapped);
+        setPagination(usersPayload?.data?.pagination ?? pagination);
         setForm((prev) => ({
           ...prev,
           role: dynamicRoles.some((role) => role.slug === prev.role) ? prev.role : fallbackRole,
@@ -152,6 +339,23 @@ export default function UsersPage() {
 
     void load();
   }, [router]);
+
+  useEffect(() => {
+    if (!canReadUsers) return;
+    void refreshUsers({ page: 1, limit, search: debouncedSearch, sortBy, sortOrder });
+  }, [canReadUsers, debouncedSearch, limit, sortBy, sortOrder]);
+
+  useEffect(() => {
+    const maxPage = Math.max(1, pagination.totalPages);
+    if (page > maxPage) {
+      setPage(maxPage);
+    }
+  }, [page, pagination.totalPages]);
+
+  useEffect(() => {
+    if (!canReadUsers) return;
+    void refreshUsers({ page, limit, search: debouncedSearch, sortBy, sortOrder });
+  }, [canReadUsers, debouncedSearch, limit, page, sortBy, sortOrder]);
 
   function onSubmitInvite(event: FormEvent) {
     event.preventDefault();
@@ -384,16 +588,79 @@ export default function UsersPage() {
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-3">
         <h1 className="text-2xl font-semibold">Usuarios</h1>
-        {canInvite ? (
-          <button
-            className="rounded-md border px-3 py-2 text-sm"
-            onClick={() => setShowInviteForm(true)}
-            type="button"
-          >
-            + Invitar Usuario
-          </button>
-        ) : null}
+        <div className="flex items-center gap-2">
+          {canInvite ? (
+            <>
+              <input
+                accept=".csv,.xlsx"
+                className="hidden"
+                onChange={(event) => {
+                  const file = event.target.files?.[0];
+                  if (file) void onImportUsers(file);
+                }}
+                ref={importInputRef}
+                type="file"
+              />
+              <button
+                className="rounded-md border px-3 py-2 text-sm disabled:opacity-60"
+                disabled={importing}
+                onClick={() => importInputRef.current?.click()}
+                type="button"
+              >
+                Importar
+              </button>
+              <button
+                className="rounded-md border px-3 py-2 text-sm"
+                onClick={() => setShowInviteForm(true)}
+                type="button"
+              >
+                + Invitar Usuario
+              </button>
+            </>
+          ) : null}
+
+          {canExport ? (
+            <>
+              <button
+                className="rounded-md border px-3 py-2 text-sm disabled:opacity-60"
+                disabled={exporting}
+                onClick={() => void downloadExport("csv")}
+                type="button"
+              >
+                Exportar CSV
+              </button>
+              <button
+                className="rounded-md border px-3 py-2 text-sm disabled:opacity-60"
+                disabled={exporting}
+                onClick={() => void downloadExport("xlsx")}
+                type="button"
+              >
+                Exportar Excel
+              </button>
+            </>
+          ) : null}
+        </div>
       </div>
+
+      {canReadUsers ? (
+        <TableToolbar
+          canExport={canExport}
+          exportLimit={exportLimit}
+          limit={limit}
+          onExportLimitChange={(value) => setExportLimit(value)}
+          onLimitChange={(value) => {
+            setPage(1);
+            setLimit(value);
+          }}
+          onSearchChange={(value) => {
+            setPage(1);
+            setSearch(value);
+          }}
+          search={search}
+          searchPlaceholder="Buscar usuarios"
+          total={pagination.total}
+        />
+      ) : null}
 
       {loading ? <p className="text-sm">Cargando...</p> : null}
       {error ? <p className="text-sm text-red-600">{error}</p> : null}
@@ -491,15 +758,9 @@ export default function UsersPage() {
             onChange={(event) => setEditForm((prev) => ({ ...prev, status: event.target.value }))}
             value={editForm.status}
           >
-            {[
-              "ACTIVE",
-              "INACTIVE",
-              "LOCKED",
-              "PENDING_VERIFICATION",
-              "DELETED",
-            ].map((status) => (
+            {(Object.keys(userStatusLabels) as Array<keyof typeof userStatusLabels>).map((status) => (
               <option key={status} value={status}>
-                {status}
+                {userStatusLabels[status]}
               </option>
             ))}
           </select>
@@ -522,11 +783,23 @@ export default function UsersPage() {
         <table className="w-full text-left text-sm">
           <thead>
             <tr className="border-b">
-              <th className="px-3 py-2">Email</th>
+              <th className="px-3 py-2">
+                <SortableHeader label="Email" onToggle={toggleSort} sortBy={sortBy} sortKey="email" sortOrder={sortOrder} />
+              </th>
               <th className="px-3 py-2">Rol</th>
               <th className="px-3 py-2">Organización</th>
-              <th className="px-3 py-2">Fecha de Registro</th>
-              <th className="px-3 py-2">Estado</th>
+              <th className="px-3 py-2">
+                <SortableHeader
+                  label="Fecha de Registro"
+                  onToggle={toggleSort}
+                  sortBy={sortBy}
+                  sortKey="createdAt"
+                  sortOrder={sortOrder}
+                />
+              </th>
+              <th className="px-3 py-2">
+                <SortableHeader label="Estado" onToggle={toggleSort} sortBy={sortBy} sortKey="status" sortOrder={sortOrder} />
+              </th>
               {canApprove ? <th className="px-3 py-2">Acciones</th> : null}
             </tr>
           </thead>
@@ -537,7 +810,7 @@ export default function UsersPage() {
                 <td className="px-3 py-2">{user.role}</td>
                 <td className="px-3 py-2">{user.organizationName}</td>
                 <td className="px-3 py-2">{new Date(user.registeredAt).toLocaleDateString()}</td>
-                <td className="px-3 py-2">{user.status}</td>
+                <td className="px-3 py-2">{formatUserStatus(user.status)}</td>
                 {canApprove ? (
                   <td className="px-3 py-2">
                     <div className="flex flex-wrap gap-2">
@@ -584,6 +857,17 @@ export default function UsersPage() {
           </tbody>
         </table>
       </div>
+
+      {canReadUsers ? (
+        <TablePagination
+          loading={loading}
+          onNext={() => setPage((current) => Math.min(pagination.totalPages, current + 1))}
+          onPrev={() => setPage((current) => Math.max(1, current - 1))}
+          page={pagination.page}
+          total={pagination.total}
+          totalPages={pagination.totalPages}
+        />
+      ) : null}
     </div>
   );
 }

@@ -3,6 +3,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { sileo } from "sileo";
+import { useDebounce } from "@/hooks/useDebounce";
+import { TableToolbar } from "@/components/tables/TableToolbar";
+import { TablePagination } from "@/components/tables/TablePagination";
+import { SortableHeader } from "@/components/tables/SortableHeader";
 
 const CRUD_ACTIONS = ["CREATE", "READ", "UPDATE", "DELETE"] as const;
 const ACTION_ORDER = ["CREATE", "READ", "UPDATE", "DELETE", "EXPORT", "ADMIN"] as const;
@@ -49,6 +53,12 @@ export default function RolesPage() {
   const [roles, setRoles] = useState<RoleItem[]>([]);
   const [modules, setModules] = useState<ModuleItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+  const debouncedSearch = useDebounce(search, 300);
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(25);
+  const [sortBy, setSortBy] = useState<string | undefined>("name");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
   const [saving, setSaving] = useState(false);
   const [savingRole, setSavingRole] = useState(false);
   const [deletingRoleId, setDeletingRoleId] = useState<string | null>(null);
@@ -129,6 +139,59 @@ export default function RolesPage() {
   const selectedPermissionSet = useMemo(() => new Set(selectedPermissionIds), [selectedPermissionIds]);
   const deletableRoleIds = useMemo(() => roles.filter((role) => !role.isSystemRole).map((role) => role.id), [roles]);
   const selectedRoleSet = useMemo(() => new Set(selectedRoleIds), [selectedRoleIds]);
+
+  function toggleSort(nextSortBy: string) {
+    setPage(1);
+    setSortBy((current) => {
+      if (current !== nextSortBy) {
+        setSortOrder("asc");
+        return nextSortBy;
+      }
+
+      setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"));
+      return current;
+    });
+  }
+
+  const filteredRoles = useMemo(() => {
+    const trimmed = debouncedSearch.trim().toLowerCase();
+    if (!trimmed) return roles;
+    return roles.filter((role) => {
+      const name = role.name?.toLowerCase() ?? "";
+      const slug = role.slug?.toLowerCase() ?? "";
+      const org = role.organizationName?.toLowerCase() ?? "";
+      return name.includes(trimmed) || slug.includes(trimmed) || org.includes(trimmed);
+    });
+  }, [debouncedSearch, roles]);
+
+  const sortedRoles = useMemo(() => {
+    const direction = sortOrder === "asc" ? 1 : -1;
+    const items = [...filteredRoles];
+    items.sort((a, b) => {
+      const left =
+        sortBy === "slug"
+          ? a.slug
+          : sortBy === "organizationName"
+            ? a.organizationName ?? ""
+            : a.name;
+      const right =
+        sortBy === "slug"
+          ? b.slug
+          : sortBy === "organizationName"
+            ? b.organizationName ?? ""
+            : b.name;
+      return String(left ?? "").localeCompare(String(right ?? "")) * direction;
+    });
+    return items;
+  }, [filteredRoles, sortBy, sortOrder]);
+
+  const total = sortedRoles.length;
+  const totalPages = Math.max(1, Math.ceil(total / limit));
+  const safePage = Math.min(page, totalPages);
+  const pagedRoles = useMemo(() => {
+    const start = (safePage - 1) * limit;
+    return sortedRoles.slice(start, start + limit);
+  }, [limit, safePage, sortedRoles]);
 
   useEffect(() => {
     setSelectedRoleIds((prev) => prev.filter((id) => deletableRoleIds.includes(id)));
@@ -632,6 +695,21 @@ export default function RolesPage() {
 
       {loading ? <p className="text-sm">Cargando...</p> : null}
 
+      <TableToolbar
+        limit={limit}
+        onLimitChange={(value) => {
+          setPage(1);
+          setLimit(value);
+        }}
+        onSearchChange={(value) => {
+          setPage(1);
+          setSearch(value);
+        }}
+        search={search}
+        searchPlaceholder="Buscar roles"
+        total={total}
+      />
+
       <div className="overflow-x-auto rounded-lg border">
         <table className="w-full text-left text-sm">
           <thead>
@@ -643,16 +721,28 @@ export default function RolesPage() {
                   type="checkbox"
                 />
               </th>
-              <th className="px-3 py-2">Rol</th>
-              <th className="px-3 py-2">Slug</th>
-              <th className="px-3 py-2">Organización</th>
+              <th className="px-3 py-2">
+                <SortableHeader label="Rol" onToggle={toggleSort} sortBy={sortBy} sortKey="name" sortOrder={sortOrder} />
+              </th>
+              <th className="px-3 py-2">
+                <SortableHeader label="Slug" onToggle={toggleSort} sortBy={sortBy} sortKey="slug" sortOrder={sortOrder} />
+              </th>
+              <th className="px-3 py-2">
+                <SortableHeader
+                  label="Organización"
+                  onToggle={toggleSort}
+                  sortBy={sortBy}
+                  sortKey="organizationName"
+                  sortOrder={sortOrder}
+                />
+              </th>
               <th className="px-3 py-2">Sistema</th>
               <th className="px-3 py-2">Permisos</th>
               <th className="px-3 py-2">Acción</th>
             </tr>
           </thead>
           <tbody>
-            {roles.map((role) => (
+            {pagedRoles.map((role) => (
               <tr className="border-b" key={role.id}>
                 <td className="px-3 py-2">
                   <input
@@ -697,7 +787,7 @@ export default function RolesPage() {
                 </td>
               </tr>
             ))}
-            {!loading && roles.length === 0 ? (
+            {!loading && pagedRoles.length === 0 ? (
               <tr>
                 <td className="px-3 py-3 text-sm text-muted-foreground" colSpan={7}>
                   No hay roles disponibles.
@@ -707,6 +797,15 @@ export default function RolesPage() {
           </tbody>
         </table>
       </div>
+
+      <TablePagination
+        loading={loading}
+        onNext={() => setPage((current) => Math.min(totalPages, current + 1))}
+        onPrev={() => setPage((current) => Math.max(1, current - 1))}
+        page={safePage}
+        total={total}
+        totalPages={totalPages}
+      />
 
       <div className="flex items-center gap-2">
         <button

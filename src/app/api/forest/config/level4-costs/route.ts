@@ -60,21 +60,32 @@ export async function GET(req: NextRequest) {
   if (!query.success) return fail("Parámetros inválidos", 400, query.error.flatten());
 
   const { page, limit, search } = query.data;
-  const where: any = search
-    ? {
-        OR: [
-          { code: { contains: search, mode: "insensitive" as const } },
-          { rotationPhase: { contains: search, mode: "insensitive" as const } },
-          { level4: { name: { contains: search, mode: "insensitive" as const } } },
-          { level4: { code: { contains: search, mode: "insensitive" as const } } },
-        ],
-      }
-    :
-    {};
+  const and: Prisma.Level4AdministrativeCostWhereInput[] = [];
+
+  if (search) {
+    and.push({
+      OR: [
+        { code: { contains: search, mode: "insensitive" } },
+        { rotationPhase: { contains: search, mode: "insensitive" } },
+        { level4: { name: { contains: search, mode: "insensitive" } } },
+        { level4: { code: { contains: search, mode: "insensitive" } } },
+      ],
+    });
+  }
 
   if (authResult.session.user.organizationId) {
-    where.organizationId = authResult.session.user.organizationId;
+    and.push({
+      level4: {
+        level3: {
+          level2: {
+            organizationId: authResult.session.user.organizationId,
+          },
+        },
+      },
+    });
   }
+
+  const where: Prisma.Level4AdministrativeCostWhereInput = and.length ? { AND: and } : {};
 
   const [total, items] = await Promise.all([
     prisma.level4AdministrativeCost.count({ where }),
@@ -115,7 +126,20 @@ export async function POST(req: NextRequest) {
   const parsed = level4AdministrativeCostCreateSchema.safeParse(body);
   if (!parsed.success) return fail("Datos inválidos", 400, parsed.error.flatten());
 
-  const level4 = await prisma.forestPatrimonyLevel4.findUnique({ where: { id: parsed.data.level4Id } });
+  const level4 = await prisma.forestPatrimonyLevel4.findFirst({
+    where: {
+      id: parsed.data.level4Id,
+      ...(authResult.session.user.organizationId && !isSuperAdmin
+        ? {
+            level3: {
+              level2: {
+                organizationId: authResult.session.user.organizationId,
+              },
+            },
+          }
+        : {}),
+    },
+  });
   if (!level4) return fail("Unidad administrativa nivel 4 no encontrada", 404);
 
   if (parsed.data.accountingDocumentId) {
@@ -126,7 +150,6 @@ export async function POST(req: NextRequest) {
   try {
     const created = await prisma.level4AdministrativeCost.create({
       data: {
-        organizationId: authResult.session.user.organizationId || null,
         level4Id: parsed.data.level4Id,
         code: parsed.data.code,
         plantationAreaHa: parsed.data.plantationAreaHa,
@@ -169,7 +192,20 @@ export async function PATCH(req: NextRequest) {
   if (!parsed.success) return fail("Datos inválidos", 400, parsed.error.flatten());
 
   if (parsed.data.level4Id) {
-    const level4 = await prisma.forestPatrimonyLevel4.findUnique({ where: { id: parsed.data.level4Id } });
+    const level4 = await prisma.forestPatrimonyLevel4.findFirst({
+      where: {
+        id: parsed.data.level4Id,
+        ...(authResult.session.user.organizationId && !isSuperAdmin
+          ? {
+              level3: {
+                level2: {
+                  organizationId: authResult.session.user.organizationId,
+                },
+              },
+            }
+          : {}),
+      },
+    });
     if (!level4) return fail("Unidad administrativa nivel 4 no encontrada", 404);
   }
 

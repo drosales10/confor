@@ -3,6 +3,8 @@
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { useDebounce } from "@/hooks/useDebounce";
 import { sileo } from "sileo";
+import { TableToolbar } from "@/components/tables/TableToolbar";
+import { TablePagination } from "@/components/tables/TablePagination";
 
 type Level2Item = {
   id: string;
@@ -379,6 +381,46 @@ export default function PatrimonioForestalPage() {
     const result = await response.json();
     if (!response.ok || !result?.success) {
       throw new Error(result?.error ?? "No fue posible crear el registro");
+    }
+  }
+
+  async function onSaveLevel3Edit() {
+    if (!editingLevel3Id || !selectedLevel2Id) return;
+    const totalAreaHa = Number(editLevel3Form.totalAreaHa);
+    if (Number.isNaN(totalAreaHa) || totalAreaHa <= 0) {
+      setError("Superficie inválida");
+      sileo.warning({
+        title: "Datos inválidos",
+        description: "La superficie debe ser mayor a 0.",
+      });
+      return;
+    }
+
+    setSubmitting(true);
+    setError(null);
+    try {
+      await updatePatrimony("3", editingLevel3Id, {
+        code: editLevel3Form.code.trim(),
+        name: editLevel3Form.name.trim(),
+        type: editLevel3Form.type,
+        totalAreaHa,
+        isActive: editLevel3Form.isActive,
+      });
+      setEditingLevel3Id(null);
+      await loadLevel3(selectedLevel2Id, debouncedSearchLevel3, pageLevel3, limitLevel3);
+      sileo.success({
+        title: "Nivel 3 actualizado",
+        description: "El registro se actualizó correctamente.",
+      });
+    } catch (updateError) {
+      const message = updateError instanceof Error ? updateError.message : "No fue posible actualizar el nivel 3";
+      setError(message);
+      sileo.error({
+        title: "No se pudo actualizar",
+        description: message,
+      });
+    } finally {
+      setSubmitting(false);
     }
   }
 
@@ -1214,36 +1256,23 @@ export default function PatrimonioForestalPage() {
 
       <section className="rounded-lg border p-4">
         <h2 className="text-lg font-medium">Registros Nivel 2</h2>
-        <div className="mt-3 flex flex-wrap items-end gap-3">
-          <div className="max-w-sm flex-1">
-            <input
-              className="w-full rounded-md border px-3 py-2 text-sm"
-              onChange={(event) => {
-                setPageAdjustReason("filtro");
-                setPageLevel2(1);
-                setSearchLevel2(event.target.value);
-              }}
-              placeholder="Buscar por código o nombre"
-              value={searchLevel2}
-            />
-          </div>
-          <label className="text-xs">
-            <span className="mr-2">Límite</span>
-            <select
-              className="rounded-md border px-2 py-1"
-              onChange={(event) => {
-                setPageAdjustReason("límite");
-                setPageLevel2(1);
-                setLimitLevel2(Number(event.target.value));
-              }}
-              value={limitLevel2}
-            >
-              <option value={10}>10</option>
-              <option value={25}>25</option>
-              <option value={50}>50</option>
-            </select>
-          </label>
-          <p className="text-xs text-muted-foreground">Total: {paginationLevel2.total}</p>
+        <div className="mt-3">
+          <TableToolbar
+            limit={limitLevel2}
+            onLimitChange={(value) => {
+              setPageAdjustReason("límite");
+              setPageLevel2(1);
+              setLimitLevel2(value);
+            }}
+            onSearchChange={(value) => {
+              setPageAdjustReason("filtro");
+              setPageLevel2(1);
+              setSearchLevel2(value);
+            }}
+            search={searchLevel2}
+            searchPlaceholder="Buscar por código o nombre"
+            total={paginationLevel2.total}
+          />
         </div>
         {loading ? <p className="mt-3 text-sm">Cargando...</p> : null}
         {error ? <p className="mt-3 text-sm text-red-600">{error}</p> : null}
@@ -1386,26 +1415,15 @@ export default function PatrimonioForestalPage() {
             </tbody>
           </table>
         </div>
-        <div className="mt-3 flex items-center justify-end gap-2 text-xs">
-          <button
-            className="rounded-md border px-2 py-1 disabled:opacity-60"
-            disabled={pageLevel2 <= 1 || submitting}
-            onClick={() => setPageLevel2((current) => Math.max(1, current - 1))}
-            type="button"
-          >
-            Anterior
-          </button>
-          <span>
-            Página {paginationLevel2.page} de {paginationLevel2.totalPages} · Total {paginationLevel2.total}
-          </span>
-          <button
-            className="rounded-md border px-2 py-1 disabled:opacity-60"
-            disabled={pageLevel2 >= paginationLevel2.totalPages || submitting}
-            onClick={() => setPageLevel2((current) => Math.min(paginationLevel2.totalPages, current + 1))}
-            type="button"
-          >
-            Siguiente
-          </button>
+        <div className="mt-3">
+          <TablePagination
+            loading={submitting}
+            onNext={() => setPageLevel2((current) => Math.min(paginationLevel2.totalPages, current + 1))}
+            onPrev={() => setPageLevel2((current) => Math.max(1, current - 1))}
+            page={paginationLevel2.page}
+            total={paginationLevel2.total}
+            totalPages={paginationLevel2.totalPages}
+          />
         </div>
       </section>
 
@@ -1642,34 +1660,21 @@ export default function PatrimonioForestalPage() {
 
         <div className="mt-5 grid gap-4 md:grid-cols-1">
           <h3 className="font-medium">Nivel 3</h3>
-          <div className="mt-2 flex items-center justify-between gap-2">
-            <p className="text-xs text-muted-foreground">Total: {paginationLevel3.total}</p>
-            <label className="text-xs">
-              <span className="mr-1">Límite</span>
-              <select
-                className="rounded-md border px-2 py-1"
-                onChange={(event) => {
-                  setPageAdjustReason("límite");
-                  setPageLevel3(1);
-                  setLimitLevel3(Number(event.target.value));
-                }}
-                value={limitLevel3}
-              >
-                <option value={10}>10</option>
-                <option value={25}>25</option>
-                <option value={50}>50</option>
-              </select>
-            </label>
-          </div>
-          <input
-            className="mt-2 w-full rounded-md border px-2 py-1 text-xs"
-            onChange={(event) => {
+          <TableToolbar
+            limit={limitLevel3}
+            onLimitChange={(value) => {
+              setPageAdjustReason("límite");
+              setPageLevel3(1);
+              setLimitLevel3(value);
+            }}
+            onSearchChange={(value) => {
               setPageAdjustReason("filtro");
               setPageLevel3(1);
-              setSearchLevel3(event.target.value);
+              setSearchLevel3(value);
             }}
-            placeholder="Buscar nivel 3"
-            value={searchLevel3}
+            search={searchLevel3}
+            searchPlaceholder="Buscar nivel 3"
+            total={paginationLevel3.total}
           />
           <div className="mt-3 overflow-x-auto rounded-lg border">
             <table className="w-full text-left text-sm">
@@ -1696,7 +1701,7 @@ export default function PatrimonioForestalPage() {
                       )}
                     </td>
                     <td className="px-3 py-2">
-                      {editingLevel2Id === item.id ? (
+                      {editingLevel3Id === item.id ? (
                         <input
                           className="w-full rounded-md border px-2 py-1 text-xs"
                           onChange={(event) => setEditLevel3Form((prev) => ({ ...prev, name: event.target.value }))}
@@ -1761,7 +1766,7 @@ export default function PatrimonioForestalPage() {
                           <button
                             className="mr-2 rounded-md border px-2 py-1 text-xs disabled:opacity-60"
                             disabled={submitting}
-                            onClick={onSaveLevel2Edit}
+                            onClick={onSaveLevel3Edit}
                             type="button"
                           >
                             Guardar
@@ -1798,7 +1803,7 @@ export default function PatrimonioForestalPage() {
                     </td>
                   </tr>
                 ))}
-                {!loading && items.length === 0 ? (
+                {!loading && level3Items.length === 0 ? (
                   <tr>
                     <td className="px-3 py-3" colSpan={7}>
                       Sin resultados
@@ -1808,26 +1813,15 @@ export default function PatrimonioForestalPage() {
               </tbody>
             </table>
           </div>
-          <div className="mt-2 flex items-center justify-end gap-2 text-xs">
-            <button
-              className="rounded-md border px-2 py-1 disabled:opacity-60"
-              disabled={pageLevel3 <= 1 || submitting}
-              onClick={() => setPageLevel3((current) => Math.max(1, current - 1))}
-              type="button"
-            >
-              Anterior
-            </button>
-            <span>
-              {paginationLevel3.page}/{paginationLevel3.totalPages} · {paginationLevel3.total}
-            </span>
-            <button
-              className="rounded-md border px-2 py-1 disabled:opacity-60"
-              disabled={pageLevel3 >= paginationLevel3.totalPages || submitting}
-              onClick={() => setPageLevel3((current) => Math.min(paginationLevel3.totalPages, current + 1))}
-              type="button"
-            >
-              Siguiente
-            </button>
+          <div className="mt-2">
+            <TablePagination
+              loading={submitting}
+              onNext={() => setPageLevel3((current) => Math.min(paginationLevel3.totalPages, current + 1))}
+              onPrev={() => setPageLevel3((current) => Math.max(1, current - 1))}
+              page={paginationLevel3.page}
+              total={paginationLevel3.total}
+              totalPages={paginationLevel3.totalPages}
+            />
           </div>
         </div>
       </section>
@@ -1895,34 +1889,21 @@ export default function PatrimonioForestalPage() {
 
           <div className="mt-5 grid gap-4 md:grid-cols-1">
             <h3 className="font-medium">Nivel 4</h3>
-            <div className="mt-2 flex items-center justify-between gap-2">
-              <p className="text-xs text-muted-foreground">Total: {paginationLevel4.total}</p>
-              <label className="text-xs">
-                <span className="mr-1">Límite</span>
-                <select
-                  className="rounded-md border px-2 py-1"
-                  onChange={(event) => {
-                    setPageAdjustReason("límite");
-                    setPageLevel4(1);
-                    setLimitLevel4(Number(event.target.value));
-                  }}
-                  value={limitLevel4}
-                >
-                  <option value={10}>10</option>
-                  <option value={25}>25</option>
-                  <option value={50}>50</option>
-                </select>
-              </label>
-            </div>
-            <input
-              className="mt-2 w-full rounded-md border px-2 py-1 text-xs"
-              onChange={(event) => {
+            <TableToolbar
+              limit={limitLevel4}
+              onLimitChange={(value) => {
+                setPageAdjustReason("límite");
+                setPageLevel4(1);
+                setLimitLevel4(value);
+              }}
+              onSearchChange={(value) => {
                 setPageAdjustReason("filtro");
                 setPageLevel4(1);
-                setSearchLevel4(event.target.value);
+                setSearchLevel4(value);
               }}
-              placeholder="Buscar nivel 4"
-              value={searchLevel4}
+              search={searchLevel4}
+              searchPlaceholder="Buscar nivel 4"
+              total={paginationLevel4.total}
             />
             <div className="mt-3 overflow-x-auto rounded-lg border">
               <table className="w-full text-left text-sm">
@@ -2050,7 +2031,7 @@ export default function PatrimonioForestalPage() {
                       </td>
                     </tr>
                   ))}
-                  {!loading && items.length === 0 ? (
+                  {!loading && level4Items.length === 0 ? (
                     <tr>
                       <td className="px-3 py-3" colSpan={7}>
                         Sin resultados
@@ -2060,26 +2041,15 @@ export default function PatrimonioForestalPage() {
                 </tbody>
               </table>
             </div>
-            <div className="mt-2 flex items-center justify-end gap-2 text-xs">
-              <button
-                className="rounded-md border px-2 py-1 disabled:opacity-60"
-                disabled={pageLevel4 <= 1 || submitting}
-                onClick={() => setPageLevel4((current) => Math.max(1, current - 1))}
-                type="button"
-              >
-                Anterior
-              </button>
-              <span>
-                {paginationLevel4.page}/{paginationLevel4.totalPages} · {paginationLevel4.total}
-              </span>
-              <button
-                className="rounded-md border px-2 py-1 disabled:opacity-60"
-                disabled={pageLevel4 >= paginationLevel4.totalPages || submitting}
-                onClick={() => setPageLevel4((current) => Math.min(paginationLevel4.totalPages, current + 1))}
-                type="button"
-              >
-                Siguiente
-              </button>
+            <div className="mt-2">
+              <TablePagination
+                loading={submitting}
+                onNext={() => setPageLevel4((current) => Math.min(paginationLevel4.totalPages, current + 1))}
+                onPrev={() => setPageLevel4((current) => Math.max(1, current - 1))}
+                page={paginationLevel4.page}
+                total={paginationLevel4.total}
+                totalPages={paginationLevel4.totalPages}
+              />
             </div>
           </div>
 
@@ -2184,34 +2154,21 @@ export default function PatrimonioForestalPage() {
         </form>
         <div className="rounded-md border p-3">
           <h3 className="font-medium">Nivel 5</h3>
-          <div className="mt-2 flex items-center justify-between gap-2">
-            <p className="text-xs text-muted-foreground">Total: {paginationLevel5.total}</p>
-            <label className="text-xs">
-              <span className="mr-1">Límite</span>
-              <select
-                className="rounded-md border px-2 py-1"
-                onChange={(event) => {
-                  setPageAdjustReason("límite");
-                  setPageLevel5(1);
-                  setLimitLevel5(Number(event.target.value));
-                }}
-                value={limitLevel5}
-              >
-                <option value={10}>10</option>
-                <option value={25}>25</option>
-                <option value={50}>50</option>
-              </select>
-            </label>
-          </div>
-          <input
-            className="mt-2 w-full rounded-md border px-2 py-1 text-xs"
-            onChange={(event) => {
+          <TableToolbar
+            limit={limitLevel5}
+            onLimitChange={(value) => {
+              setPageAdjustReason("límite");
+              setPageLevel5(1);
+              setLimitLevel5(value);
+            }}
+            onSearchChange={(value) => {
               setPageAdjustReason("filtro");
               setPageLevel5(1);
-              setSearchLevel5(event.target.value);
+              setSearchLevel5(value);
             }}
-            placeholder="Buscar nivel 5"
-            value={searchLevel5}
+            search={searchLevel5}
+            searchPlaceholder="Buscar nivel 5"
+            total={paginationLevel5.total}
           />
           <div className="mt-3 overflow-x-auto rounded-lg border">
             <table className="w-full text-left text-sm">
@@ -2251,26 +2208,15 @@ export default function PatrimonioForestalPage() {
               </tbody>
             </table>
           </div>
-          <div className="mt-2 flex items-center justify-end gap-2 text-xs">
-            <button
-              className="rounded-md border px-2 py-1 disabled:opacity-60"
-              disabled={pageLevel5 <= 1 || submitting}
-              onClick={() => setPageLevel5((current) => Math.max(1, current - 1))}
-              type="button"
-            >
-              Anterior
-            </button>
-            <span>
-              {paginationLevel5.page}/{paginationLevel5.totalPages} · {paginationLevel5.total}
-            </span>
-            <button
-              className="rounded-md border px-2 py-1 disabled:opacity-60"
-              disabled={pageLevel5 >= paginationLevel5.totalPages || submitting}
-              onClick={() => setPageLevel5((current) => Math.min(paginationLevel5.totalPages, current + 1))}
-              type="button"
-            >
-              Siguiente
-            </button>
+          <div className="mt-2">
+            <TablePagination
+              loading={submitting}
+              onNext={() => setPageLevel5((current) => Math.min(paginationLevel5.totalPages, current + 1))}
+              onPrev={() => setPageLevel5((current) => Math.max(1, current - 1))}
+              page={paginationLevel5.page}
+              total={paginationLevel5.total}
+              totalPages={paginationLevel5.totalPages}
+            />
           </div>
         </div>
         {editingLevel5Id ? (

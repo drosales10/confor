@@ -5,6 +5,9 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { sileo } from "sileo";
 import Link from "next/link";
+import { useDebounce } from "@/hooks/useDebounce";
+import { TableToolbar } from "@/components/tables/TableToolbar";
+import { TablePagination } from "@/components/tables/TablePagination";
 
 type SystemConfigItem = {
   id: string;
@@ -51,6 +54,14 @@ export default function SystemSettingsPage() {
   const [moduleSlug, setModuleSlug] = useState("");
   const [routePath, setRoutePath] = useState("");
   const [displayOrder, setDisplayOrder] = useState(0);
+  const [modulesSearch, setModulesSearch] = useState("");
+  const debouncedModulesSearch = useDebounce(modulesSearch, 300);
+  const [modulesPage, setModulesPage] = useState(1);
+  const [modulesLimit, setModulesLimit] = useState(25);
+  const [configsSearch, setConfigsSearch] = useState("");
+  const debouncedConfigsSearch = useDebounce(configsSearch, 300);
+  const [configsPage, setConfigsPage] = useState(1);
+  const [configsLimit, setConfigsLimit] = useState(25);
   const canReadSettings = permissions.includes("settings:READ") || permissions.includes("settings:ADMIN");
   const canUpdateSettings = permissions.includes("settings:UPDATE") || permissions.includes("settings:ADMIN");
   const canUpdateOrganization = permissions.includes("organizations:UPDATE") || permissions.includes("organizations:ADMIN");
@@ -134,6 +145,45 @@ export default function SystemSettingsPage() {
     const item = configs.find((entry) => entry.category === "general" && entry.key === "site_name");
     return item?.value?.trim() || "Modular Enterprise App";
   }, [configs]);
+
+  const filteredModules = useMemo(() => {
+    const term = debouncedModulesSearch.trim().toLowerCase();
+    if (!term) return modules;
+    return modules.filter((moduleItem) => {
+      const name = moduleItem.name?.toLowerCase() ?? "";
+      const slug = moduleItem.slug?.toLowerCase() ?? "";
+      const route = moduleItem.routePath?.toLowerCase() ?? "";
+      return name.includes(term) || slug.includes(term) || route.includes(term);
+    });
+  }, [debouncedModulesSearch, modules]);
+
+  const modulesTotal = filteredModules.length;
+  const modulesTotalPages = Math.max(1, Math.ceil(modulesTotal / modulesLimit));
+  const safeModulesPage = Math.min(modulesPage, modulesTotalPages);
+  const pagedModules = useMemo(() => {
+    const start = (safeModulesPage - 1) * modulesLimit;
+    return filteredModules.slice(start, start + modulesLimit);
+  }, [filteredModules, modulesLimit, safeModulesPage]);
+
+  const filteredConfigs = useMemo(() => {
+    const term = debouncedConfigsSearch.trim().toLowerCase();
+    if (!term) return configs;
+    return configs.filter((item) => {
+      const category = item.category?.toLowerCase() ?? "";
+      const key = item.key?.toLowerCase() ?? "";
+      const type = item.configType?.toLowerCase() ?? "";
+      const value = (item.value ?? "").toLowerCase();
+      return category.includes(term) || key.includes(term) || type.includes(term) || value.includes(term);
+    });
+  }, [configs, debouncedConfigsSearch]);
+
+  const configsTotal = filteredConfigs.length;
+  const configsTotalPages = Math.max(1, Math.ceil(configsTotal / configsLimit));
+  const safeConfigsPage = Math.min(configsPage, configsTotalPages);
+  const pagedConfigs = useMemo(() => {
+    const start = (safeConfigsPage - 1) * configsLimit;
+    return filteredConfigs.slice(start, start + configsLimit);
+  }, [configsLimit, filteredConfigs, safeConfigsPage]);
 
   useEffect(() => {
     if (!selectedConfig) return;
@@ -396,6 +446,21 @@ export default function SystemSettingsPage() {
           {savingModule ? "Guardando..." : "Crear/actualizar módulo"}
         </button>
 
+        <TableToolbar
+          limit={modulesLimit}
+          onLimitChange={(value) => {
+            setModulesPage(1);
+            setModulesLimit(value);
+          }}
+          onSearchChange={(value) => {
+            setModulesPage(1);
+            setModulesSearch(value);
+          }}
+          search={modulesSearch}
+          searchPlaceholder="Buscar módulos"
+          total={modulesTotal}
+        />
+
         <div className="overflow-x-auto rounded-lg border">
           <table className="w-full text-left text-sm">
             <thead>
@@ -408,7 +473,7 @@ export default function SystemSettingsPage() {
               </tr>
             </thead>
             <tbody>
-              {modules.map((moduleItem) => (
+              {pagedModules.map((moduleItem) => (
                 <tr className="border-b" key={moduleItem.id}>
                   <td className="px-3 py-2">{moduleItem.name}</td>
                   <td className="px-3 py-2">{moduleItem.slug}</td>
@@ -421,7 +486,7 @@ export default function SystemSettingsPage() {
                   </td>
                 </tr>
               ))}
-              {modules.length === 0 ? (
+              {pagedModules.length === 0 ? (
                 <tr>
                   <td className="px-3 py-3 text-sm text-muted-foreground" colSpan={5}>
                     No hay módulos registrados.
@@ -431,10 +496,35 @@ export default function SystemSettingsPage() {
             </tbody>
           </table>
         </div>
+
+        <TablePagination
+          loading={loading}
+          onNext={() => setModulesPage((current) => Math.min(modulesTotalPages, current + 1))}
+          onPrev={() => setModulesPage((current) => Math.max(1, current - 1))}
+          page={safeModulesPage}
+          total={modulesTotal}
+          totalPages={modulesTotalPages}
+        />
       </section>
 
       <section className="space-y-3 rounded-lg border p-4">
         <h2 className="text-lg font-semibold">Configuraciones existentes</h2>
+
+        <TableToolbar
+          limit={configsLimit}
+          onLimitChange={(value) => {
+            setConfigsPage(1);
+            setConfigsLimit(value);
+          }}
+          onSearchChange={(value) => {
+            setConfigsPage(1);
+            setConfigsSearch(value);
+          }}
+          search={configsSearch}
+          searchPlaceholder="Buscar configuraciones"
+          total={configsTotal}
+        />
+
         <div className="overflow-x-auto rounded-lg border">
           <table className="w-full text-left text-sm">
             <thead>
@@ -446,7 +536,7 @@ export default function SystemSettingsPage() {
               </tr>
             </thead>
             <tbody>
-              {configs.map((item) => (
+              {pagedConfigs.map((item) => (
                 <tr
                   className="cursor-pointer border-b hover:bg-accent"
                   key={item.id}
@@ -463,7 +553,7 @@ export default function SystemSettingsPage() {
                   <td className="px-3 py-2">{item.value}</td>
                 </tr>
               ))}
-              {configs.length === 0 ? (
+              {pagedConfigs.length === 0 ? (
                 <tr>
                   <td className="px-3 py-3 text-sm text-muted-foreground" colSpan={4}>
                     No hay configuraciones registradas.
@@ -473,6 +563,15 @@ export default function SystemSettingsPage() {
             </tbody>
           </table>
         </div>
+
+        <TablePagination
+          loading={loading}
+          onNext={() => setConfigsPage((current) => Math.min(configsTotalPages, current + 1))}
+          onPrev={() => setConfigsPage((current) => Math.max(1, current - 1))}
+          page={safeConfigsPage}
+          total={configsTotal}
+          totalPages={configsTotalPages}
+        />
       </section>
     </div>
   );

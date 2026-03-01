@@ -6,6 +6,23 @@ import { hashPassword } from "@/lib/crypto";
 import crypto from "crypto";
 import { ensureRoleWithPermissions } from "@/lib/role-provisioning";
 
+async function resolveOrganizationId(sessionUser: { id?: string; organizationId?: string | null }) {
+  if (sessionUser.organizationId !== undefined) {
+    return sessionUser.organizationId;
+  }
+
+  if (!sessionUser.id) {
+    return null;
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { id: sessionUser.id },
+    select: { organizationId: true },
+  });
+
+  return user?.organizationId ?? null;
+}
+
 export async function GET(req: NextRequest) {
   const authResult = await requireAuth();
   if ("error" in authResult) return authResult.error;
@@ -31,8 +48,27 @@ export async function GET(req: NextRequest) {
     return fail("Parámetros inválidos", 400, query.error.flatten());
   }
 
-  const { page, limit, search, status } = query.data;
+  const { page, limit, search, status, role, sortBy, sortOrder } = query.data;
+
+  const isSuperAdmin = roles.includes("SUPER_ADMIN");
+  const requestedOrganizationId = searchParams.get("organizationId");
+  const currentOrganizationId = await resolveOrganizationId({
+    id: authResult.session.user.id,
+    organizationId: authResult.session.user.organizationId,
+  });
+
+  if (!isSuperAdmin && !currentOrganizationId) {
+    return fail("El usuario no tiene una organización asociada", 403);
+  }
+
+  const organizationScope = isSuperAdmin
+    ? requestedOrganizationId
+      ? { organizationId: requestedOrganizationId }
+      : {}
+    : { organizationId: currentOrganizationId ?? "" };
+
   const where = {
+    ...organizationScope,
     ...(status ? { status } : {}),
     ...(search
       ? {
@@ -43,7 +79,27 @@ export async function GET(req: NextRequest) {
           ],
         }
       : {}),
+    ...(role
+      ? {
+          userRoles: {
+            some: {
+              isActive: true,
+              role: { slug: role },
+            },
+          },
+        }
+      : {}),
   };
+
+  const orderDirection = sortOrder === "asc" ? "asc" : "desc";
+  const orderBy =
+    sortBy === "email"
+      ? ({ email: orderDirection } as const)
+      : sortBy === "status"
+        ? ({ status: orderDirection } as const)
+        : sortBy === "createdAt"
+          ? ({ createdAt: orderDirection } as const)
+          : ({ createdAt: "desc" } as const);
 
   const [total, users] = await Promise.all([
     prisma.user.count({ where }),
@@ -51,7 +107,7 @@ export async function GET(req: NextRequest) {
       where,
       skip: (page - 1) * limit,
       take: limit,
-      orderBy: { createdAt: "desc" },
+      orderBy,
       include: {
         userRoles: {
           where: { isActive: true },
