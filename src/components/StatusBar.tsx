@@ -32,7 +32,7 @@ export default function StatusBar() {
   const userRole = typeof window !== "undefined" ? sessionStorage.getItem("RolUsuario") ?? "-" : "-";
   const organization =
     typeof window !== "undefined" ? sessionStorage.getItem("OrganizacionNombre") ?? "Sin organizacion" : "Sin organizacion";
-  const project = typeof window !== "undefined" ? sessionStorage.getItem("ProyectoActual") ?? "Sin proyecto" : "Sin proyecto";
+  //const project = typeof window !== "undefined" ? sessionStorage.getItem("ProyectoActual") ?? "Sin proyecto" : "Sin proyecto";
 
   useEffect(() => {
     const timer = setInterval(() => setNow(new Date()), 1000);
@@ -64,7 +64,6 @@ export default function StatusBar() {
           <span>Usuario: {userName}</span>
           <span>Rol: {userRole}</span>
           <span>Organizacion: {organization}</span>
-          <span>Proyecto: {project}</span>
           <span>Modulo: {moduleName}</span>
         </div>
         <div className="flex flex-wrap gap-3">
