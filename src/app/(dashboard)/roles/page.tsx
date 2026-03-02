@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { sileo } from "sileo";
 import { useDebounce } from "@/hooks/useDebounce";
@@ -45,8 +45,16 @@ type OrganizationItem = {
   name: string;
 };
 
+type SortKey = "name" | "slug" | "organizationName" | "isSystemRole" | "permissionsCount";
+const sortableKeys = ["name", "slug", "organizationName", "isSystemRole", "permissionsCount"] as const;
+
+function isSortKey(value: string): value is SortKey {
+  return (sortableKeys as ReadonlyArray<string>).includes(value);
+}
+
 export default function RolesPage() {
   const router = useRouter();
+  const importInputRef = useRef<HTMLInputElement | null>(null);
   const [permissions, setPermissions] = useState<string[]>([]);
   const [organizations, setOrganizations] = useState<OrganizationItem[]>([]);
   const [selectedOrganizationId, setSelectedOrganizationId] = useState("");
@@ -57,8 +65,12 @@ export default function RolesPage() {
   const debouncedSearch = useDebounce(search, 300);
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(25);
-  const [sortBy, setSortBy] = useState<string | undefined>("name");
+  const [sortBy, setSortBy] = useState<SortKey>("name");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
+  const [importing, setImporting] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const [exportLimit, setExportLimit] = useState(100);
+  const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [savingRole, setSavingRole] = useState(false);
   const [deletingRoleId, setDeletingRoleId] = useState<string | null>(null);
@@ -72,14 +84,156 @@ export default function RolesPage() {
   const canCreateRole = permissions.includes("users:CREATE") || permissions.includes("users:ADMIN");
   const canUpdateRole = permissions.includes("users:UPDATE") || permissions.includes("users:ADMIN");
   const canDeleteRole = permissions.includes("users:DELETE") || permissions.includes("users:ADMIN");
+  const canExport = permissions.includes("users:EXPORT") || permissions.includes("users:ADMIN");
+  const canImport = canCreateRole;
   const activeOrganization = useMemo(
     () => organizations.find((organization) => organization.id === selectedOrganizationId) ?? null,
     [organizations, selectedOrganizationId],
   );
 
+  async function refreshRoles(organizationId: string) {
+    const query = organizationId ? `?organizationId=${encodeURIComponent(organizationId)}` : "";
+    const response = await fetch(`/api/roles${query}`);
+
+    if (!response.ok) {
+      const payload = await response.json().catch(() => null);
+      throw new Error(payload?.error ?? "No fue posible cargar roles y permisos");
+    }
+
+    const payload = await response.json();
+    setRoles(payload?.data?.roles ?? []);
+    setModules(payload?.data?.modules ?? []);
+  }
+
+  async function downloadExport(format: "csv" | "xlsx") {
+    try {
+      setExporting(true);
+      setError(null);
+
+      const params = new URLSearchParams({
+        format,
+        limit: String(exportLimit),
+      });
+
+      if (selectedOrganizationId) {
+        params.set("organizationId", selectedOrganizationId);
+      }
+
+      const nextSearch = debouncedSearch.trim();
+      if (nextSearch) {
+        params.set("search", nextSearch);
+      }
+
+      params.set("sortBy", sortBy);
+      params.set("sortOrder", sortOrder);
+
+      const response = await fetch(`/api/roles/export?${params.toString()}`, {
+        method: "GET",
+      });
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        throw new Error(payload?.error ?? "No fue posible exportar roles");
+      }
+
+      const blob = await response.blob();
+      const disposition = response.headers.get("content-disposition") ?? "";
+      const match = disposition.match(/filename=\"?([^\";]+)\"?/i);
+      const filename = match?.[1] ?? `roles.${format}`;
+
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+
+      sileo.success({
+        title: "Exportación lista",
+        description: `Se generó el archivo correctamente (máx. ${exportLimit} registros).`,
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Error desconocido";
+      setError(message);
+      sileo.error({
+        title: "No se pudo exportar",
+        description: message,
+      });
+    } finally {
+      setExporting(false);
+    }
+  }
+
+  async function onImportRoles(file: File) {
+    try {
+      setImporting(true);
+      setError(null);
+
+      const formData = new FormData();
+      formData.append("file", file);
+      if (selectedOrganizationId) {
+        formData.append("organizationId", selectedOrganizationId);
+      }
+
+      const response = await fetch("/api/roles/import", {
+        method: "POST",
+        body: formData,
+      });
+
+      const payload = await response.json().catch(() => null);
+      if (!response.ok || !payload?.success) {
+        throw new Error(payload?.error ?? "No fue posible importar roles");
+      }
+
+      const result = payload?.data as
+        | {
+            created: number;
+            updated: number;
+            skipped: number;
+            errors: Array<{ row: number; slug?: string; error: string }>;
+          }
+        | undefined;
+
+      await refreshRoles(selectedOrganizationId);
+
+      const created = result?.created ?? 0;
+      const updated = result?.updated ?? 0;
+      const skipped = result?.skipped ?? 0;
+      const errorCount = result?.errors?.length ?? 0;
+      const description = `Creados: ${created} · Actualizados: ${updated} · Omitidos: ${skipped}`;
+
+      if (errorCount > 0) {
+        sileo.warning({
+          title: "Importación parcial",
+          description: `${description} · Errores: ${errorCount}`,
+        });
+      } else {
+        sileo.success({
+          title: "Importación completada",
+          description,
+        });
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Error desconocido";
+      setError(message);
+      sileo.error({
+        title: "No se pudo importar",
+        description: message,
+      });
+    } finally {
+      setImporting(false);
+      if (importInputRef.current) {
+        importInputRef.current.value = "";
+      }
+    }
+  }
+
   useEffect(() => {
     const load = async () => {
       try {
+        setError(null);
         const sessionResponse = await fetch("/api/auth/session");
         const sessionPayload = sessionResponse.ok ? await sessionResponse.json().catch(() => null) : null;
         const sessionPermissions = (sessionPayload?.user?.permissions ?? []) as string[];
@@ -106,19 +260,10 @@ export default function RolesPage() {
         }
 
         setLoading(true);
-        const query = initialOrgId ? `?organizationId=${encodeURIComponent(initialOrgId)}` : "";
-        const response = await fetch(`/api/roles${query}`);
-
-        if (!response.ok) {
-          const payload = await response.json().catch(() => null);
-          throw new Error(payload?.error ?? "No fue posible cargar roles y permisos");
-        }
-
-        const payload = await response.json();
-        setRoles(payload?.data?.roles ?? []);
-        setModules(payload?.data?.modules ?? []);
+        await refreshRoles(initialOrgId);
       } catch (err) {
         const message = err instanceof Error ? err.message : "Error desconocido";
+        setError(message);
         sileo.error({
           title: "No se pudo cargar",
           description: message,
@@ -140,17 +285,40 @@ export default function RolesPage() {
   const deletableRoleIds = useMemo(() => roles.filter((role) => !role.isSystemRole).map((role) => role.id), [roles]);
   const selectedRoleSet = useMemo(() => new Set(selectedRoleIds), [selectedRoleIds]);
 
-  function toggleSort(nextSortBy: string) {
-    setPage(1);
-    setSortBy((current) => {
-      if (current !== nextSortBy) {
-        setSortOrder("asc");
-        return nextSortBy;
-      }
+  useEffect(() => {
+    if (!selectedOrganizationId) return;
 
-      setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"));
-      return current;
-    });
+    const reloadByOrganization = async () => {
+      try {
+        setError(null);
+        setLoading(true);
+        await refreshRoles(selectedOrganizationId);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "Error desconocido";
+        setError(message);
+        sileo.error({
+          title: "No se pudo cargar",
+          description: message,
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    void reloadByOrganization();
+  }, [selectedOrganizationId]);
+
+  function toggleSort(nextSortBy: string) {
+    if (!isSortKey(nextSortBy)) {
+      return;
+    }
+
+    const sortKey = nextSortBy;
+    const isSameColumn = sortBy === sortKey;
+
+    setPage(1);
+    setSortBy(sortKey);
+    setSortOrder(isSameColumn ? (sortOrder === "asc" ? "desc" : "asc") : "asc");
   }
 
   const filteredRoles = useMemo(() => {
@@ -168,19 +336,31 @@ export default function RolesPage() {
     const direction = sortOrder === "asc" ? 1 : -1;
     const items = [...filteredRoles];
     items.sort((a, b) => {
+      if (sortBy === "isSystemRole") {
+        const left = a.isSystemRole ? 1 : 0;
+        const right = b.isSystemRole ? 1 : 0;
+        return (left - right) * direction;
+      }
+
+      if (sortBy === "permissionsCount") {
+        return (a.permissions.length - b.permissions.length) * direction;
+      }
+
       const left =
         sortBy === "slug"
           ? a.slug
           : sortBy === "organizationName"
             ? a.organizationName ?? ""
             : a.name;
+
       const right =
         sortBy === "slug"
           ? b.slug
           : sortBy === "organizationName"
             ? b.organizationName ?? ""
             : b.name;
-      return String(left ?? "").localeCompare(String(right ?? "")) * direction;
+
+      return String(left ?? "").localeCompare(String(right ?? ""), "es", { sensitivity: "base" }) * direction;
     });
     return items;
   }, [filteredRoles, sortBy, sortOrder]);
@@ -613,6 +793,52 @@ export default function RolesPage() {
         <p className="text-sm text-muted-foreground">Gestiona permisos por módulo y acciones CRUD para cada rol.</p>
       </div>
 
+      <div className="flex items-center justify-end gap-2">
+        {canImport ? (
+          <>
+            <input
+              accept=".csv,.xlsx"
+              className="hidden"
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+                if (file) void onImportRoles(file);
+              }}
+              ref={importInputRef}
+              type="file"
+            />
+            <button
+              className="rounded-md border px-3 py-2 text-sm disabled:opacity-60"
+              disabled={importing}
+              onClick={() => importInputRef.current?.click()}
+              type="button"
+            >
+              Importar
+            </button>
+          </>
+        ) : null}
+
+        {canExport ? (
+          <>
+            <button
+              className="rounded-md border px-3 py-2 text-sm disabled:opacity-60"
+              disabled={exporting}
+              onClick={() => void downloadExport("csv")}
+              type="button"
+            >
+              Exportar CSV
+            </button>
+            <button
+              className="rounded-md border px-3 py-2 text-sm disabled:opacity-60"
+              disabled={exporting}
+              onClick={() => void downloadExport("xlsx")}
+              type="button"
+            >
+              Exportar Excel
+            </button>
+          </>
+        ) : null}
+      </div>
+
       <div className="rounded-lg border p-3">
         <label className="text-sm font-semibold" htmlFor="organization-select">
           Organización activa
@@ -694,9 +920,13 @@ export default function RolesPage() {
       </div>
 
       {loading ? <p className="text-sm">Cargando...</p> : null}
+      {error ? <p className="text-sm text-red-600">{error}</p> : null}
 
       <TableToolbar
+        canExport={canExport}
+        exportLimit={exportLimit}
         limit={limit}
+        onExportLimitChange={(value) => setExportLimit(value)}
         onLimitChange={(value) => {
           setPage(1);
           setLimit(value);
@@ -736,8 +966,24 @@ export default function RolesPage() {
                   sortOrder={sortOrder}
                 />
               </th>
-              <th className="px-3 py-2">Sistema</th>
-              <th className="px-3 py-2">Permisos</th>
+              <th className="px-3 py-2">
+                <SortableHeader
+                  label="Sistema"
+                  onToggle={toggleSort}
+                  sortBy={sortBy}
+                  sortKey="isSystemRole"
+                  sortOrder={sortOrder}
+                />
+              </th>
+              <th className="px-3 py-2">
+                <SortableHeader
+                  label="Permisos"
+                  onToggle={toggleSort}
+                  sortBy={sortBy}
+                  sortKey="permissionsCount"
+                  sortOrder={sortOrder}
+                />
+              </th>
               <th className="px-3 py-2">Acción</th>
             </tr>
           </thead>

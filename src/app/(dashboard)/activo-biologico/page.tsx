@@ -1,8 +1,11 @@
 "use client";
 
-import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useDebounce } from "@/hooks/useDebounce";
 import { sileo } from "sileo";
+import { TableToolbar } from "@/components/tables/TableToolbar";
+import { TablePagination } from "@/components/tables/TablePagination";
+import { SortableHeader } from "@/components/tables/SortableHeader";
 
 type Level2Item = { id: string; code: string; name: string };
 type Level3Item = { id: string; code: string; name: string };
@@ -69,10 +72,15 @@ type ApiResponse<T> = {
   };
 };
 
-const limits = [10, 25, 50] as const;
 const selectorFieldClass = "w-full rounded-md border bg-gray-100 px-3 py-2";
 const readonlyFieldClass = "w-full rounded-md border bg-gray-100 px-3 py-2";
-const compactSelectorClass = "rounded-md border bg-gray-100 px-3 py-2";
+
+type SortKey = "biologicalAssetKey" | "accountingKey" | "assetType" | "plantingYear" | "inventoryCode" | "isActive";
+const sortableKeys: SortKey[] = ["biologicalAssetKey", "accountingKey", "assetType", "plantingYear", "inventoryCode", "isActive"];
+
+function isSortKey(value: string): value is SortKey {
+  return sortableKeys.includes(value as SortKey);
+}
 
 type SimpleCatalogOption = {
   id: string;
@@ -254,6 +262,7 @@ async function fetchAllPages<T>(endpoint: string, limit = 100): Promise<T[]> {
 }
 
 export default function ActivoBiologicoPage() {
+  const importInputRef = useRef<HTMLInputElement | null>(null);
   const [level2Items, setLevel2Items] = useState<Level2Item[]>([]);
   const [level3Items, setLevel3Items] = useState<Level3Item[]>([]);
   const [level4Items, setLevel4Items] = useState<Level4Item[]>([]);
@@ -277,6 +286,11 @@ export default function ActivoBiologicoPage() {
 
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState<number>(25);
+  const [sortBy, setSortBy] = useState<SortKey>("biologicalAssetKey");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
+  const [importing, setImporting] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const [exportLimit, setExportLimit] = useState(100);
   const [pagination, setPagination] = useState<Pagination>({ page: 1, totalPages: 1, total: 0, limit: 25 });
 
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -341,7 +355,14 @@ export default function ActivoBiologicoPage() {
     });
   }
 
-  async function loadAssets(level4Id: string, currentSearch: string, currentPage: number, currentLimit: number) {
+  async function loadAssets(
+    level4Id: string,
+    currentSearch: string,
+    currentPage: number,
+    currentLimit: number,
+    currentSortBy: SortKey,
+    currentSortOrder: "asc" | "desc",
+  ) {
     if (!level4Id) {
       setItems([]);
       setPagination({ page: 1, totalPages: 1, total: 0, limit: currentLimit });
@@ -358,6 +379,9 @@ export default function ActivoBiologicoPage() {
       params.set("search", currentSearch.trim());
     }
 
+    params.set("sortBy", currentSortBy);
+    params.set("sortOrder", currentSortOrder);
+
     const response = await fetch(`/api/forest/biological-assets?${params.toString()}`, { cache: "no-store" });
     const result = (await response.json()) as ApiResponse<{ items: BiologicalAssetItem[]; pagination: Pagination }>;
 
@@ -370,8 +394,20 @@ export default function ActivoBiologicoPage() {
   }
 
   const refreshAssets = useCallback(async () => {
-    await loadAssets(selectedLevel4Id, debouncedSearch, page, limit);
-  }, [debouncedSearch, limit, page, selectedLevel4Id]);
+    await loadAssets(selectedLevel4Id, debouncedSearch, page, limit, sortBy, sortOrder);
+  }, [debouncedSearch, limit, page, selectedLevel4Id, sortBy, sortOrder]);
+
+  function toggleSort(column: string) {
+    if (!isSortKey(column)) return;
+    setSortBy((currentSortBy) => {
+      if (currentSortBy === column) {
+        setSortOrder((currentOrder) => (currentOrder === "asc" ? "desc" : "asc"));
+        return currentSortBy;
+      }
+      setSortOrder("asc");
+      return column;
+    });
+  }
 
   const loadCatalogOptions = useCallback(async () => {
     const [materials, schemes, inventories, spacings, imaClasses] = await Promise.all([
@@ -511,7 +547,7 @@ export default function ActivoBiologicoPage() {
       resetForm();
       setSearch("");
       setPage(1);
-      await loadAssets(selectedLevel4Id, "", 1, limit);
+      await loadAssets(selectedLevel4Id, "", 1, limit, sortBy, sortOrder);
       sileo.success({
         title: isEditing ? "Activo actualizado" : "Activo creado",
         description: isEditing ? "Se actualizó el activo biológico." : "Se creó el activo biológico.",
@@ -623,6 +659,129 @@ export default function ActivoBiologicoPage() {
         },
       },
     });
+  }
+
+  async function downloadExport(format: "csv" | "xlsx") {
+    if (!selectedLevel4Id) {
+      sileo.warning({ title: "Seleccione nivel 4", description: "Debe seleccionar un rodal para exportar." });
+      return;
+    }
+
+    try {
+      setExporting(true);
+      setError(null);
+
+      const params = new URLSearchParams({
+        format,
+        level4Id: selectedLevel4Id,
+        limit: String(exportLimit),
+        sortBy,
+        sortOrder,
+      });
+
+      const nextSearch = debouncedSearch.trim();
+      if (nextSearch) {
+        params.set("search", nextSearch);
+      }
+
+      const response = await fetch(`/api/forest/biological-assets/export?${params.toString()}`, {
+        method: "GET",
+      });
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        throw new Error(payload?.error ?? "No fue posible exportar activos biológicos");
+      }
+
+      const blob = await response.blob();
+      const disposition = response.headers.get("content-disposition") ?? "";
+      const match = disposition.match(/filename=\"?([^\";]+)\"?/i);
+      const filename = match?.[1] ?? `activos_biologicos_nivel6.${format}`;
+
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+
+      sileo.success({
+        title: "Exportación lista",
+        description: `Se generó el archivo correctamente (máx. ${exportLimit} registros).`,
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Error desconocido";
+      setError(message);
+      sileo.error({ title: "No se pudo exportar", description: message });
+    } finally {
+      setExporting(false);
+    }
+  }
+
+  async function onImportAssets(file: File) {
+    if (!selectedLevel4Id) {
+      sileo.warning({ title: "Seleccione nivel 4", description: "Debe seleccionar un rodal para importar." });
+      return;
+    }
+
+    try {
+      setImporting(true);
+      setError(null);
+
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("level4Id", selectedLevel4Id);
+
+      const response = await fetch("/api/forest/biological-assets/import", {
+        method: "POST",
+        body: formData,
+      });
+
+      const payload = await response.json().catch(() => null);
+      if (!response.ok || !payload?.success) {
+        throw new Error(payload?.error ?? "No fue posible importar activos biológicos");
+      }
+
+      const result = payload?.data as
+        | {
+            created: number;
+            updated: number;
+            skipped: number;
+            errors: Array<{ row: number; key?: string; error: string }>;
+          }
+        | undefined;
+
+      await refreshAssets();
+
+      const created = result?.created ?? 0;
+      const updated = result?.updated ?? 0;
+      const skipped = result?.skipped ?? 0;
+      const errorCount = result?.errors?.length ?? 0;
+      const description = `Creados: ${created} · Actualizados: ${updated} · Omitidos: ${skipped}`;
+
+      if (errorCount > 0) {
+        sileo.warning({
+          title: "Importación parcial",
+          description: `${description} · Errores: ${errorCount}`,
+        });
+      } else {
+        sileo.success({
+          title: "Importación completada",
+          description,
+        });
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Error desconocido";
+      setError(message);
+      sileo.error({ title: "No se pudo importar", description: message });
+    } finally {
+      setImporting(false);
+      if (importInputRef.current) {
+        importInputRef.current.value = "";
+      }
+    }
   }
 
   return (
@@ -1013,51 +1172,87 @@ export default function ActivoBiologicoPage() {
         </div>
       </form>
 
-      <div className="flex flex-wrap items-end gap-2">
-        <label className="space-y-1 text-sm">
-          <span className="font-medium">Buscar</span>
-          <input
-            className="rounded-md border px-3 py-2"
-            placeholder="Clave, contable, material, inventario"
-            value={search}
-            onChange={(event) => {
-              setSearch(event.target.value);
-              setPage(1);
-            }}
-          />
-        </label>
+      <div className="flex flex-wrap gap-2">
+        <input
+          className="hidden"
+          ref={importInputRef}
+          type="file"
+          accept=".csv,.xlsx"
+          onChange={(event) => {
+            const file = event.target.files?.[0];
+            if (!file) return;
+            void onImportAssets(file);
+          }}
+        />
 
-        <label className="space-y-1 text-sm">
-          <span className="font-medium">Límite</span>
-          <select
-            className={compactSelectorClass}
-            value={limit}
-            onChange={(event) => {
-              setLimit(Number(event.target.value));
-              setPage(1);
-            }}
-          >
-            {limits.map((current) => (
-              <option key={current} value={current}>
-                {current}
-              </option>
-            ))}
-          </select>
-        </label>
+        <button
+          className="rounded-md border px-3 py-2 text-sm"
+          disabled={importing || loading || !selectedLevel4Id}
+          onClick={() => importInputRef.current?.click()}
+          type="button"
+        >
+          {importing ? "Importando..." : "Importar"}
+        </button>
 
-        <div className="ml-auto text-sm text-muted-foreground">Total: {pagination.total}</div>
+        <button
+          className="rounded-md border px-3 py-2 text-sm"
+          disabled={exporting || loading || !selectedLevel4Id}
+          onClick={() => void downloadExport("csv")}
+          type="button"
+        >
+          {exporting ? "Exportando..." : "Exportar CSV"}
+        </button>
+
+        <button
+          className="rounded-md border px-3 py-2 text-sm"
+          disabled={exporting || loading || !selectedLevel4Id}
+          onClick={() => void downloadExport("xlsx")}
+          type="button"
+        >
+          {exporting ? "Exportando..." : "Exportar Excel"}
+        </button>
       </div>
+
+      <TableToolbar
+        search={search}
+        onSearchChange={(value) => {
+          setSearch(value);
+          setPage(1);
+        }}
+        searchPlaceholder="Clave, contable, material, inventario"
+        limit={limit}
+        onLimitChange={(value) => {
+          setLimit(value);
+          setPage(1);
+        }}
+        total={pagination.total}
+        canExport
+        exportLimit={exportLimit}
+        onExportLimitChange={setExportLimit}
+      />
 
       <div className="overflow-x-auto rounded-xl border">
         <table className="w-full text-left text-sm">
           <thead className="bg-muted/50">
             <tr>
-              <th className="px-3 py-2">Clave biológica</th>
-              <th className="px-3 py-2">Clave contable</th>
-              <th className="px-3 py-2">Tipo</th>
-              <th className="px-3 py-2">Año</th>
-              <th className="px-3 py-2">Inventario</th>
-              <th className="px-3 py-2">Estado</th>
+              <th className="px-3 py-2">
+                <SortableHeader label="Clave biológica" sortKey="biologicalAssetKey" sortBy={sortBy} sortOrder={sortOrder} onToggle={toggleSort} />
+              </th>
+              <th className="px-3 py-2">
+                <SortableHeader label="Clave contable" sortKey="accountingKey" sortBy={sortBy} sortOrder={sortOrder} onToggle={toggleSort} />
+              </th>
+              <th className="px-3 py-2">
+                <SortableHeader label="Tipo" sortKey="assetType" sortBy={sortBy} sortOrder={sortOrder} onToggle={toggleSort} />
+              </th>
+              <th className="px-3 py-2">
+                <SortableHeader label="Año" sortKey="plantingYear" sortBy={sortBy} sortOrder={sortOrder} onToggle={toggleSort} />
+              </th>
+              <th className="px-3 py-2">
+                <SortableHeader label="Inventario" sortKey="inventoryCode" sortBy={sortBy} sortOrder={sortOrder} onToggle={toggleSort} />
+              </th>
+              <th className="px-3 py-2">
+                <SortableHeader label="Estado" sortKey="isActive" sortBy={sortBy} sortOrder={sortOrder} onToggle={toggleSort} />
+              </th>
               <th className="px-3 py-2">Acciones</th>
             </tr>
           </thead>
@@ -1093,27 +1288,14 @@ export default function ActivoBiologicoPage() {
         </table>
       </div>
 
-      <div className="flex items-center justify-end gap-2">
-        <button
-          className="rounded-md border px-3 py-2 text-sm"
-          disabled={page <= 1}
-          onClick={() => setPage((current) => Math.max(1, current - 1))}
-          type="button"
-        >
-          Anterior
-        </button>
-        <span className="text-sm text-muted-foreground">
-          Página {pagination.page} de {Math.max(1, pagination.totalPages)}
-        </span>
-        <button
-          className="rounded-md border px-3 py-2 text-sm"
-          disabled={page >= Math.max(1, pagination.totalPages)}
-          onClick={() => setPage((current) => Math.min(Math.max(1, pagination.totalPages), current + 1))}
-          type="button"
-        >
-          Siguiente
-        </button>
-      </div>
+      <TablePagination
+        page={pagination.page}
+        totalPages={Math.max(1, pagination.totalPages)}
+        total={pagination.total}
+        loading={loading}
+        onPrev={() => setPage((current) => Math.max(1, current - 1))}
+        onNext={() => setPage((current) => Math.min(Math.max(1, pagination.totalPages), current + 1))}
+      />
     </section>
   );
 }

@@ -49,6 +49,14 @@ type RoleOption = {
   name: string;
 };
 
+type SortKey = "email" | "role" | "organizationName" | "createdAt" | "status";
+const sortableKeys = ["email", "role", "organizationName", "createdAt", "status"] as const;
+const serverSortableKeys: ReadonlyArray<SortKey> = ["email", "createdAt", "status"];
+
+function isSortKey(value: string): value is SortKey {
+  return (sortableKeys as ReadonlyArray<string>).includes(value);
+}
+
 export default function UsersPage() {
   const router = useRouter();
   const importInputRef = useRef<HTMLInputElement | null>(null);
@@ -68,7 +76,7 @@ export default function UsersPage() {
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(25);
   const [pagination, setPagination] = useState({ page: 1, totalPages: 1, total: 0, limit: 25 });
-  const [sortBy, setSortBy] = useState<string | undefined>(undefined);
+  const [sortBy, setSortBy] = useState<SortKey | undefined>(undefined);
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [editForm, setEditForm] = useState({ role: "USER", organizationId: "", status: "ACTIVE" });
   const [form, setForm] = useState({
@@ -85,9 +93,27 @@ export default function UsersPage() {
   const canManage = hasUsersAdmin || permissionSet.has("users:UPDATE") || permissionSet.has("users:DELETE");
 
   const canExport = hasUsersAdmin || permissionSet.has("users:EXPORT");
+  const sortedUsers = useMemo(() => {
+    if (!sortBy || serverSortableKeys.includes(sortBy)) {
+      return users;
+    }
+
+    const direction = sortOrder === "asc" ? 1 : -1;
+    return [...users].sort((left, right) => {
+      if (sortBy === "role") {
+        return (left.role ?? "").localeCompare(right.role ?? "", "es", { sensitivity: "base" }) * direction;
+      }
+
+      if (sortBy === "organizationName") {
+        return (left.organizationName ?? "").localeCompare(right.organizationName ?? "", "es", { sensitivity: "base" }) * direction;
+      }
+
+      return 0;
+    });
+  }, [sortBy, sortOrder, users]);
 
   const buildUsersQuery = useCallback(
-    (opts?: { page?: number; limit?: number; search?: string; sortBy?: string; sortOrder?: "asc" | "desc" }) => {
+    (opts?: { page?: number; limit?: number; search?: string; sortBy?: SortKey; sortOrder?: "asc" | "desc" }) => {
       const params = new URLSearchParams({
         page: String(opts?.page ?? page),
         limit: String(opts?.limit ?? limit),
@@ -97,40 +123,45 @@ export default function UsersPage() {
       const nextSearch = (opts?.search ?? debouncedSearch).trim();
       if (nextSearch) params.set("search", nextSearch);
       const nextSortBy = opts?.sortBy ?? sortBy;
-      if (nextSortBy) params.set("sortBy", nextSortBy);
+      if (nextSortBy && serverSortableKeys.includes(nextSortBy)) {
+        params.set("sortBy", nextSortBy);
+      }
 
       return params;
     },
     [debouncedSearch, limit, page, sortBy, sortOrder],
   );
 
-  async function refreshUsers(opts?: { page?: number; limit?: number; search?: string; sortBy?: string; sortOrder?: "asc" | "desc" }) {
-    const params = buildUsersQuery(opts);
-    const response = await fetch(`/api/users?${params.toString()}`, { cache: "no-store" });
-    if (!response.ok) {
-      const payload = await response.json().catch(() => null);
-      throw new Error(payload?.error ?? "No fue posible cargar usuarios");
-    }
-    const payload = await response.json();
-    const items = (payload?.data?.items ?? []) as ApiUser[];
-    const meta = payload?.data?.pagination;
-    const mapped = items.map((user) => ({
-      id: user.id,
-      email: user.email,
-      role: user.userRoles?.[0]?.role?.slug ?? "-",
-      organizationId: user.organization?.id ?? null,
-      organizationName: user.organization?.name ?? null,
-      registeredAt: user.createdAt,
-      status: user.status ?? "-",
-    }));
-    setUsers(mapped);
-    setPagination({
-      page: meta?.page ?? (opts?.page ?? page),
-      totalPages: meta?.totalPages ?? 1,
-      total: meta?.total ?? 0,
-      limit: meta?.limit ?? (opts?.limit ?? limit),
-    });
-  }
+  const refreshUsers = useCallback(
+    async (opts?: { page?: number; limit?: number; search?: string; sortBy?: SortKey; sortOrder?: "asc" | "desc" }) => {
+      const params = buildUsersQuery(opts);
+      const response = await fetch(`/api/users?${params.toString()}`, { cache: "no-store" });
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        throw new Error(payload?.error ?? "No fue posible cargar usuarios");
+      }
+      const payload = await response.json();
+      const items = (payload?.data?.items ?? []) as ApiUser[];
+      const meta = payload?.data?.pagination;
+      const mapped = items.map((user) => ({
+        id: user.id,
+        email: user.email,
+        role: user.userRoles?.[0]?.role?.slug ?? "-",
+        organizationId: user.organization?.id ?? null,
+        organizationName: user.organization?.name ?? null,
+        registeredAt: user.createdAt,
+        status: user.status ?? "-",
+      }));
+      setUsers(mapped);
+      setPagination({
+        page: meta?.page ?? (opts?.page ?? page),
+        totalPages: meta?.totalPages ?? 1,
+        total: meta?.total ?? 0,
+        limit: meta?.limit ?? (opts?.limit ?? limit),
+      });
+    },
+    [buildUsersQuery, limit, page],
+  );
 
   async function downloadExport(format: "csv" | "xlsx") {
     try {
@@ -180,16 +211,16 @@ export default function UsersPage() {
   }
 
   function toggleSort(nextSortBy: string) {
-    setPage(1);
-    setSortBy((current) => {
-      if (current !== nextSortBy) {
-        setSortOrder("asc");
-        return nextSortBy;
-      }
+    if (!isSortKey(nextSortBy)) {
+      return;
+    }
 
-      setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"));
-      return current;
-    });
+    const sortKey = nextSortBy;
+    const isSameColumn = sortBy === sortKey;
+
+    setPage(1);
+    setSortBy(sortKey);
+    setSortOrder(isSameColumn ? (sortOrder === "asc" ? "desc" : "asc") : "asc");
   }
 
   async function onImportUsers(file: File) {
@@ -320,7 +351,7 @@ export default function UsersPage() {
           status: user.status ?? "-",
         }));
         setUsers(mapped);
-        setPagination(usersPayload?.data?.pagination ?? pagination);
+        setPagination((prev) => usersPayload?.data?.pagination ?? prev);
         setForm((prev) => ({
           ...prev,
           role: dynamicRoles.some((role) => role.slug === prev.role) ? prev.role : fallbackRole,
@@ -342,20 +373,8 @@ export default function UsersPage() {
 
   useEffect(() => {
     if (!canReadUsers) return;
-    void refreshUsers({ page: 1, limit, search: debouncedSearch, sortBy, sortOrder });
-  }, [canReadUsers, debouncedSearch, limit, sortBy, sortOrder]);
-
-  useEffect(() => {
-    const maxPage = Math.max(1, pagination.totalPages);
-    if (page > maxPage) {
-      setPage(maxPage);
-    }
-  }, [page, pagination.totalPages]);
-
-  useEffect(() => {
-    if (!canReadUsers) return;
     void refreshUsers({ page, limit, search: debouncedSearch, sortBy, sortOrder });
-  }, [canReadUsers, debouncedSearch, limit, page, sortBy, sortOrder]);
+  }, [canReadUsers, debouncedSearch, limit, page, refreshUsers, sortBy, sortOrder]);
 
   function onSubmitInvite(event: FormEvent) {
     event.preventDefault();
@@ -786,8 +805,18 @@ export default function UsersPage() {
               <th className="px-3 py-2">
                 <SortableHeader label="Email" onToggle={toggleSort} sortBy={sortBy} sortKey="email" sortOrder={sortOrder} />
               </th>
-              <th className="px-3 py-2">Rol</th>
-              <th className="px-3 py-2">Organización</th>
+              <th className="px-3 py-2">
+                <SortableHeader label="Rol" onToggle={toggleSort} sortBy={sortBy} sortKey="role" sortOrder={sortOrder} />
+              </th>
+              <th className="px-3 py-2">
+                <SortableHeader
+                  label="Organización"
+                  onToggle={toggleSort}
+                  sortBy={sortBy}
+                  sortKey="organizationName"
+                  sortOrder={sortOrder}
+                />
+              </th>
               <th className="px-3 py-2">
                 <SortableHeader
                   label="Fecha de Registro"
@@ -804,7 +833,7 @@ export default function UsersPage() {
             </tr>
           </thead>
           <tbody>
-            {users.map((user) => (
+            {sortedUsers.map((user) => (
               <tr className="border-b" key={`${user.email}-${user.registeredAt}`}>
                 <td className="px-3 py-2">{user.email}</td>
                 <td className="px-3 py-2">{user.role}</td>

@@ -2,10 +2,55 @@
 /* eslint-disable */
 "use client";
 
-import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useDebounce } from "@/hooks/useDebounce";
 import { ApiResponse, PaginatedResponse } from "@/types/api.types";
+import { TablePagination } from "@/components/tables/TablePagination";
+import { TableToolbar } from "@/components/tables/TableToolbar";
+import { SortableHeader } from "@/components/tables/SortableHeader";
 import { sileo } from "sileo";
+
+type ContinentSortKey = "code" | "name" | "isActive" | "createdAt";
+
+function isContinentSortKey(value: string): value is ContinentSortKey {
+  return ["code", "name", "isActive", "createdAt"].includes(value);
+}
+
+type CountrySortKey = "continentName" | "code" | "name" | "isActive" | "createdAt";
+
+function isCountrySortKey(value: string): value is CountrySortKey {
+  return ["continentName", "code", "name", "isActive", "createdAt"].includes(value);
+}
+
+type RegionSortKey = "countryName" | "code" | "name" | "isActive" | "createdAt";
+
+function isRegionSortKey(value: string): value is RegionSortKey {
+  return ["countryName", "code", "name", "isActive", "createdAt"].includes(value);
+}
+
+type StateDepartmentSortKey = "countryName" | "code" | "name" | "isActive" | "createdAt";
+
+function isStateDepartmentSortKey(value: string): value is StateDepartmentSortKey {
+  return ["countryName", "code", "name", "isActive", "createdAt"].includes(value);
+}
+
+type MunicipalitySortKey = "stateName" | "countryName" | "code" | "name" | "isActive" | "createdAt";
+
+function isMunicipalitySortKey(value: string): value is MunicipalitySortKey {
+  return ["stateName", "countryName", "code", "name", "isActive", "createdAt"].includes(value);
+}
+
+type CitySortKey = "municipalityName" | "stateName" | "countryName" | "code" | "name" | "isActive" | "createdAt";
+
+function isCitySortKey(value: string): value is CitySortKey {
+  return ["municipalityName", "stateName", "countryName", "code", "name", "isActive", "createdAt"].includes(value);
+}
+
+type CommunitySortKey = "cityName" | "municipalityName" | "type" | "code" | "name" | "isActive" | "createdAt";
+
+function isCommunitySortKey(value: string): value is CommunitySortKey {
+  return ["cityName", "municipalityName", "type", "code", "name", "isActive", "createdAt"].includes(value);
+}
 
 type PaginationState = {
   page: number;
@@ -342,6 +387,13 @@ function CatalogHeader({ title, subtitle }: { title: string; subtitle: string })
 }
 
 export default function ConfiguracionGeneralPage() {
+  const importContinentInputRef = useRef<HTMLInputElement | null>(null);
+  const importCountryInputRef = useRef<HTMLInputElement | null>(null);
+  const importRegionInputRef = useRef<HTMLInputElement | null>(null);
+  const importStateDepartmentInputRef = useRef<HTMLInputElement | null>(null);
+  const importMunicipalityInputRef = useRef<HTMLInputElement | null>(null);
+  const importCityInputRef = useRef<HTMLInputElement | null>(null);
+  const importCommunityInputRef = useRef<HTMLInputElement | null>(null);
   const [globalMessage, setGlobalMessage] = useState<string | null>(null);
 
   const [schemeItems, setSchemeItems] = useState<SimpleItem[]>([]);
@@ -393,6 +445,11 @@ export default function ConfiguracionGeneralPage() {
   const [continentPagination, setContinentPagination] = useState<PaginationState>(INITIAL_PAGINATION);
   const [continentLoading, setContinentLoading] = useState(false);
   const [continentError, setContinentError] = useState<string | null>(null);
+  const [continentImporting, setContinentImporting] = useState(false);
+  const [continentExporting, setContinentExporting] = useState(false);
+  const [continentExportLimit, setContinentExportLimit] = useState(100);
+  const [continentSortBy, setContinentSortBy] = useState<ContinentSortKey>("name");
+  const [continentSortOrder, setContinentSortOrder] = useState<"asc" | "desc">("asc");
   const [continentForm, setContinentForm] = useState({ code: "", name: "", isActive: true });
   const [editingContinent, setEditingContinent] = useState<ContinentItem | null>(null);
 
@@ -402,6 +459,11 @@ export default function ConfiguracionGeneralPage() {
   const [countryPagination, setCountryPagination] = useState<PaginationState>(INITIAL_PAGINATION);
   const [countryLoading, setCountryLoading] = useState(false);
   const [countryError, setCountryError] = useState<string | null>(null);
+  const [countryImporting, setCountryImporting] = useState(false);
+  const [countryExporting, setCountryExporting] = useState(false);
+  const [countryExportLimit, setCountryExportLimit] = useState(100);
+  const [countrySortBy, setCountrySortBy] = useState<CountrySortKey>("name");
+  const [countrySortOrder, setCountrySortOrder] = useState<"asc" | "desc">("asc");
   const [countryForm, setCountryForm] = useState({ continentId: "", code: "", name: "", isActive: true });
   const [editingCountry, setEditingCountry] = useState<CountryItem | null>(null);
 
@@ -411,6 +473,11 @@ export default function ConfiguracionGeneralPage() {
   const [regionPagination, setRegionPagination] = useState<PaginationState>(INITIAL_PAGINATION);
   const [regionLoading, setRegionLoading] = useState(false);
   const [regionError, setRegionError] = useState<string | null>(null);
+  const [regionImporting, setRegionImporting] = useState(false);
+  const [regionExporting, setRegionExporting] = useState(false);
+  const [regionExportLimit, setRegionExportLimit] = useState(100);
+  const [regionSortBy, setRegionSortBy] = useState<RegionSortKey>("name");
+  const [regionSortOrder, setRegionSortOrder] = useState<"asc" | "desc">("asc");
   const [regionForm, setRegionForm] = useState({ countryId: "", code: "", name: "", isActive: true });
   const [editingRegion, setEditingRegion] = useState<RegionItem | null>(null);
 
@@ -420,6 +487,11 @@ export default function ConfiguracionGeneralPage() {
   const [stateDepartmentPagination, setStateDepartmentPagination] = useState<PaginationState>(INITIAL_PAGINATION);
   const [stateDepartmentLoading, setStateDepartmentLoading] = useState(false);
   const [stateDepartmentError, setStateDepartmentError] = useState<string | null>(null);
+  const [stateDepartmentImporting, setStateDepartmentImporting] = useState(false);
+  const [stateDepartmentExporting, setStateDepartmentExporting] = useState(false);
+  const [stateDepartmentExportLimit, setStateDepartmentExportLimit] = useState(100);
+  const [stateDepartmentSortBy, setStateDepartmentSortBy] = useState<StateDepartmentSortKey>("name");
+  const [stateDepartmentSortOrder, setStateDepartmentSortOrder] = useState<"asc" | "desc">("asc");
   const [stateDepartmentForm, setStateDepartmentForm] = useState({ countryId: "", code: "", name: "", isActive: true });
   const [editingStateDepartment, setEditingStateDepartment] = useState<StateDepartmentItem | null>(null);
 
@@ -429,6 +501,11 @@ export default function ConfiguracionGeneralPage() {
   const [municipalityPagination, setMunicipalityPagination] = useState<PaginationState>(INITIAL_PAGINATION);
   const [municipalityLoading, setMunicipalityLoading] = useState(false);
   const [municipalityError, setMunicipalityError] = useState<string | null>(null);
+  const [municipalityImporting, setMunicipalityImporting] = useState(false);
+  const [municipalityExporting, setMunicipalityExporting] = useState(false);
+  const [municipalityExportLimit, setMunicipalityExportLimit] = useState(100);
+  const [municipalitySortBy, setMunicipalitySortBy] = useState<MunicipalitySortKey>("name");
+  const [municipalitySortOrder, setMunicipalitySortOrder] = useState<"asc" | "desc">("asc");
   const [municipalityForm, setMunicipalityForm] = useState({ stateId: "", code: "", name: "", isActive: true });
   const [editingMunicipality, setEditingMunicipality] = useState<MunicipalityDistrictItem | null>(null);
 
@@ -438,6 +515,11 @@ export default function ConfiguracionGeneralPage() {
   const [cityPagination, setCityPagination] = useState<PaginationState>(INITIAL_PAGINATION);
   const [cityLoading, setCityLoading] = useState(false);
   const [cityError, setCityError] = useState<string | null>(null);
+  const [cityImporting, setCityImporting] = useState(false);
+  const [cityExporting, setCityExporting] = useState(false);
+  const [cityExportLimit, setCityExportLimit] = useState(100);
+  const [citySortBy, setCitySortBy] = useState<CitySortKey>("name");
+  const [citySortOrder, setCitySortOrder] = useState<"asc" | "desc">("asc");
   const [cityForm, setCityForm] = useState({ municipalityId: "", code: "", name: "", isActive: true });
   const [editingCity, setEditingCity] = useState<CityItem | null>(null);
 
@@ -447,6 +529,11 @@ export default function ConfiguracionGeneralPage() {
   const [communityPagination, setCommunityPagination] = useState<PaginationState>(INITIAL_PAGINATION);
   const [communityLoading, setCommunityLoading] = useState(false);
   const [communityError, setCommunityError] = useState<string | null>(null);
+  const [communityImporting, setCommunityImporting] = useState(false);
+  const [communityExporting, setCommunityExporting] = useState(false);
+  const [communityExportLimit, setCommunityExportLimit] = useState(100);
+  const [communitySortBy, setCommunitySortBy] = useState<CommunitySortKey>("name");
+  const [communitySortOrder, setCommunitySortOrder] = useState<"asc" | "desc">("asc");
   const [communityForm, setCommunityForm] = useState({
     cityId: "",
     code: "",
@@ -649,7 +736,7 @@ export default function ConfiguracionGeneralPage() {
     setContinentError(null);
 
     const result = await requestJson<PaginatedResponse<ContinentItem>>(
-      `/api/general-config/continents?page=${continentPage}&limit=${continentPagination.limit}${debouncedContinentSearch ? `&search=${encodeURIComponent(debouncedContinentSearch)}` : ""}`,
+      `/api/general-config/continents?page=${continentPage}&limit=${continentPagination.limit}&sortBy=${continentSortBy}&sortOrder=${continentSortOrder}${debouncedContinentSearch ? `&search=${encodeURIComponent(debouncedContinentSearch)}` : ""}`,
     );
 
     if (!result.success || !result.data) {
@@ -664,14 +751,14 @@ export default function ConfiguracionGeneralPage() {
     const active = result.data.items.filter((item) => item.isActive);
     setCountryForm((prev) => ({ ...prev, continentId: prev.continentId || active[0]?.id || "" }));
     setLandUseForm((prev) => ({ ...prev, continentId: prev.continentId || active[0]?.id || "" }));
-  }, [continentPage, continentPagination.limit, debouncedContinentSearch]);
+  }, [continentPage, continentPagination.limit, debouncedContinentSearch, continentSortBy, continentSortOrder]);
 
   const loadCountries = useCallback(async () => {
     setCountryLoading(true);
     setCountryError(null);
 
     const result = await requestJson<PaginatedResponse<CountryItem>>(
-      `/api/general-config/countries?page=${countryPage}&limit=${countryPagination.limit}${debouncedCountrySearch ? `&search=${encodeURIComponent(debouncedCountrySearch)}` : ""}`,
+      `/api/general-config/countries?page=${countryPage}&limit=${countryPagination.limit}&sortBy=${countrySortBy}&sortOrder=${countrySortOrder}${debouncedCountrySearch ? `&search=${encodeURIComponent(debouncedCountrySearch)}` : ""}`,
     );
 
     if (!result.success || !result.data) {
@@ -683,14 +770,14 @@ export default function ConfiguracionGeneralPage() {
     setCountryItems(result.data.items);
     setCountryPagination(result.data.pagination);
     setCountryLoading(false);
-  }, [countryPage, countryPagination.limit, debouncedCountrySearch]);
+  }, [countryPage, countryPagination.limit, debouncedCountrySearch, countrySortBy, countrySortOrder]);
 
   const loadRegions = useCallback(async () => {
     setRegionLoading(true);
     setRegionError(null);
 
     const result = await requestJson<PaginatedResponse<RegionItem>>(
-      `/api/general-config/regions?page=${regionPage}&limit=${regionPagination.limit}${debouncedRegionSearch ? `&search=${encodeURIComponent(debouncedRegionSearch)}` : ""}`,
+      `/api/general-config/regions?page=${regionPage}&limit=${regionPagination.limit}&sortBy=${regionSortBy}&sortOrder=${regionSortOrder}${debouncedRegionSearch ? `&search=${encodeURIComponent(debouncedRegionSearch)}` : ""}`,
     );
 
     if (!result.success || !result.data) {
@@ -702,14 +789,14 @@ export default function ConfiguracionGeneralPage() {
     setRegionItems(result.data.items);
     setRegionPagination(result.data.pagination);
     setRegionLoading(false);
-  }, [regionPage, regionPagination.limit, debouncedRegionSearch]);
+  }, [regionPage, regionPagination.limit, debouncedRegionSearch, regionSortBy, regionSortOrder]);
 
   const loadStateDepartments = useCallback(async () => {
     setStateDepartmentLoading(true);
     setStateDepartmentError(null);
 
     const result = await requestJson<PaginatedResponse<StateDepartmentItem>>(
-      `/api/general-config/state-departments?page=${stateDepartmentPage}&limit=${stateDepartmentPagination.limit}${debouncedStateDepartmentSearch ? `&search=${encodeURIComponent(debouncedStateDepartmentSearch)}` : ""}`,
+      `/api/general-config/state-departments?page=${stateDepartmentPage}&limit=${stateDepartmentPagination.limit}&sortBy=${stateDepartmentSortBy}&sortOrder=${stateDepartmentSortOrder}${debouncedStateDepartmentSearch ? `&search=${encodeURIComponent(debouncedStateDepartmentSearch)}` : ""}`,
     );
 
     if (!result.success || !result.data) {
@@ -721,14 +808,20 @@ export default function ConfiguracionGeneralPage() {
     setStateDepartmentItems(result.data.items);
     setStateDepartmentPagination(result.data.pagination);
     setStateDepartmentLoading(false);
-  }, [debouncedStateDepartmentSearch, stateDepartmentPage, stateDepartmentPagination.limit]);
+  }, [
+    debouncedStateDepartmentSearch,
+    stateDepartmentPage,
+    stateDepartmentPagination.limit,
+    stateDepartmentSortBy,
+    stateDepartmentSortOrder,
+  ]);
 
   const loadMunicipalities = useCallback(async () => {
     setMunicipalityLoading(true);
     setMunicipalityError(null);
 
     const result = await requestJson<PaginatedResponse<MunicipalityDistrictItem>>(
-      `/api/general-config/municipality-districts?page=${municipalityPage}&limit=${municipalityPagination.limit}${debouncedMunicipalitySearch ? `&search=${encodeURIComponent(debouncedMunicipalitySearch)}` : ""}`,
+      `/api/general-config/municipality-districts?page=${municipalityPage}&limit=${municipalityPagination.limit}&sortBy=${municipalitySortBy}&sortOrder=${municipalitySortOrder}${debouncedMunicipalitySearch ? `&search=${encodeURIComponent(debouncedMunicipalitySearch)}` : ""}`,
     );
 
     if (!result.success || !result.data) {
@@ -740,14 +833,20 @@ export default function ConfiguracionGeneralPage() {
     setMunicipalityItems(result.data.items);
     setMunicipalityPagination(result.data.pagination);
     setMunicipalityLoading(false);
-  }, [debouncedMunicipalitySearch, municipalityPage, municipalityPagination.limit]);
+  }, [
+    debouncedMunicipalitySearch,
+    municipalityPage,
+    municipalityPagination.limit,
+    municipalitySortBy,
+    municipalitySortOrder,
+  ]);
 
   const loadCities = useCallback(async () => {
     setCityLoading(true);
     setCityError(null);
 
     const result = await requestJson<PaginatedResponse<CityItem>>(
-      `/api/general-config/cities?page=${cityPage}&limit=${cityPagination.limit}${debouncedCitySearch ? `&search=${encodeURIComponent(debouncedCitySearch)}` : ""}`,
+      `/api/general-config/cities?page=${cityPage}&limit=${cityPagination.limit}&sortBy=${citySortBy}&sortOrder=${citySortOrder}${debouncedCitySearch ? `&search=${encodeURIComponent(debouncedCitySearch)}` : ""}`,
     );
 
     if (!result.success || !result.data) {
@@ -759,14 +858,14 @@ export default function ConfiguracionGeneralPage() {
     setCityItems(result.data.items);
     setCityPagination(result.data.pagination);
     setCityLoading(false);
-  }, [cityPage, cityPagination.limit, debouncedCitySearch]);
+  }, [cityPage, cityPagination.limit, debouncedCitySearch, citySortBy, citySortOrder]);
 
   const loadCommunityTerritories = useCallback(async () => {
     setCommunityLoading(true);
     setCommunityError(null);
 
     const result = await requestJson<PaginatedResponse<CommunityTerritoryItem>>(
-      `/api/general-config/community-territories?page=${communityPage}&limit=${communityPagination.limit}${debouncedCommunitySearch ? `&search=${encodeURIComponent(debouncedCommunitySearch)}` : ""}`,
+      `/api/general-config/community-territories?page=${communityPage}&limit=${communityPagination.limit}&sortBy=${communitySortBy}&sortOrder=${communitySortOrder}${debouncedCommunitySearch ? `&search=${encodeURIComponent(debouncedCommunitySearch)}` : ""}`,
     );
 
     if (!result.success || !result.data) {
@@ -778,7 +877,7 @@ export default function ConfiguracionGeneralPage() {
     setCommunityItems(result.data.items);
     setCommunityPagination(result.data.pagination);
     setCommunityLoading(false);
-  }, [communityPage, communityPagination.limit, debouncedCommunitySearch]);
+  }, [communityPage, communityPagination.limit, debouncedCommunitySearch, communitySortBy, communitySortOrder]);
 
   const loadSpacings = useCallback(async () => {
     setSpacingLoading(true);
@@ -1683,6 +1782,124 @@ export default function ConfiguracionGeneralPage() {
     await loadContinents();
   }
 
+  function toggleContinentSort(nextSortBy: string) {
+    if (!isContinentSortKey(nextSortBy)) return;
+
+    const isSameColumn = continentSortBy === nextSortBy;
+    setContinentSortBy(nextSortBy);
+    setContinentSortOrder(isSameColumn ? (continentSortOrder === "asc" ? "desc" : "asc") : "asc");
+    setContinentPage(1);
+  }
+
+  async function downloadContinentExport(format: "csv" | "xlsx") {
+    try {
+      setContinentExporting(true);
+      setContinentError(null);
+
+      const params = new URLSearchParams({
+        format,
+        limit: String(continentExportLimit),
+        sortBy: continentSortBy,
+        sortOrder: continentSortOrder,
+      });
+
+      const trimmedSearch = debouncedContinentSearch.trim();
+      if (trimmedSearch) {
+        params.set("search", trimmedSearch);
+      }
+
+      const response = await fetch(`/api/general-config/continents/export?${params.toString()}`, {
+        method: "GET",
+      });
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        throw new Error(payload?.error ?? "No fue posible exportar continentes");
+      }
+
+      const blob = await response.blob();
+      const disposition = response.headers.get("content-disposition") ?? "";
+      const match = disposition.match(/filename=\"?([^\";]+)\"?/i);
+      const filename = match?.[1] ?? `continents.${format}`;
+
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = filename;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(url);
+
+      sileo.success({
+        title: "Exportación lista",
+        description: `Se generó el archivo correctamente (máx. ${continentExportLimit} registros).`,
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Error desconocido";
+      showCrudError(setContinentError, message);
+    } finally {
+      setContinentExporting(false);
+    }
+  }
+
+  async function onImportContinents(file: File) {
+    try {
+      setContinentImporting(true);
+      setContinentError(null);
+
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const response = await fetch("/api/general-config/continents/import", {
+        method: "POST",
+        body: formData,
+      });
+
+      const payload = await response.json().catch(() => null);
+      if (!response.ok || !payload?.success) {
+        throw new Error(payload?.error ?? "No fue posible importar continentes");
+      }
+
+      const result = payload?.data as
+        | {
+            created: number;
+            updated: number;
+            skipped: number;
+            errors: Array<{ row: number; code?: string; error: string }>;
+          }
+        | undefined;
+
+      await loadContinents();
+
+      const created = result?.created ?? 0;
+      const updated = result?.updated ?? 0;
+      const skipped = result?.skipped ?? 0;
+      const errorCount = result?.errors?.length ?? 0;
+      const description = `Creados: ${created} · Actualizados: ${updated} · Omitidos: ${skipped}`;
+
+      if (errorCount > 0) {
+        sileo.warning({
+          title: "Importación parcial",
+          description: `${description} · Errores: ${errorCount}`,
+        });
+      } else {
+        sileo.success({
+          title: "Importación completada",
+          description,
+        });
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Error desconocido";
+      showCrudError(setContinentError, message);
+    } finally {
+      setContinentImporting(false);
+      if (importContinentInputRef.current) {
+        importContinentInputRef.current.value = "";
+      }
+    }
+  }
+
   async function createCountry(event: FormEvent) {
     event.preventDefault();
     if (!canCreateCountry) return;
@@ -1755,6 +1972,125 @@ export default function ConfiguracionGeneralPage() {
     await loadCountryOptions();
   }
 
+  function toggleCountrySort(nextSortBy: string) {
+    if (!isCountrySortKey(nextSortBy)) return;
+
+    const isSameColumn = countrySortBy === nextSortBy;
+    setCountrySortBy(nextSortBy);
+    setCountrySortOrder(isSameColumn ? (countrySortOrder === "asc" ? "desc" : "asc") : "asc");
+    setCountryPage(1);
+  }
+
+  async function downloadCountryExport(format: "csv" | "xlsx") {
+    try {
+      setCountryExporting(true);
+      setCountryError(null);
+
+      const params = new URLSearchParams({
+        format,
+        limit: String(countryExportLimit),
+        sortBy: countrySortBy,
+        sortOrder: countrySortOrder,
+      });
+
+      const trimmedSearch = debouncedCountrySearch.trim();
+      if (trimmedSearch) {
+        params.set("search", trimmedSearch);
+      }
+
+      const response = await fetch(`/api/general-config/countries/export?${params.toString()}`, {
+        method: "GET",
+      });
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        throw new Error(payload?.error ?? "No fue posible exportar países");
+      }
+
+      const blob = await response.blob();
+      const disposition = response.headers.get("content-disposition") ?? "";
+      const match = disposition.match(/filename=\"?([^\";]+)\"?/i);
+      const filename = match?.[1] ?? `countries.${format}`;
+
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = filename;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(url);
+
+      sileo.success({
+        title: "Exportación lista",
+        description: `Se generó el archivo correctamente (máx. ${countryExportLimit} registros).`,
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Error desconocido";
+      showCrudError(setCountryError, message);
+    } finally {
+      setCountryExporting(false);
+    }
+  }
+
+  async function onImportCountries(file: File) {
+    try {
+      setCountryImporting(true);
+      setCountryError(null);
+
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const response = await fetch("/api/general-config/countries/import", {
+        method: "POST",
+        body: formData,
+      });
+
+      const payload = await response.json().catch(() => null);
+      if (!response.ok || !payload?.success) {
+        throw new Error(payload?.error ?? "No fue posible importar países");
+      }
+
+      const result = payload?.data as
+        | {
+            created: number;
+            updated: number;
+            skipped: number;
+            errors: Array<{ row: number; code?: string; error: string }>;
+          }
+        | undefined;
+
+      await loadCountries();
+      await loadCountryOptions();
+
+      const created = result?.created ?? 0;
+      const updated = result?.updated ?? 0;
+      const skipped = result?.skipped ?? 0;
+      const errorCount = result?.errors?.length ?? 0;
+      const description = `Creados: ${created} · Actualizados: ${updated} · Omitidos: ${skipped}`;
+
+      if (errorCount > 0) {
+        sileo.warning({
+          title: "Importación parcial",
+          description: `${description} · Errores: ${errorCount}`,
+        });
+      } else {
+        sileo.success({
+          title: "Importación completada",
+          description,
+        });
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Error desconocido";
+      showCrudError(setCountryError, message);
+    } finally {
+      setCountryImporting(false);
+      if (importCountryInputRef.current) {
+        importCountryInputRef.current.value = "";
+      }
+    }
+  }
+
   async function createRegion(event: FormEvent) {
     event.preventDefault();
     if (!canCreateRegion) return;
@@ -1818,6 +2154,124 @@ export default function ConfiguracionGeneralPage() {
 
     showCrudSuccess("Región eliminada");
     await loadRegions();
+  }
+
+  function toggleRegionSort(nextSortBy: string) {
+    if (!isRegionSortKey(nextSortBy)) return;
+
+    const isSameColumn = regionSortBy === nextSortBy;
+    setRegionSortBy(nextSortBy);
+    setRegionSortOrder(isSameColumn ? (regionSortOrder === "asc" ? "desc" : "asc") : "asc");
+    setRegionPage(1);
+  }
+
+  async function downloadRegionExport(format: "csv" | "xlsx") {
+    try {
+      setRegionExporting(true);
+      setRegionError(null);
+
+      const params = new URLSearchParams({
+        format,
+        limit: String(regionExportLimit),
+        sortBy: regionSortBy,
+        sortOrder: regionSortOrder,
+      });
+
+      const trimmedSearch = debouncedRegionSearch.trim();
+      if (trimmedSearch) {
+        params.set("search", trimmedSearch);
+      }
+
+      const response = await fetch(`/api/general-config/regions/export?${params.toString()}`, {
+        method: "GET",
+      });
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        throw new Error(payload?.error ?? "No fue posible exportar regiones");
+      }
+
+      const blob = await response.blob();
+      const disposition = response.headers.get("content-disposition") ?? "";
+      const match = disposition.match(/filename=\"?([^\";]+)\"?/i);
+      const filename = match?.[1] ?? `regions.${format}`;
+
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = filename;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(url);
+
+      sileo.success({
+        title: "Exportación lista",
+        description: `Se generó el archivo correctamente (máx. ${regionExportLimit} registros).`,
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Error desconocido";
+      showCrudError(setRegionError, message);
+    } finally {
+      setRegionExporting(false);
+    }
+  }
+
+  async function onImportRegions(file: File) {
+    try {
+      setRegionImporting(true);
+      setRegionError(null);
+
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const response = await fetch("/api/general-config/regions/import", {
+        method: "POST",
+        body: formData,
+      });
+
+      const payload = await response.json().catch(() => null);
+      if (!response.ok || !payload?.success) {
+        throw new Error(payload?.error ?? "No fue posible importar regiones");
+      }
+
+      const result = payload?.data as
+        | {
+            created: number;
+            updated: number;
+            skipped: number;
+            errors: Array<{ row: number; code?: string; error: string }>;
+          }
+        | undefined;
+
+      await loadRegions();
+
+      const created = result?.created ?? 0;
+      const updated = result?.updated ?? 0;
+      const skipped = result?.skipped ?? 0;
+      const errorCount = result?.errors?.length ?? 0;
+      const description = `Creados: ${created} · Actualizados: ${updated} · Omitidos: ${skipped}`;
+
+      if (errorCount > 0) {
+        sileo.warning({
+          title: "Importación parcial",
+          description: `${description} · Errores: ${errorCount}`,
+        });
+      } else {
+        sileo.success({
+          title: "Importación completada",
+          description,
+        });
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Error desconocido";
+      showCrudError(setRegionError, message);
+    } finally {
+      setRegionImporting(false);
+      if (importRegionInputRef.current) {
+        importRegionInputRef.current.value = "";
+      }
+    }
   }
 
   async function createStateDepartment(event: FormEvent) {
@@ -1888,6 +2342,125 @@ export default function ConfiguracionGeneralPage() {
     await loadStateOptions();
   }
 
+  function toggleStateDepartmentSort(nextSortBy: string) {
+    if (!isStateDepartmentSortKey(nextSortBy)) return;
+
+    const isSameColumn = stateDepartmentSortBy === nextSortBy;
+    setStateDepartmentSortBy(nextSortBy);
+    setStateDepartmentSortOrder(isSameColumn ? (stateDepartmentSortOrder === "asc" ? "desc" : "asc") : "asc");
+    setStateDepartmentPage(1);
+  }
+
+  async function downloadStateDepartmentExport(format: "csv" | "xlsx") {
+    try {
+      setStateDepartmentExporting(true);
+      setStateDepartmentError(null);
+
+      const params = new URLSearchParams({
+        format,
+        limit: String(stateDepartmentExportLimit),
+        sortBy: stateDepartmentSortBy,
+        sortOrder: stateDepartmentSortOrder,
+      });
+
+      const trimmedSearch = debouncedStateDepartmentSearch.trim();
+      if (trimmedSearch) {
+        params.set("search", trimmedSearch);
+      }
+
+      const response = await fetch(`/api/general-config/state-departments/export?${params.toString()}`, {
+        method: "GET",
+      });
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        throw new Error(payload?.error ?? "No fue posible exportar estados/departamentos");
+      }
+
+      const blob = await response.blob();
+      const disposition = response.headers.get("content-disposition") ?? "";
+      const match = disposition.match(/filename=\"?([^\";]+)\"?/i);
+      const filename = match?.[1] ?? `state_departments.${format}`;
+
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = filename;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(url);
+
+      sileo.success({
+        title: "Exportación lista",
+        description: `Se generó el archivo correctamente (máx. ${stateDepartmentExportLimit} registros).`,
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Error desconocido";
+      showCrudError(setStateDepartmentError, message);
+    } finally {
+      setStateDepartmentExporting(false);
+    }
+  }
+
+  async function onImportStateDepartments(file: File) {
+    try {
+      setStateDepartmentImporting(true);
+      setStateDepartmentError(null);
+
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const response = await fetch("/api/general-config/state-departments/import", {
+        method: "POST",
+        body: formData,
+      });
+
+      const payload = await response.json().catch(() => null);
+      if (!response.ok || !payload?.success) {
+        throw new Error(payload?.error ?? "No fue posible importar estados/departamentos");
+      }
+
+      const result = payload?.data as
+        | {
+            created: number;
+            updated: number;
+            skipped: number;
+            errors: Array<{ row: number; code?: string; error: string }>;
+          }
+        | undefined;
+
+      await loadStateDepartments();
+      await loadStateOptions();
+
+      const created = result?.created ?? 0;
+      const updated = result?.updated ?? 0;
+      const skipped = result?.skipped ?? 0;
+      const errorCount = result?.errors?.length ?? 0;
+      const description = `Creados: ${created} · Actualizados: ${updated} · Omitidos: ${skipped}`;
+
+      if (errorCount > 0) {
+        sileo.warning({
+          title: "Importación parcial",
+          description: `${description} · Errores: ${errorCount}`,
+        });
+      } else {
+        sileo.success({
+          title: "Importación completada",
+          description,
+        });
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Error desconocido";
+      showCrudError(setStateDepartmentError, message);
+    } finally {
+      setStateDepartmentImporting(false);
+      if (importStateDepartmentInputRef.current) {
+        importStateDepartmentInputRef.current.value = "";
+      }
+    }
+  }
+
   async function createMunicipality(event: FormEvent) {
     event.preventDefault();
     if (!canCreateMunicipality) return;
@@ -1954,6 +2527,125 @@ export default function ConfiguracionGeneralPage() {
     showCrudSuccess("Municipio/distrito eliminado");
     await loadMunicipalities();
     await loadMunicipalityOptions();
+  }
+
+  function toggleMunicipalitySort(nextSortBy: string) {
+    if (!isMunicipalitySortKey(nextSortBy)) return;
+
+    const isSameColumn = municipalitySortBy === nextSortBy;
+    setMunicipalitySortBy(nextSortBy);
+    setMunicipalitySortOrder(isSameColumn ? (municipalitySortOrder === "asc" ? "desc" : "asc") : "asc");
+    setMunicipalityPage(1);
+  }
+
+  async function downloadMunicipalityExport(format: "csv" | "xlsx") {
+    try {
+      setMunicipalityExporting(true);
+      setMunicipalityError(null);
+
+      const params = new URLSearchParams({
+        format,
+        limit: String(municipalityExportLimit),
+        sortBy: municipalitySortBy,
+        sortOrder: municipalitySortOrder,
+      });
+
+      const trimmedSearch = debouncedMunicipalitySearch.trim();
+      if (trimmedSearch) {
+        params.set("search", trimmedSearch);
+      }
+
+      const response = await fetch(`/api/general-config/municipality-districts/export?${params.toString()}`, {
+        method: "GET",
+      });
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        throw new Error(payload?.error ?? "No fue posible exportar municipios/distritos");
+      }
+
+      const blob = await response.blob();
+      const disposition = response.headers.get("content-disposition") ?? "";
+      const match = disposition.match(/filename=\"?([^\";]+)\"?/i);
+      const filename = match?.[1] ?? `municipality_districts.${format}`;
+
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = filename;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(url);
+
+      sileo.success({
+        title: "Exportación lista",
+        description: `Se generó el archivo correctamente (máx. ${municipalityExportLimit} registros).`,
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Error desconocido";
+      showCrudError(setMunicipalityError, message);
+    } finally {
+      setMunicipalityExporting(false);
+    }
+  }
+
+  async function onImportMunicipalities(file: File) {
+    try {
+      setMunicipalityImporting(true);
+      setMunicipalityError(null);
+
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const response = await fetch("/api/general-config/municipality-districts/import", {
+        method: "POST",
+        body: formData,
+      });
+
+      const payload = await response.json().catch(() => null);
+      if (!response.ok || !payload?.success) {
+        throw new Error(payload?.error ?? "No fue posible importar municipios/distritos");
+      }
+
+      const result = payload?.data as
+        | {
+            created: number;
+            updated: number;
+            skipped: number;
+            errors: Array<{ row: number; code?: string; error: string }>;
+          }
+        | undefined;
+
+      await loadMunicipalities();
+      await loadMunicipalityOptions();
+
+      const created = result?.created ?? 0;
+      const updated = result?.updated ?? 0;
+      const skipped = result?.skipped ?? 0;
+      const errorCount = result?.errors?.length ?? 0;
+      const description = `Creados: ${created} · Actualizados: ${updated} · Omitidos: ${skipped}`;
+
+      if (errorCount > 0) {
+        sileo.warning({
+          title: "Importación parcial",
+          description: `${description} · Errores: ${errorCount}`,
+        });
+      } else {
+        sileo.success({
+          title: "Importación completada",
+          description,
+        });
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Error desconocido";
+      showCrudError(setMunicipalityError, message);
+    } finally {
+      setMunicipalityImporting(false);
+      if (importMunicipalityInputRef.current) {
+        importMunicipalityInputRef.current.value = "";
+      }
+    }
   }
 
   async function createCity(event: FormEvent) {
@@ -2024,6 +2716,125 @@ export default function ConfiguracionGeneralPage() {
     await loadCityOptions();
   }
 
+  function toggleCitySort(nextSortBy: string) {
+    if (!isCitySortKey(nextSortBy)) return;
+
+    const isSameColumn = citySortBy === nextSortBy;
+    setCitySortBy(nextSortBy);
+    setCitySortOrder(isSameColumn ? (citySortOrder === "asc" ? "desc" : "asc") : "asc");
+    setCityPage(1);
+  }
+
+  async function downloadCityExport(format: "csv" | "xlsx") {
+    try {
+      setCityExporting(true);
+      setCityError(null);
+
+      const params = new URLSearchParams({
+        format,
+        limit: String(cityExportLimit),
+        sortBy: citySortBy,
+        sortOrder: citySortOrder,
+      });
+
+      const trimmedSearch = debouncedCitySearch.trim();
+      if (trimmedSearch) {
+        params.set("search", trimmedSearch);
+      }
+
+      const response = await fetch(`/api/general-config/cities/export?${params.toString()}`, {
+        method: "GET",
+      });
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        throw new Error(payload?.error ?? "No fue posible exportar ciudades");
+      }
+
+      const blob = await response.blob();
+      const disposition = response.headers.get("content-disposition") ?? "";
+      const match = disposition.match(/filename=\"?([^\";]+)\"?/i);
+      const filename = match?.[1] ?? `cities.${format}`;
+
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = filename;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(url);
+
+      sileo.success({
+        title: "Exportación lista",
+        description: `Se generó el archivo correctamente (máx. ${cityExportLimit} registros).`,
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Error desconocido";
+      showCrudError(setCityError, message);
+    } finally {
+      setCityExporting(false);
+    }
+  }
+
+  async function onImportCities(file: File) {
+    try {
+      setCityImporting(true);
+      setCityError(null);
+
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const response = await fetch("/api/general-config/cities/import", {
+        method: "POST",
+        body: formData,
+      });
+
+      const payload = await response.json().catch(() => null);
+      if (!response.ok || !payload?.success) {
+        throw new Error(payload?.error ?? "No fue posible importar ciudades");
+      }
+
+      const result = payload?.data as
+        | {
+            created: number;
+            updated: number;
+            skipped: number;
+            errors: Array<{ row: number; code?: string; error: string }>;
+          }
+        | undefined;
+
+      await loadCities();
+      await loadCityOptions();
+
+      const created = result?.created ?? 0;
+      const updated = result?.updated ?? 0;
+      const skipped = result?.skipped ?? 0;
+      const errorCount = result?.errors?.length ?? 0;
+      const description = `Creados: ${created} · Actualizados: ${updated} · Omitidos: ${skipped}`;
+
+      if (errorCount > 0) {
+        sileo.warning({
+          title: "Importación parcial",
+          description: `${description} · Errores: ${errorCount}`,
+        });
+      } else {
+        sileo.success({
+          title: "Importación completada",
+          description,
+        });
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Error desconocido";
+      showCrudError(setCityError, message);
+    } finally {
+      setCityImporting(false);
+      if (importCityInputRef.current) {
+        importCityInputRef.current.value = "";
+      }
+    }
+  }
+
   async function createCommunity(event: FormEvent) {
     event.preventDefault();
     if (!canCreateCommunity) return;
@@ -2089,6 +2900,124 @@ export default function ConfiguracionGeneralPage() {
 
     showCrudSuccess("Desarrollo local eliminado");
     await loadCommunityTerritories();
+  }
+
+  function toggleCommunitySort(nextSortBy: string) {
+    if (!isCommunitySortKey(nextSortBy)) return;
+
+    const isSameColumn = communitySortBy === nextSortBy;
+    setCommunitySortBy(nextSortBy);
+    setCommunitySortOrder(isSameColumn ? (communitySortOrder === "asc" ? "desc" : "asc") : "asc");
+    setCommunityPage(1);
+  }
+
+  async function downloadCommunityExport(format: "csv" | "xlsx") {
+    try {
+      setCommunityExporting(true);
+      setCommunityError(null);
+
+      const params = new URLSearchParams({
+        format,
+        limit: String(communityExportLimit),
+        sortBy: communitySortBy,
+        sortOrder: communitySortOrder,
+      });
+
+      const trimmedSearch = debouncedCommunitySearch.trim();
+      if (trimmedSearch) {
+        params.set("search", trimmedSearch);
+      }
+
+      const response = await fetch(`/api/general-config/community-territories/export?${params.toString()}`, {
+        method: "GET",
+      });
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        throw new Error(payload?.error ?? "No fue posible exportar desarrollos locales");
+      }
+
+      const blob = await response.blob();
+      const disposition = response.headers.get("content-disposition") ?? "";
+      const match = disposition.match(/filename=\"?([^\";]+)\"?/i);
+      const filename = match?.[1] ?? `community_territories.${format}`;
+
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = filename;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(url);
+
+      sileo.success({
+        title: "Exportación lista",
+        description: `Se generó el archivo correctamente (máx. ${communityExportLimit} registros).`,
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Error desconocido";
+      showCrudError(setCommunityError, message);
+    } finally {
+      setCommunityExporting(false);
+    }
+  }
+
+  async function onImportCommunities(file: File) {
+    try {
+      setCommunityImporting(true);
+      setCommunityError(null);
+
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const response = await fetch("/api/general-config/community-territories/import", {
+        method: "POST",
+        body: formData,
+      });
+
+      const payload = await response.json().catch(() => null);
+      if (!response.ok || !payload?.success) {
+        throw new Error(payload?.error ?? "No fue posible importar desarrollos locales");
+      }
+
+      const result = payload?.data as
+        | {
+            created: number;
+            updated: number;
+            skipped: number;
+            errors: Array<{ row: number; code?: string; error: string }>;
+          }
+        | undefined;
+
+      await loadCommunityTerritories();
+
+      const created = result?.created ?? 0;
+      const updated = result?.updated ?? 0;
+      const skipped = result?.skipped ?? 0;
+      const errorCount = result?.errors?.length ?? 0;
+      const description = `Creados: ${created} · Actualizados: ${updated} · Omitidos: ${skipped}`;
+
+      if (errorCount > 0) {
+        sileo.warning({
+          title: "Importación parcial",
+          description: `${description} · Errores: ${errorCount}`,
+        });
+      } else {
+        sileo.success({
+          title: "Importación completada",
+          description,
+        });
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Error desconocido";
+      showCrudError(setCommunityError, message);
+    } finally {
+      setCommunityImporting(false);
+      if (importCommunityInputRef.current) {
+        importCommunityInputRef.current.value = "";
+      }
+    }
   }
 
   async function createSpacing(event: FormEvent) {
@@ -2433,6 +3362,43 @@ export default function ConfiguracionGeneralPage() {
 
       <section className="space-y-4 rounded-xl border p-4">
         <CatalogHeader title="Continentes" subtitle="CRUD de catálogo Continent" />
+        <div className="flex flex-wrap items-center gap-2">
+          <input
+            accept=".csv,.xlsx"
+            className="hidden"
+            onChange={(event) => {
+              const file = event.target.files?.[0];
+              if (!file) return;
+              void onImportContinents(file);
+            }}
+            ref={importContinentInputRef}
+            type="file"
+          />
+          <button
+            className="rounded-md border px-3 py-2 text-sm"
+            disabled={continentImporting}
+            onClick={() => importContinentInputRef.current?.click()}
+            type="button"
+          >
+            {continentImporting ? "Importando..." : "Importar"}
+          </button>
+          <button
+            className="rounded-md border px-3 py-2 text-sm"
+            disabled={continentExporting}
+            onClick={() => void downloadContinentExport("csv")}
+            type="button"
+          >
+            {continentExporting ? "Exportando..." : "Exportar CSV"}
+          </button>
+          <button
+            className="rounded-md border px-3 py-2 text-sm"
+            disabled={continentExporting}
+            onClick={() => void downloadContinentExport("xlsx")}
+            type="button"
+          >
+            {continentExporting ? "Exportando..." : "Exportar Excel"}
+          </button>
+        </div>
         <form className="grid gap-3 md:grid-cols-4" onSubmit={createContinent}>
           <input className="rounded-md border px-3 py-2" placeholder="Código" value={continentForm.code} onChange={(event) => setContinentForm((prev) => ({ ...prev, code: event.target.value }))} />
           <input className="rounded-md border px-3 py-2 md:col-span-2" placeholder="Nombre" value={continentForm.name} onChange={(event) => setContinentForm((prev) => ({ ...prev, name: event.target.value }))} />
@@ -2445,7 +3411,23 @@ export default function ConfiguracionGeneralPage() {
           </button>
         </form>
 
-        <input className="w-full rounded-md border px-3 py-2" placeholder="Buscar por código o nombre" value={continentSearch} onChange={(event) => setContinentSearch(event.target.value)} />
+        <TableToolbar
+          canExport
+          exportLimit={continentExportLimit}
+          limit={continentPagination.limit}
+          onExportLimitChange={setContinentExportLimit}
+          onLimitChange={(value) => {
+            setContinentPage(1);
+            setContinentPagination((prev) => ({ ...prev, limit: value }));
+          }}
+          onSearchChange={(value) => {
+            setContinentPage(1);
+            setContinentSearch(value);
+          }}
+          search={continentSearch}
+          searchPlaceholder="Buscar por código o nombre"
+          total={continentPagination.total}
+        />
         {continentError ? <p className="text-sm text-red-600">{continentError}</p> : null}
         {continentLoading ? <p className="text-sm">Cargando...</p> : null}
 
@@ -2453,9 +3435,33 @@ export default function ConfiguracionGeneralPage() {
           <table className="min-w-full text-sm">
             <thead className="border-b">
               <tr>
-                <th className="px-3 py-2 text-left">Código</th>
-                <th className="px-3 py-2 text-left">Nombre</th>
-                <th className="px-3 py-2 text-left">Activo</th>
+                <th className="px-3 py-2 text-left">
+                  <SortableHeader
+                    label="Código"
+                    onToggle={toggleContinentSort}
+                    sortBy={continentSortBy}
+                    sortKey="code"
+                    sortOrder={continentSortOrder}
+                  />
+                </th>
+                <th className="px-3 py-2 text-left">
+                  <SortableHeader
+                    label="Nombre"
+                    onToggle={toggleContinentSort}
+                    sortBy={continentSortBy}
+                    sortKey="name"
+                    sortOrder={continentSortOrder}
+                  />
+                </th>
+                <th className="px-3 py-2 text-left">
+                  <SortableHeader
+                    label="Activo"
+                    onToggle={toggleContinentSort}
+                    sortBy={continentSortBy}
+                    sortKey="isActive"
+                    sortOrder={continentSortOrder}
+                  />
+                </th>
                 <th className="px-3 py-2 text-left">Acciones</th>
               </tr>
             </thead>
@@ -2477,16 +3483,14 @@ export default function ConfiguracionGeneralPage() {
           </table>
         </div>
 
-        <div className="flex items-center justify-between text-sm">
-          <span>Total: {continentPagination.total}</span>
-          <div className="flex items-center gap-2">
-            <button className="rounded border px-2 py-1" disabled={continentPagination.page <= 1} onClick={() => setContinentPage((prev) => Math.max(1, prev - 1))} type="button">Anterior</button>
-            <span>
-              Página {continentPagination.page} de {Math.max(1, continentPagination.totalPages)}
-            </span>
-            <button className="rounded border px-2 py-1" disabled={continentPagination.page >= continentPagination.totalPages} onClick={() => setContinentPage((prev) => prev + 1)} type="button">Siguiente</button>
-          </div>
-        </div>
+        <TablePagination
+          loading={continentLoading}
+          onNext={() => setContinentPage((prev) => Math.min(continentPagination.totalPages, prev + 1))}
+          onPrev={() => setContinentPage((prev) => Math.max(1, prev - 1))}
+          page={continentPagination.page}
+          total={continentPagination.total}
+          totalPages={Math.max(1, continentPagination.totalPages)}
+        />
 
         {editingContinent ? (
           <form className="grid gap-3 rounded-lg border p-3 md:grid-cols-4" onSubmit={updateContinent}>
@@ -2506,6 +3510,43 @@ export default function ConfiguracionGeneralPage() {
 
       <section className="space-y-4 rounded-xl border p-4">
         <CatalogHeader title="Países" subtitle="CRUD de catálogo Country" />
+        <div className="flex flex-wrap items-center gap-2">
+          <input
+            accept=".csv,.xlsx"
+            className="hidden"
+            onChange={(event) => {
+              const file = event.target.files?.[0];
+              if (!file) return;
+              void onImportCountries(file);
+            }}
+            ref={importCountryInputRef}
+            type="file"
+          />
+          <button
+            className="rounded-md border px-3 py-2 text-sm"
+            disabled={countryImporting}
+            onClick={() => importCountryInputRef.current?.click()}
+            type="button"
+          >
+            {countryImporting ? "Importando..." : "Importar"}
+          </button>
+          <button
+            className="rounded-md border px-3 py-2 text-sm"
+            disabled={countryExporting}
+            onClick={() => void downloadCountryExport("csv")}
+            type="button"
+          >
+            {countryExporting ? "Exportando..." : "Exportar CSV"}
+          </button>
+          <button
+            className="rounded-md border px-3 py-2 text-sm"
+            disabled={countryExporting}
+            onClick={() => void downloadCountryExport("xlsx")}
+            type="button"
+          >
+            {countryExporting ? "Exportando..." : "Exportar Excel"}
+          </button>
+        </div>
         <form className="grid gap-3 md:grid-cols-5" onSubmit={createCountry}>
           <select className="rounded-md border px-3 py-2" value={countryForm.continentId} onChange={(event) => setCountryForm((prev) => ({ ...prev, continentId: event.target.value }))}>
             <option value="">Seleccione continente</option>
@@ -2528,7 +3569,23 @@ export default function ConfiguracionGeneralPage() {
 
         {activeContinents.length === 0 ? <p className="text-xs text-muted-foreground">No hay continentes activos cargados. Debes cargar continentes para registrar países.</p> : null}
 
-        <input className="w-full rounded-md border px-3 py-2" placeholder="Buscar por código o nombre" value={countrySearch} onChange={(event) => setCountrySearch(event.target.value)} />
+        <TableToolbar
+          canExport
+          exportLimit={countryExportLimit}
+          limit={countryPagination.limit}
+          onExportLimitChange={setCountryExportLimit}
+          onLimitChange={(value) => {
+            setCountryPage(1);
+            setCountryPagination((prev) => ({ ...prev, limit: value }));
+          }}
+          onSearchChange={(value) => {
+            setCountryPage(1);
+            setCountrySearch(value);
+          }}
+          search={countrySearch}
+          searchPlaceholder="Buscar por código, nombre o continente"
+          total={countryPagination.total}
+        />
         {countryError ? <p className="text-sm text-red-600">{countryError}</p> : null}
         {countryLoading ? <p className="text-sm">Cargando...</p> : null}
 
@@ -2536,10 +3593,42 @@ export default function ConfiguracionGeneralPage() {
           <table className="min-w-full text-sm">
             <thead className="border-b">
               <tr>
-                <th className="px-3 py-2 text-left">Continente</th>
-                <th className="px-3 py-2 text-left">Código</th>
-                <th className="px-3 py-2 text-left">Nombre</th>
-                <th className="px-3 py-2 text-left">Activo</th>
+                <th className="px-3 py-2 text-left">
+                  <SortableHeader
+                    label="Continente"
+                    onToggle={toggleCountrySort}
+                    sortBy={countrySortBy}
+                    sortKey="continentName"
+                    sortOrder={countrySortOrder}
+                  />
+                </th>
+                <th className="px-3 py-2 text-left">
+                  <SortableHeader
+                    label="Código"
+                    onToggle={toggleCountrySort}
+                    sortBy={countrySortBy}
+                    sortKey="code"
+                    sortOrder={countrySortOrder}
+                  />
+                </th>
+                <th className="px-3 py-2 text-left">
+                  <SortableHeader
+                    label="Nombre"
+                    onToggle={toggleCountrySort}
+                    sortBy={countrySortBy}
+                    sortKey="name"
+                    sortOrder={countrySortOrder}
+                  />
+                </th>
+                <th className="px-3 py-2 text-left">
+                  <SortableHeader
+                    label="Activo"
+                    onToggle={toggleCountrySort}
+                    sortBy={countrySortBy}
+                    sortKey="isActive"
+                    sortOrder={countrySortOrder}
+                  />
+                </th>
                 <th className="px-3 py-2 text-left">Acciones</th>
               </tr>
             </thead>
@@ -2562,16 +3651,14 @@ export default function ConfiguracionGeneralPage() {
           </table>
         </div>
 
-        <div className="flex items-center justify-between text-sm">
-          <span>Total: {countryPagination.total}</span>
-          <div className="flex items-center gap-2">
-            <button className="rounded border px-2 py-1" disabled={countryPagination.page <= 1} onClick={() => setCountryPage((prev) => Math.max(1, prev - 1))} type="button">Anterior</button>
-            <span>
-              Página {countryPagination.page} de {Math.max(1, countryPagination.totalPages)}
-            </span>
-            <button className="rounded border px-2 py-1" disabled={countryPagination.page >= countryPagination.totalPages} onClick={() => setCountryPage((prev) => prev + 1)} type="button">Siguiente</button>
-          </div>
-        </div>
+        <TablePagination
+          loading={countryLoading}
+          onNext={() => setCountryPage((prev) => Math.min(countryPagination.totalPages, prev + 1))}
+          onPrev={() => setCountryPage((prev) => Math.max(1, prev - 1))}
+          page={countryPagination.page}
+          total={countryPagination.total}
+          totalPages={Math.max(1, countryPagination.totalPages)}
+        />
 
         {editingCountry ? (
           <form className="grid gap-3 rounded-lg border p-3 md:grid-cols-5" onSubmit={updateCountry}>
@@ -2599,6 +3686,43 @@ export default function ConfiguracionGeneralPage() {
 
       <section className="space-y-4 rounded-xl border p-4">
         <CatalogHeader title="Regiones" subtitle="CRUD de catálogo Region" />
+        <div className="flex flex-wrap items-center gap-2">
+          <input
+            accept=".csv,.xlsx"
+            className="hidden"
+            onChange={(event) => {
+              const file = event.target.files?.[0];
+              if (!file) return;
+              void onImportRegions(file);
+            }}
+            ref={importRegionInputRef}
+            type="file"
+          />
+          <button
+            className="rounded-md border px-3 py-2 text-sm"
+            disabled={regionImporting}
+            onClick={() => importRegionInputRef.current?.click()}
+            type="button"
+          >
+            {regionImporting ? "Importando..." : "Importar"}
+          </button>
+          <button
+            className="rounded-md border px-3 py-2 text-sm"
+            disabled={regionExporting}
+            onClick={() => void downloadRegionExport("csv")}
+            type="button"
+          >
+            {regionExporting ? "Exportando..." : "Exportar CSV"}
+          </button>
+          <button
+            className="rounded-md border px-3 py-2 text-sm"
+            disabled={regionExporting}
+            onClick={() => void downloadRegionExport("xlsx")}
+            type="button"
+          >
+            {regionExporting ? "Exportando..." : "Exportar Excel"}
+          </button>
+        </div>
         <form className="grid gap-3 md:grid-cols-5" onSubmit={createRegion}>
           <select className="rounded-md border px-3 py-2" value={regionForm.countryId} onChange={(event) => setRegionForm((prev) => ({ ...prev, countryId: event.target.value }))}>
             <option value="">Seleccione país</option>
@@ -2621,7 +3745,23 @@ export default function ConfiguracionGeneralPage() {
 
         {countryOptions.length === 0 ? <p className="text-xs text-muted-foreground">No hay países activos cargados. Debes cargar países para registrar regiones.</p> : null}
 
-        <input className="w-full rounded-md border px-3 py-2" placeholder="Buscar por código o nombre" value={regionSearch} onChange={(event) => setRegionSearch(event.target.value)} />
+        <TableToolbar
+          canExport
+          exportLimit={regionExportLimit}
+          limit={regionPagination.limit}
+          onExportLimitChange={setRegionExportLimit}
+          onLimitChange={(value) => {
+            setRegionPage(1);
+            setRegionPagination((prev) => ({ ...prev, limit: value }));
+          }}
+          onSearchChange={(value) => {
+            setRegionPage(1);
+            setRegionSearch(value);
+          }}
+          search={regionSearch}
+          searchPlaceholder="Buscar por código, nombre o país"
+          total={regionPagination.total}
+        />
         {regionError ? <p className="text-sm text-red-600">{regionError}</p> : null}
         {regionLoading ? <p className="text-sm">Cargando...</p> : null}
 
@@ -2629,10 +3769,42 @@ export default function ConfiguracionGeneralPage() {
           <table className="min-w-full text-sm">
             <thead className="border-b">
               <tr>
-                <th className="px-3 py-2 text-left">País</th>
-                <th className="px-3 py-2 text-left">Código</th>
-                <th className="px-3 py-2 text-left">Nombre</th>
-                <th className="px-3 py-2 text-left">Activo</th>
+                <th className="px-3 py-2 text-left">
+                  <SortableHeader
+                    label="País"
+                    onToggle={toggleRegionSort}
+                    sortBy={regionSortBy}
+                    sortKey="countryName"
+                    sortOrder={regionSortOrder}
+                  />
+                </th>
+                <th className="px-3 py-2 text-left">
+                  <SortableHeader
+                    label="Código"
+                    onToggle={toggleRegionSort}
+                    sortBy={regionSortBy}
+                    sortKey="code"
+                    sortOrder={regionSortOrder}
+                  />
+                </th>
+                <th className="px-3 py-2 text-left">
+                  <SortableHeader
+                    label="Nombre"
+                    onToggle={toggleRegionSort}
+                    sortBy={regionSortBy}
+                    sortKey="name"
+                    sortOrder={regionSortOrder}
+                  />
+                </th>
+                <th className="px-3 py-2 text-left">
+                  <SortableHeader
+                    label="Activo"
+                    onToggle={toggleRegionSort}
+                    sortBy={regionSortBy}
+                    sortKey="isActive"
+                    sortOrder={regionSortOrder}
+                  />
+                </th>
                 <th className="px-3 py-2 text-left">Acciones</th>
               </tr>
             </thead>
@@ -2655,16 +3827,14 @@ export default function ConfiguracionGeneralPage() {
           </table>
         </div>
 
-        <div className="flex items-center justify-between text-sm">
-          <span>Total: {regionPagination.total}</span>
-          <div className="flex items-center gap-2">
-            <button className="rounded border px-2 py-1" disabled={regionPagination.page <= 1} onClick={() => setRegionPage((prev) => Math.max(1, prev - 1))} type="button">Anterior</button>
-            <span>
-              Página {regionPagination.page} de {Math.max(1, regionPagination.totalPages)}
-            </span>
-            <button className="rounded border px-2 py-1" disabled={regionPagination.page >= regionPagination.totalPages} onClick={() => setRegionPage((prev) => prev + 1)} type="button">Siguiente</button>
-          </div>
-        </div>
+        <TablePagination
+          loading={regionLoading}
+          onNext={() => setRegionPage((prev) => Math.min(regionPagination.totalPages, prev + 1))}
+          onPrev={() => setRegionPage((prev) => Math.max(1, prev - 1))}
+          page={regionPagination.page}
+          total={regionPagination.total}
+          totalPages={Math.max(1, regionPagination.totalPages)}
+        />
 
         {editingRegion ? (
           <form className="grid gap-3 rounded-lg border p-3 md:grid-cols-5" onSubmit={updateRegion}>
@@ -2692,6 +3862,43 @@ export default function ConfiguracionGeneralPage() {
 
       <section className="space-y-4 rounded-xl border p-4">
         <CatalogHeader title="Estados / Departamentos" subtitle="CRUD de catálogo StateDepartment" />
+        <div className="flex flex-wrap items-center gap-2">
+          <input
+            accept=".csv,.xlsx"
+            className="hidden"
+            onChange={(event) => {
+              const file = event.target.files?.[0];
+              if (!file) return;
+              void onImportStateDepartments(file);
+            }}
+            ref={importStateDepartmentInputRef}
+            type="file"
+          />
+          <button
+            className="rounded-md border px-3 py-2 text-sm"
+            disabled={stateDepartmentImporting}
+            onClick={() => importStateDepartmentInputRef.current?.click()}
+            type="button"
+          >
+            {stateDepartmentImporting ? "Importando..." : "Importar"}
+          </button>
+          <button
+            className="rounded-md border px-3 py-2 text-sm"
+            disabled={stateDepartmentExporting}
+            onClick={() => void downloadStateDepartmentExport("csv")}
+            type="button"
+          >
+            {stateDepartmentExporting ? "Exportando..." : "Exportar CSV"}
+          </button>
+          <button
+            className="rounded-md border px-3 py-2 text-sm"
+            disabled={stateDepartmentExporting}
+            onClick={() => void downloadStateDepartmentExport("xlsx")}
+            type="button"
+          >
+            {stateDepartmentExporting ? "Exportando..." : "Exportar Excel"}
+          </button>
+        </div>
         <form className="grid gap-3 md:grid-cols-5" onSubmit={createStateDepartment}>
           <select className="rounded-md border px-3 py-2" value={stateDepartmentForm.countryId} onChange={(event) => setStateDepartmentForm((prev) => ({ ...prev, countryId: event.target.value }))}>
             <option value="">Seleccione país</option>
@@ -2714,7 +3921,23 @@ export default function ConfiguracionGeneralPage() {
 
         {countryOptions.length === 0 ? <p className="text-xs text-muted-foreground">No hay países activos cargados. Debes cargar países para registrar estados/departamentos.</p> : null}
 
-        <input className="w-full rounded-md border px-3 py-2" placeholder="Buscar por código o nombre" value={stateDepartmentSearch} onChange={(event) => setStateDepartmentSearch(event.target.value)} />
+        <TableToolbar
+          canExport
+          exportLimit={stateDepartmentExportLimit}
+          limit={stateDepartmentPagination.limit}
+          onExportLimitChange={setStateDepartmentExportLimit}
+          onLimitChange={(value) => {
+            setStateDepartmentPage(1);
+            setStateDepartmentPagination((prev) => ({ ...prev, limit: value }));
+          }}
+          onSearchChange={(value) => {
+            setStateDepartmentPage(1);
+            setStateDepartmentSearch(value);
+          }}
+          search={stateDepartmentSearch}
+          searchPlaceholder="Buscar por código, nombre o país"
+          total={stateDepartmentPagination.total}
+        />
         {stateDepartmentError ? <p className="text-sm text-red-600">{stateDepartmentError}</p> : null}
         {stateDepartmentLoading ? <p className="text-sm">Cargando...</p> : null}
 
@@ -2722,10 +3945,42 @@ export default function ConfiguracionGeneralPage() {
           <table className="min-w-full text-sm">
             <thead className="border-b">
               <tr>
-                <th className="px-3 py-2 text-left">País</th>
-                <th className="px-3 py-2 text-left">Código</th>
-                <th className="px-3 py-2 text-left">Nombre</th>
-                <th className="px-3 py-2 text-left">Activo</th>
+                <th className="px-3 py-2 text-left">
+                  <SortableHeader
+                    label="País"
+                    onToggle={toggleStateDepartmentSort}
+                    sortBy={stateDepartmentSortBy}
+                    sortKey="countryName"
+                    sortOrder={stateDepartmentSortOrder}
+                  />
+                </th>
+                <th className="px-3 py-2 text-left">
+                  <SortableHeader
+                    label="Código"
+                    onToggle={toggleStateDepartmentSort}
+                    sortBy={stateDepartmentSortBy}
+                    sortKey="code"
+                    sortOrder={stateDepartmentSortOrder}
+                  />
+                </th>
+                <th className="px-3 py-2 text-left">
+                  <SortableHeader
+                    label="Nombre"
+                    onToggle={toggleStateDepartmentSort}
+                    sortBy={stateDepartmentSortBy}
+                    sortKey="name"
+                    sortOrder={stateDepartmentSortOrder}
+                  />
+                </th>
+                <th className="px-3 py-2 text-left">
+                  <SortableHeader
+                    label="Activo"
+                    onToggle={toggleStateDepartmentSort}
+                    sortBy={stateDepartmentSortBy}
+                    sortKey="isActive"
+                    sortOrder={stateDepartmentSortOrder}
+                  />
+                </th>
                 <th className="px-3 py-2 text-left">Acciones</th>
               </tr>
             </thead>
@@ -2748,16 +4003,14 @@ export default function ConfiguracionGeneralPage() {
           </table>
         </div>
 
-        <div className="flex items-center justify-between text-sm">
-          <span>Total: {stateDepartmentPagination.total}</span>
-          <div className="flex items-center gap-2">
-            <button className="rounded border px-2 py-1" disabled={stateDepartmentPagination.page <= 1} onClick={() => setStateDepartmentPage((prev) => Math.max(1, prev - 1))} type="button">Anterior</button>
-            <span>
-              Página {stateDepartmentPagination.page} de {Math.max(1, stateDepartmentPagination.totalPages)}
-            </span>
-            <button className="rounded border px-2 py-1" disabled={stateDepartmentPagination.page >= stateDepartmentPagination.totalPages} onClick={() => setStateDepartmentPage((prev) => prev + 1)} type="button">Siguiente</button>
-          </div>
-        </div>
+        <TablePagination
+          loading={stateDepartmentLoading}
+          onNext={() => setStateDepartmentPage((prev) => Math.min(stateDepartmentPagination.totalPages, prev + 1))}
+          onPrev={() => setStateDepartmentPage((prev) => Math.max(1, prev - 1))}
+          page={stateDepartmentPagination.page}
+          total={stateDepartmentPagination.total}
+          totalPages={Math.max(1, stateDepartmentPagination.totalPages)}
+        />
 
         {editingStateDepartment ? (
           <form className="grid gap-3 rounded-lg border p-3 md:grid-cols-5" onSubmit={updateStateDepartment}>
@@ -2785,6 +4038,43 @@ export default function ConfiguracionGeneralPage() {
 
       <section className="space-y-4 rounded-xl border p-4">
         <CatalogHeader title="Municipios / Distritos" subtitle="CRUD de catálogo MunicipalityDistrict" />
+        <div className="flex flex-wrap items-center gap-2">
+          <input
+            accept=".csv,.xlsx"
+            className="hidden"
+            onChange={(event) => {
+              const file = event.target.files?.[0];
+              if (!file) return;
+              void onImportMunicipalities(file);
+            }}
+            ref={importMunicipalityInputRef}
+            type="file"
+          />
+          <button
+            className="rounded-md border px-3 py-2 text-sm"
+            disabled={municipalityImporting}
+            onClick={() => importMunicipalityInputRef.current?.click()}
+            type="button"
+          >
+            {municipalityImporting ? "Importando..." : "Importar"}
+          </button>
+          <button
+            className="rounded-md border px-3 py-2 text-sm"
+            disabled={municipalityExporting}
+            onClick={() => void downloadMunicipalityExport("csv")}
+            type="button"
+          >
+            {municipalityExporting ? "Exportando..." : "Exportar CSV"}
+          </button>
+          <button
+            className="rounded-md border px-3 py-2 text-sm"
+            disabled={municipalityExporting}
+            onClick={() => void downloadMunicipalityExport("xlsx")}
+            type="button"
+          >
+            {municipalityExporting ? "Exportando..." : "Exportar Excel"}
+          </button>
+        </div>
         <form className="grid gap-3 md:grid-cols-5" onSubmit={createMunicipality}>
           <select className="rounded-md border px-3 py-2" value={municipalityForm.stateId} onChange={(event) => setMunicipalityForm((prev) => ({ ...prev, stateId: event.target.value }))}>
             <option value="">Seleccione estado</option>
@@ -2807,7 +4097,23 @@ export default function ConfiguracionGeneralPage() {
 
         {stateOptions.length === 0 ? <p className="text-xs text-muted-foreground">No hay estados activos cargados. Debes cargar estados/departamentos para registrar municipios.</p> : null}
 
-        <input className="w-full rounded-md border px-3 py-2" placeholder="Buscar por código o nombre" value={municipalitySearch} onChange={(event) => setMunicipalitySearch(event.target.value)} />
+        <TableToolbar
+          canExport
+          exportLimit={municipalityExportLimit}
+          limit={municipalityPagination.limit}
+          onExportLimitChange={setMunicipalityExportLimit}
+          onLimitChange={(value) => {
+            setMunicipalityPage(1);
+            setMunicipalityPagination((prev) => ({ ...prev, limit: value }));
+          }}
+          onSearchChange={(value) => {
+            setMunicipalityPage(1);
+            setMunicipalitySearch(value);
+          }}
+          search={municipalitySearch}
+          searchPlaceholder="Buscar por código, nombre, estado o país"
+          total={municipalityPagination.total}
+        />
         {municipalityError ? <p className="text-sm text-red-600">{municipalityError}</p> : null}
         {municipalityLoading ? <p className="text-sm">Cargando...</p> : null}
 
@@ -2815,11 +4121,51 @@ export default function ConfiguracionGeneralPage() {
           <table className="min-w-full text-sm">
             <thead className="border-b">
               <tr>
-                <th className="px-3 py-2 text-left">Estado</th>
-                <th className="px-3 py-2 text-left">País</th>
-                <th className="px-3 py-2 text-left">Código</th>
-                <th className="px-3 py-2 text-left">Nombre</th>
-                <th className="px-3 py-2 text-left">Activo</th>
+                <th className="px-3 py-2 text-left">
+                  <SortableHeader
+                    label="Estado"
+                    onToggle={toggleMunicipalitySort}
+                    sortBy={municipalitySortBy}
+                    sortKey="stateName"
+                    sortOrder={municipalitySortOrder}
+                  />
+                </th>
+                <th className="px-3 py-2 text-left">
+                  <SortableHeader
+                    label="País"
+                    onToggle={toggleMunicipalitySort}
+                    sortBy={municipalitySortBy}
+                    sortKey="countryName"
+                    sortOrder={municipalitySortOrder}
+                  />
+                </th>
+                <th className="px-3 py-2 text-left">
+                  <SortableHeader
+                    label="Código"
+                    onToggle={toggleMunicipalitySort}
+                    sortBy={municipalitySortBy}
+                    sortKey="code"
+                    sortOrder={municipalitySortOrder}
+                  />
+                </th>
+                <th className="px-3 py-2 text-left">
+                  <SortableHeader
+                    label="Nombre"
+                    onToggle={toggleMunicipalitySort}
+                    sortBy={municipalitySortBy}
+                    sortKey="name"
+                    sortOrder={municipalitySortOrder}
+                  />
+                </th>
+                <th className="px-3 py-2 text-left">
+                  <SortableHeader
+                    label="Activo"
+                    onToggle={toggleMunicipalitySort}
+                    sortBy={municipalitySortBy}
+                    sortKey="isActive"
+                    sortOrder={municipalitySortOrder}
+                  />
+                </th>
                 <th className="px-3 py-2 text-left">Acciones</th>
               </tr>
             </thead>
@@ -2843,16 +4189,14 @@ export default function ConfiguracionGeneralPage() {
           </table>
         </div>
 
-        <div className="flex items-center justify-between text-sm">
-          <span>Total: {municipalityPagination.total}</span>
-          <div className="flex items-center gap-2">
-            <button className="rounded border px-2 py-1" disabled={municipalityPagination.page <= 1} onClick={() => setMunicipalityPage((prev) => Math.max(1, prev - 1))} type="button">Anterior</button>
-            <span>
-              Página {municipalityPagination.page} de {Math.max(1, municipalityPagination.totalPages)}
-            </span>
-            <button className="rounded border px-2 py-1" disabled={municipalityPagination.page >= municipalityPagination.totalPages} onClick={() => setMunicipalityPage((prev) => prev + 1)} type="button">Siguiente</button>
-          </div>
-        </div>
+        <TablePagination
+          loading={municipalityLoading}
+          onNext={() => setMunicipalityPage((prev) => Math.min(municipalityPagination.totalPages, prev + 1))}
+          onPrev={() => setMunicipalityPage((prev) => Math.max(1, prev - 1))}
+          page={municipalityPagination.page}
+          total={municipalityPagination.total}
+          totalPages={Math.max(1, municipalityPagination.totalPages)}
+        />
 
         {editingMunicipality ? (
           <form className="grid gap-3 rounded-lg border p-3 md:grid-cols-5" onSubmit={updateMunicipality}>
@@ -2880,6 +4224,43 @@ export default function ConfiguracionGeneralPage() {
 
       <section className="space-y-4 rounded-xl border p-4">
         <CatalogHeader title="Ciudades" subtitle="CRUD de catálogo City" />
+        <div className="flex flex-wrap items-center gap-2">
+          <input
+            accept=".csv,.xlsx"
+            className="hidden"
+            onChange={(event) => {
+              const file = event.target.files?.[0];
+              if (!file) return;
+              void onImportCities(file);
+            }}
+            ref={importCityInputRef}
+            type="file"
+          />
+          <button
+            className="rounded-md border px-3 py-2 text-sm"
+            disabled={cityImporting}
+            onClick={() => importCityInputRef.current?.click()}
+            type="button"
+          >
+            {cityImporting ? "Importando..." : "Importar"}
+          </button>
+          <button
+            className="rounded-md border px-3 py-2 text-sm"
+            disabled={cityExporting}
+            onClick={() => void downloadCityExport("csv")}
+            type="button"
+          >
+            {cityExporting ? "Exportando..." : "Exportar CSV"}
+          </button>
+          <button
+            className="rounded-md border px-3 py-2 text-sm"
+            disabled={cityExporting}
+            onClick={() => void downloadCityExport("xlsx")}
+            type="button"
+          >
+            {cityExporting ? "Exportando..." : "Exportar Excel"}
+          </button>
+        </div>
         <form className="grid gap-3 md:grid-cols-5" onSubmit={createCity}>
           <select className="rounded-md border px-3 py-2" value={cityForm.municipalityId} onChange={(event) => setCityForm((prev) => ({ ...prev, municipalityId: event.target.value }))}>
             <option value="">Seleccione municipio</option>
@@ -2902,7 +4283,23 @@ export default function ConfiguracionGeneralPage() {
 
         {municipalityOptions.length === 0 ? <p className="text-xs text-muted-foreground">No hay municipios activos cargados. Debes cargar municipios para registrar ciudades.</p> : null}
 
-        <input className="w-full rounded-md border px-3 py-2" placeholder="Buscar por código o nombre" value={citySearch} onChange={(event) => setCitySearch(event.target.value)} />
+        <TableToolbar
+          canExport
+          exportLimit={cityExportLimit}
+          limit={cityPagination.limit}
+          onExportLimitChange={setCityExportLimit}
+          onLimitChange={(value) => {
+            setCityPage(1);
+            setCityPagination((prev) => ({ ...prev, limit: value }));
+          }}
+          onSearchChange={(value) => {
+            setCityPage(1);
+            setCitySearch(value);
+          }}
+          search={citySearch}
+          searchPlaceholder="Buscar por código, nombre, municipio, estado o país"
+          total={cityPagination.total}
+        />
         {cityError ? <p className="text-sm text-red-600">{cityError}</p> : null}
         {cityLoading ? <p className="text-sm">Cargando...</p> : null}
 
@@ -2910,12 +4307,60 @@ export default function ConfiguracionGeneralPage() {
           <table className="min-w-full text-sm">
             <thead className="border-b">
               <tr>
-                <th className="px-3 py-2 text-left">Municipio</th>
-                <th className="px-3 py-2 text-left">Estado</th>
-                <th className="px-3 py-2 text-left">País</th>
-                <th className="px-3 py-2 text-left">Código</th>
-                <th className="px-3 py-2 text-left">Nombre</th>
-                <th className="px-3 py-2 text-left">Activo</th>
+                <th className="px-3 py-2 text-left">
+                  <SortableHeader
+                    label="Municipio"
+                    onToggle={toggleCitySort}
+                    sortBy={citySortBy}
+                    sortKey="municipalityName"
+                    sortOrder={citySortOrder}
+                  />
+                </th>
+                <th className="px-3 py-2 text-left">
+                  <SortableHeader
+                    label="Estado"
+                    onToggle={toggleCitySort}
+                    sortBy={citySortBy}
+                    sortKey="stateName"
+                    sortOrder={citySortOrder}
+                  />
+                </th>
+                <th className="px-3 py-2 text-left">
+                  <SortableHeader
+                    label="País"
+                    onToggle={toggleCitySort}
+                    sortBy={citySortBy}
+                    sortKey="countryName"
+                    sortOrder={citySortOrder}
+                  />
+                </th>
+                <th className="px-3 py-2 text-left">
+                  <SortableHeader
+                    label="Código"
+                    onToggle={toggleCitySort}
+                    sortBy={citySortBy}
+                    sortKey="code"
+                    sortOrder={citySortOrder}
+                  />
+                </th>
+                <th className="px-3 py-2 text-left">
+                  <SortableHeader
+                    label="Nombre"
+                    onToggle={toggleCitySort}
+                    sortBy={citySortBy}
+                    sortKey="name"
+                    sortOrder={citySortOrder}
+                  />
+                </th>
+                <th className="px-3 py-2 text-left">
+                  <SortableHeader
+                    label="Activo"
+                    onToggle={toggleCitySort}
+                    sortBy={citySortBy}
+                    sortKey="isActive"
+                    sortOrder={citySortOrder}
+                  />
+                </th>
                 <th className="px-3 py-2 text-left">Acciones</th>
               </tr>
             </thead>
@@ -2940,16 +4385,14 @@ export default function ConfiguracionGeneralPage() {
           </table>
         </div>
 
-        <div className="flex items-center justify-between text-sm">
-          <span>Total: {cityPagination.total}</span>
-          <div className="flex items-center gap-2">
-            <button className="rounded border px-2 py-1" disabled={cityPagination.page <= 1} onClick={() => setCityPage((prev) => Math.max(1, prev - 1))} type="button">Anterior</button>
-            <span>
-              Página {cityPagination.page} de {Math.max(1, cityPagination.totalPages)}
-            </span>
-            <button className="rounded border px-2 py-1" disabled={cityPagination.page >= cityPagination.totalPages} onClick={() => setCityPage((prev) => prev + 1)} type="button">Siguiente</button>
-          </div>
-        </div>
+        <TablePagination
+          loading={cityLoading}
+          onNext={() => setCityPage((prev) => Math.min(cityPagination.totalPages, prev + 1))}
+          onPrev={() => setCityPage((prev) => Math.max(1, prev - 1))}
+          page={cityPagination.page}
+          total={cityPagination.total}
+          totalPages={Math.max(1, cityPagination.totalPages)}
+        />
 
         {editingCity ? (
           <form className="grid gap-3 rounded-lg border p-3 md:grid-cols-5" onSubmit={updateCity}>
@@ -2977,6 +4420,43 @@ export default function ConfiguracionGeneralPage() {
 
       <section className="space-y-4 rounded-xl border p-4">
         <CatalogHeader title="Desarrollo local" subtitle="CRUD de catálogo CommunityTerritory" />
+        <div className="flex flex-wrap items-center gap-2">
+          <input
+            accept=".csv,.xlsx"
+            className="hidden"
+            onChange={(event) => {
+              const file = event.target.files?.[0];
+              if (!file) return;
+              void onImportCommunities(file);
+            }}
+            ref={importCommunityInputRef}
+            type="file"
+          />
+          <button
+            className="rounded-md border px-3 py-2 text-sm"
+            disabled={communityImporting}
+            onClick={() => importCommunityInputRef.current?.click()}
+            type="button"
+          >
+            {communityImporting ? "Importando..." : "Importar"}
+          </button>
+          <button
+            className="rounded-md border px-3 py-2 text-sm"
+            disabled={communityExporting}
+            onClick={() => void downloadCommunityExport("csv")}
+            type="button"
+          >
+            {communityExporting ? "Exportando..." : "Exportar CSV"}
+          </button>
+          <button
+            className="rounded-md border px-3 py-2 text-sm"
+            disabled={communityExporting}
+            onClick={() => void downloadCommunityExport("xlsx")}
+            type="button"
+          >
+            {communityExporting ? "Exportando..." : "Exportar Excel"}
+          </button>
+        </div>
         <form className="grid gap-3 md:grid-cols-6" onSubmit={createCommunity}>
           <select className="rounded-md border px-3 py-2" value={communityForm.cityId} onChange={(event) => setCommunityForm((prev) => ({ ...prev, cityId: event.target.value }))}>
             <option value="">Seleccione ciudad</option>
@@ -3005,7 +4485,23 @@ export default function ConfiguracionGeneralPage() {
 
         {cityOptions.length === 0 ? <p className="text-xs text-muted-foreground">No hay ciudades activas cargadas. Debes cargar ciudades para registrar desarrollos locales.</p> : null}
 
-        <input className="w-full rounded-md border px-3 py-2" placeholder="Buscar por código o nombre" value={communitySearch} onChange={(event) => setCommunitySearch(event.target.value)} />
+        <TableToolbar
+          canExport
+          exportLimit={communityExportLimit}
+          limit={communityPagination.limit}
+          onExportLimitChange={setCommunityExportLimit}
+          onLimitChange={(value) => {
+            setCommunityPage(1);
+            setCommunityPagination((prev) => ({ ...prev, limit: value }));
+          }}
+          onSearchChange={(value) => {
+            setCommunityPage(1);
+            setCommunitySearch(value);
+          }}
+          search={communitySearch}
+          searchPlaceholder="Buscar por código, nombre, ciudad, municipio o tipo"
+          total={communityPagination.total}
+        />
         {communityError ? <p className="text-sm text-red-600">{communityError}</p> : null}
         {communityLoading ? <p className="text-sm">Cargando...</p> : null}
 
@@ -3013,12 +4509,60 @@ export default function ConfiguracionGeneralPage() {
           <table className="min-w-full text-sm">
             <thead className="border-b">
               <tr>
-                <th className="px-3 py-2 text-left">Ciudad</th>
-                <th className="px-3 py-2 text-left">Municipio</th>
-                <th className="px-3 py-2 text-left">Tipo</th>
-                <th className="px-3 py-2 text-left">Código</th>
-                <th className="px-3 py-2 text-left">Nombre</th>
-                <th className="px-3 py-2 text-left">Activo</th>
+                <th className="px-3 py-2 text-left">
+                  <SortableHeader
+                    label="Ciudad"
+                    onToggle={toggleCommunitySort}
+                    sortBy={communitySortBy}
+                    sortKey="cityName"
+                    sortOrder={communitySortOrder}
+                  />
+                </th>
+                <th className="px-3 py-2 text-left">
+                  <SortableHeader
+                    label="Municipio"
+                    onToggle={toggleCommunitySort}
+                    sortBy={communitySortBy}
+                    sortKey="municipalityName"
+                    sortOrder={communitySortOrder}
+                  />
+                </th>
+                <th className="px-3 py-2 text-left">
+                  <SortableHeader
+                    label="Tipo"
+                    onToggle={toggleCommunitySort}
+                    sortBy={communitySortBy}
+                    sortKey="type"
+                    sortOrder={communitySortOrder}
+                  />
+                </th>
+                <th className="px-3 py-2 text-left">
+                  <SortableHeader
+                    label="Código"
+                    onToggle={toggleCommunitySort}
+                    sortBy={communitySortBy}
+                    sortKey="code"
+                    sortOrder={communitySortOrder}
+                  />
+                </th>
+                <th className="px-3 py-2 text-left">
+                  <SortableHeader
+                    label="Nombre"
+                    onToggle={toggleCommunitySort}
+                    sortBy={communitySortBy}
+                    sortKey="name"
+                    sortOrder={communitySortOrder}
+                  />
+                </th>
+                <th className="px-3 py-2 text-left">
+                  <SortableHeader
+                    label="Activo"
+                    onToggle={toggleCommunitySort}
+                    sortBy={communitySortBy}
+                    sortKey="isActive"
+                    sortOrder={communitySortOrder}
+                  />
+                </th>
                 <th className="px-3 py-2 text-left">Acciones</th>
               </tr>
             </thead>
@@ -3043,16 +4587,14 @@ export default function ConfiguracionGeneralPage() {
           </table>
         </div>
 
-        <div className="flex items-center justify-between text-sm">
-          <span>Total: {communityPagination.total}</span>
-          <div className="flex items-center gap-2">
-            <button className="rounded border px-2 py-1" disabled={communityPagination.page <= 1} onClick={() => setCommunityPage((prev) => Math.max(1, prev - 1))} type="button">Anterior</button>
-            <span>
-              Página {communityPagination.page} de {Math.max(1, communityPagination.totalPages)}
-            </span>
-            <button className="rounded border px-2 py-1" disabled={communityPagination.page >= communityPagination.totalPages} onClick={() => setCommunityPage((prev) => prev + 1)} type="button">Siguiente</button>
-          </div>
-        </div>
+        <TablePagination
+          loading={communityLoading}
+          onNext={() => setCommunityPage((prev) => Math.min(communityPagination.totalPages, prev + 1))}
+          onPrev={() => setCommunityPage((prev) => Math.max(1, prev - 1))}
+          page={communityPagination.page}
+          total={communityPagination.total}
+          totalPages={Math.max(1, communityPagination.totalPages)}
+        />
 
         {editingCommunity ? (
           <form className="grid gap-3 rounded-lg border p-3 md:grid-cols-6" onSubmit={updateCommunity}>

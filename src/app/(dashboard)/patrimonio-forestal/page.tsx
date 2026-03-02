@@ -1,10 +1,11 @@
 "use client";
 
-import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useDebounce } from "@/hooks/useDebounce";
 import { sileo } from "sileo";
 import { TableToolbar } from "@/components/tables/TableToolbar";
 import { TablePagination } from "@/components/tables/TablePagination";
+import { SortableHeader } from "@/components/tables/SortableHeader";
 
 type Level2Item = {
   id: string;
@@ -65,6 +66,10 @@ type PaginationState = {
 };
 
 type PageAdjustReason = "filtro" | "límite" | "eliminación" | "navegación";
+type Level2SortKey = "code" | "name" | "type" | "totalAreaHa" | "legalStatus" | "isActive";
+type Level3SortKey = "code" | "name" | "type" | "totalAreaHa" | "legalStatus" | "isActive";
+type Level4SortKey = "code" | "name" | "type" | "totalAreaHa" | "legalStatus" | "isActive";
+type Level5SortKey = "code" | "name" | "type" | "shapeType" | "areaM2" | "isActive";
 
 function parseLocaleDecimal(value: string | number) {
   if (typeof value === "number") {
@@ -79,6 +84,10 @@ function parseLocaleDecimal(value: string | number) {
 }
 
 export default function PatrimonioForestalPage() {
+  const importLevel2InputRef = useRef<HTMLInputElement | null>(null);
+  const importLevel3InputRef = useRef<HTMLInputElement | null>(null);
+  const importLevel4InputRef = useRef<HTMLInputElement | null>(null);
+  const importLevel5InputRef = useRef<HTMLInputElement | null>(null);
   const [items, setItems] = useState<Level2Item[]>([]);
   const [level3Items, setLevel3Items] = useState<Level3Item[]>([]);
   const [level4Items, setLevel4Items] = useState<Level4Item[]>([]);
@@ -148,6 +157,27 @@ export default function PatrimonioForestalPage() {
   const [limitLevel3, setLimitLevel3] = useState(25);
   const [limitLevel4, setLimitLevel4] = useState(25);
   const [limitLevel5, setLimitLevel5] = useState(25);
+  const [exportLimitLevel2, setExportLimitLevel2] = useState(100);
+  const [importingLevel2, setImportingLevel2] = useState(false);
+  const [exportingLevel2, setExportingLevel2] = useState(false);
+  const [exportLimitLevel3, setExportLimitLevel3] = useState(100);
+  const [importingLevel3, setImportingLevel3] = useState(false);
+  const [exportingLevel3, setExportingLevel3] = useState(false);
+  const [exportLimitLevel4, setExportLimitLevel4] = useState(100);
+  const [importingLevel4, setImportingLevel4] = useState(false);
+  const [exportingLevel4, setExportingLevel4] = useState(false);
+  const [exportLimitLevel5, setExportLimitLevel5] = useState(100);
+  const [importingLevel5, setImportingLevel5] = useState(false);
+  const [exportingLevel5, setExportingLevel5] = useState(false);
+
+  const [sortByLevel2, setSortByLevel2] = useState<Level2SortKey>("code");
+  const [sortOrderLevel2, setSortOrderLevel2] = useState<"asc" | "desc">("asc");
+  const [sortByLevel3, setSortByLevel3] = useState<Level3SortKey>("code");
+  const [sortOrderLevel3, setSortOrderLevel3] = useState<"asc" | "desc">("asc");
+  const [sortByLevel4, setSortByLevel4] = useState<Level4SortKey>("code");
+  const [sortOrderLevel4, setSortOrderLevel4] = useState<"asc" | "desc">("asc");
+  const [sortByLevel5, setSortByLevel5] = useState<Level5SortKey>("code");
+  const [sortOrderLevel5, setSortOrderLevel5] = useState<"asc" | "desc">("asc");
 
   const [paginationLevel2, setPaginationLevel2] = useState<PaginationState>({ page: 1, totalPages: 1, total: 0, limit: 25 });
   const [paginationLevel3, setPaginationLevel3] = useState<PaginationState>({ page: 1, totalPages: 1, total: 0, limit: 25 });
@@ -207,6 +237,724 @@ export default function PatrimonioForestalPage() {
     const totalAreaHa = parseLocaleDecimal(form.totalAreaHa);
     return form.code.trim().length > 0 && form.name.trim().length > 1 && totalAreaHa > 0;
   }, [form]);
+
+  const sortedLevel2Items = useMemo(() => {
+    const direction = sortOrderLevel2 === "asc" ? 1 : -1;
+    const data = [...items];
+
+    data.sort((left, right) => {
+      if (sortByLevel2 === "isActive") {
+        return ((left.isActive ? 1 : 0) - (right.isActive ? 1 : 0)) * direction;
+      }
+
+      if (sortByLevel2 === "totalAreaHa") {
+        const leftArea = parseLocaleDecimal(left.totalAreaHa);
+        const rightArea = parseLocaleDecimal(right.totalAreaHa);
+        return ((Number.isFinite(leftArea) ? leftArea : 0) - (Number.isFinite(rightArea) ? rightArea : 0)) * direction;
+      }
+
+      const leftValue =
+        sortByLevel2 === "code"
+          ? left.code
+          : sortByLevel2 === "name"
+            ? left.name
+            : sortByLevel2 === "type"
+              ? left.type
+              : left.legalStatus ?? "";
+
+      const rightValue =
+        sortByLevel2 === "code"
+          ? right.code
+          : sortByLevel2 === "name"
+            ? right.name
+            : sortByLevel2 === "type"
+              ? right.type
+              : right.legalStatus ?? "";
+
+      return String(leftValue).localeCompare(String(rightValue), "es", { sensitivity: "base" }) * direction;
+    });
+
+    return data;
+  }, [items, sortByLevel2, sortOrderLevel2]);
+
+  function toggleSortLevel2(nextSortBy: string) {
+    const sortKey = nextSortBy as Level2SortKey;
+    const isSameColumn = sortByLevel2 === sortKey;
+    setSortByLevel2(sortKey);
+    setSortOrderLevel2(isSameColumn ? (sortOrderLevel2 === "asc" ? "desc" : "asc") : "asc");
+  }
+
+  const sortedLevel3Items = useMemo(() => {
+    const direction = sortOrderLevel3 === "asc" ? 1 : -1;
+    const data = [...level3Items];
+
+    data.sort((left, right) => {
+      if (sortByLevel3 === "isActive") {
+        return ((left.isActive ? 1 : 0) - (right.isActive ? 1 : 0)) * direction;
+      }
+
+      if (sortByLevel3 === "totalAreaHa") {
+        const leftArea = parseLocaleDecimal(left.totalAreaHa);
+        const rightArea = parseLocaleDecimal(right.totalAreaHa);
+        return ((Number.isFinite(leftArea) ? leftArea : 0) - (Number.isFinite(rightArea) ? rightArea : 0)) * direction;
+      }
+
+      const leftValue =
+        sortByLevel3 === "code"
+          ? left.code
+          : sortByLevel3 === "name"
+            ? left.name
+            : sortByLevel3 === "type"
+              ? left.type
+              : left.legalStatus ?? "";
+
+      const rightValue =
+        sortByLevel3 === "code"
+          ? right.code
+          : sortByLevel3 === "name"
+            ? right.name
+            : sortByLevel3 === "type"
+              ? right.type
+              : right.legalStatus ?? "";
+
+      return String(leftValue).localeCompare(String(rightValue), "es", { sensitivity: "base" }) * direction;
+    });
+
+    return data;
+  }, [level3Items, sortByLevel3, sortOrderLevel3]);
+
+  function toggleSortLevel3(nextSortBy: string) {
+    const sortKey = nextSortBy as Level3SortKey;
+    const isSameColumn = sortByLevel3 === sortKey;
+    setSortByLevel3(sortKey);
+    setSortOrderLevel3(isSameColumn ? (sortOrderLevel3 === "asc" ? "desc" : "asc") : "asc");
+  }
+
+  const sortedLevel4Items = useMemo(() => {
+    const direction = sortOrderLevel4 === "asc" ? 1 : -1;
+    const data = [...level4Items];
+
+    data.sort((left, right) => {
+      if (sortByLevel4 === "isActive") {
+        return ((left.isActive ? 1 : 0) - (right.isActive ? 1 : 0)) * direction;
+      }
+
+      if (sortByLevel4 === "totalAreaHa") {
+        const leftArea = parseLocaleDecimal(left.totalAreaHa);
+        const rightArea = parseLocaleDecimal(right.totalAreaHa);
+        return ((Number.isFinite(leftArea) ? leftArea : 0) - (Number.isFinite(rightArea) ? rightArea : 0)) * direction;
+      }
+
+      const leftValue =
+        sortByLevel4 === "code"
+          ? left.code
+          : sortByLevel4 === "name"
+            ? left.name
+            : sortByLevel4 === "type"
+              ? left.type
+              : left.legalStatus ?? "";
+
+      const rightValue =
+        sortByLevel4 === "code"
+          ? right.code
+          : sortByLevel4 === "name"
+            ? right.name
+            : sortByLevel4 === "type"
+              ? right.type
+              : right.legalStatus ?? "";
+
+      return String(leftValue).localeCompare(String(rightValue), "es", { sensitivity: "base" }) * direction;
+    });
+
+    return data;
+  }, [level4Items, sortByLevel4, sortOrderLevel4]);
+
+  function toggleSortLevel4(nextSortBy: string) {
+    const sortKey = nextSortBy as Level4SortKey;
+    const isSameColumn = sortByLevel4 === sortKey;
+    setSortByLevel4(sortKey);
+    setSortOrderLevel4(isSameColumn ? (sortOrderLevel4 === "asc" ? "desc" : "asc") : "asc");
+  }
+
+  const sortedLevel5Items = useMemo(() => {
+    const direction = sortOrderLevel5 === "asc" ? 1 : -1;
+    const data = [...level5Items];
+
+    data.sort((left, right) => {
+      if (sortByLevel5 === "isActive") {
+        return ((left.isActive ? 1 : 0) - (right.isActive ? 1 : 0)) * direction;
+      }
+
+      if (sortByLevel5 === "areaM2") {
+        const leftArea = parseLocaleDecimal(left.areaM2);
+        const rightArea = parseLocaleDecimal(right.areaM2);
+        return ((Number.isFinite(leftArea) ? leftArea : 0) - (Number.isFinite(rightArea) ? rightArea : 0)) * direction;
+      }
+
+      const leftValue =
+        sortByLevel5 === "code"
+          ? left.code
+          : sortByLevel5 === "name"
+            ? left.name
+            : sortByLevel5 === "type"
+              ? left.type
+              : sortByLevel5 === "shapeType"
+                ? left.shapeType
+                : "";
+
+      const rightValue =
+        sortByLevel5 === "code"
+          ? right.code
+          : sortByLevel5 === "name"
+            ? right.name
+            : sortByLevel5 === "type"
+              ? right.type
+              : sortByLevel5 === "shapeType"
+                ? right.shapeType
+                : "";
+
+      return String(leftValue).localeCompare(String(rightValue), "es", { sensitivity: "base" }) * direction;
+    });
+
+    return data;
+  }, [level5Items, sortByLevel5, sortOrderLevel5]);
+
+  function toggleSortLevel5(nextSortBy: string) {
+    const sortKey = nextSortBy as Level5SortKey;
+    const isSameColumn = sortByLevel5 === sortKey;
+    setSortByLevel5(sortKey);
+    setSortOrderLevel5(isSameColumn ? (sortOrderLevel5 === "asc" ? "desc" : "asc") : "asc");
+  }
+
+  async function downloadLevel2Export(format: "csv" | "xlsx") {
+    try {
+      setExportingLevel2(true);
+      setError(null);
+
+      const params = new URLSearchParams({
+        level: "2",
+        format,
+        limit: String(exportLimitLevel2),
+        sortBy: sortByLevel2,
+        sortOrder: sortOrderLevel2,
+      });
+
+      const trimmedSearch = debouncedSearchLevel2.trim();
+      if (trimmedSearch) {
+        params.set("search", trimmedSearch);
+      }
+
+      const response = await fetch(`/api/forest/patrimony/export?${params.toString()}`, {
+        method: "GET",
+      });
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        throw new Error(payload?.error ?? "No fue posible exportar nivel 2");
+      }
+
+      const blob = await response.blob();
+      const disposition = response.headers.get("content-disposition") ?? "";
+      const match = disposition.match(/filename=\"?([^\";]+)\"?/i);
+      const filename = match?.[1] ?? `patrimonio_nivel2.${format}`;
+
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = filename;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(url);
+
+      sileo.success({
+        title: "Exportación lista",
+        description: `Se generó el archivo correctamente (máx. ${exportLimitLevel2} registros).`,
+      });
+    } catch (exportError) {
+      const message = exportError instanceof Error ? exportError.message : "Error desconocido";
+      setError(message);
+      sileo.error({
+        title: "No se pudo exportar",
+        description: message,
+      });
+    } finally {
+      setExportingLevel2(false);
+    }
+  }
+
+  async function onImportLevel2(file: File) {
+    try {
+      setImportingLevel2(true);
+      setError(null);
+
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("level", "2");
+
+      const response = await fetch("/api/forest/patrimony/import", {
+        method: "POST",
+        body: formData,
+      });
+
+      const payload = await response.json().catch(() => null);
+      if (!response.ok || !payload?.success) {
+        throw new Error(payload?.error ?? "No fue posible importar nivel 2");
+      }
+
+      const result = payload?.data as
+        | {
+            created: number;
+            updated: number;
+            skipped: number;
+            errors: Array<{ row: number; code?: string; error: string }>;
+          }
+        | undefined;
+
+      await loadLevel2(debouncedSearchLevel2, pageLevel2, limitLevel2);
+
+      const created = result?.created ?? 0;
+      const updated = result?.updated ?? 0;
+      const skipped = result?.skipped ?? 0;
+      const errorCount = result?.errors?.length ?? 0;
+      const description = `Creados: ${created} · Actualizados: ${updated} · Omitidos: ${skipped}`;
+
+      if (errorCount > 0) {
+        sileo.warning({
+          title: "Importación parcial",
+          description: `${description} · Errores: ${errorCount}`,
+        });
+      } else {
+        sileo.success({
+          title: "Importación completada",
+          description,
+        });
+      }
+    } catch (importError) {
+      const message = importError instanceof Error ? importError.message : "Error desconocido";
+      setError(message);
+      sileo.error({
+        title: "No se pudo importar",
+        description: message,
+      });
+    } finally {
+      setImportingLevel2(false);
+      if (importLevel2InputRef.current) {
+        importLevel2InputRef.current.value = "";
+      }
+    }
+  }
+
+  async function downloadLevel3Export(format: "csv" | "xlsx") {
+    if (!selectedLevel2Id) {
+      sileo.warning({
+        title: "Nivel 2 requerido",
+        description: "Selecciona un nivel 2 para exportar registros de nivel 3.",
+      });
+      return;
+    }
+
+    try {
+      setExportingLevel3(true);
+      setError(null);
+
+      const params = new URLSearchParams({
+        level: "3",
+        parentId: selectedLevel2Id,
+        format,
+        limit: String(exportLimitLevel3),
+        sortBy: sortByLevel3,
+        sortOrder: sortOrderLevel3,
+      });
+
+      const trimmedSearch = debouncedSearchLevel3.trim();
+      if (trimmedSearch) {
+        params.set("search", trimmedSearch);
+      }
+
+      const response = await fetch(`/api/forest/patrimony/export?${params.toString()}`, {
+        method: "GET",
+      });
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        throw new Error(payload?.error ?? "No fue posible exportar nivel 3");
+      }
+
+      const blob = await response.blob();
+      const disposition = response.headers.get("content-disposition") ?? "";
+      const match = disposition.match(/filename=\"?([^\";]+)\"?/i);
+      const filename = match?.[1] ?? `patrimonio_nivel3.${format}`;
+
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = filename;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(url);
+
+      sileo.success({
+        title: "Exportación lista",
+        description: `Se generó el archivo correctamente (máx. ${exportLimitLevel3} registros).`,
+      });
+    } catch (exportError) {
+      const message = exportError instanceof Error ? exportError.message : "Error desconocido";
+      setError(message);
+      sileo.error({
+        title: "No se pudo exportar",
+        description: message,
+      });
+    } finally {
+      setExportingLevel3(false);
+    }
+  }
+
+  async function onImportLevel3(file: File) {
+    if (!selectedLevel2Id) {
+      sileo.warning({
+        title: "Nivel 2 requerido",
+        description: "Selecciona un nivel 2 para importar registros de nivel 3.",
+      });
+      return;
+    }
+
+    try {
+      setImportingLevel3(true);
+      setError(null);
+
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("level", "3");
+      formData.append("parentId", selectedLevel2Id);
+
+      const response = await fetch("/api/forest/patrimony/import", {
+        method: "POST",
+        body: formData,
+      });
+
+      const payload = await response.json().catch(() => null);
+      if (!response.ok || !payload?.success) {
+        throw new Error(payload?.error ?? "No fue posible importar nivel 3");
+      }
+
+      const result = payload?.data as
+        | {
+            created: number;
+            updated: number;
+            skipped: number;
+            errors: Array<{ row: number; code?: string; error: string }>;
+          }
+        | undefined;
+
+      await loadLevel3(selectedLevel2Id, debouncedSearchLevel3, pageLevel3, limitLevel3);
+
+      const created = result?.created ?? 0;
+      const updated = result?.updated ?? 0;
+      const skipped = result?.skipped ?? 0;
+      const errorCount = result?.errors?.length ?? 0;
+      const description = `Creados: ${created} · Actualizados: ${updated} · Omitidos: ${skipped}`;
+
+      if (errorCount > 0) {
+        sileo.warning({
+          title: "Importación parcial",
+          description: `${description} · Errores: ${errorCount}`,
+        });
+      } else {
+        sileo.success({
+          title: "Importación completada",
+          description,
+        });
+      }
+    } catch (importError) {
+      const message = importError instanceof Error ? importError.message : "Error desconocido";
+      setError(message);
+      sileo.error({
+        title: "No se pudo importar",
+        description: message,
+      });
+    } finally {
+      setImportingLevel3(false);
+      if (importLevel3InputRef.current) {
+        importLevel3InputRef.current.value = "";
+      }
+    }
+  }
+
+  async function downloadLevel4Export(format: "csv" | "xlsx") {
+    if (!selectedLevel3Id) {
+      sileo.warning({
+        title: "Nivel 3 requerido",
+        description: "Selecciona un nivel 3 para exportar registros de nivel 4.",
+      });
+      return;
+    }
+
+    try {
+      setExportingLevel4(true);
+      setError(null);
+
+      const params = new URLSearchParams({
+        level: "4",
+        parentId: selectedLevel3Id,
+        format,
+        limit: String(exportLimitLevel4),
+        sortBy: sortByLevel4,
+        sortOrder: sortOrderLevel4,
+      });
+
+      const trimmedSearch = debouncedSearchLevel4.trim();
+      if (trimmedSearch) {
+        params.set("search", trimmedSearch);
+      }
+
+      const response = await fetch(`/api/forest/patrimony/export?${params.toString()}`, {
+        method: "GET",
+      });
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        throw new Error(payload?.error ?? "No fue posible exportar nivel 4");
+      }
+
+      const blob = await response.blob();
+      const disposition = response.headers.get("content-disposition") ?? "";
+      const match = disposition.match(/filename=\"?([^\";]+)\"?/i);
+      const filename = match?.[1] ?? `patrimonio_nivel4.${format}`;
+
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = filename;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(url);
+
+      sileo.success({
+        title: "Exportación lista",
+        description: `Se generó el archivo correctamente (máx. ${exportLimitLevel4} registros).`,
+      });
+    } catch (exportError) {
+      const message = exportError instanceof Error ? exportError.message : "Error desconocido";
+      setError(message);
+      sileo.error({
+        title: "No se pudo exportar",
+        description: message,
+      });
+    } finally {
+      setExportingLevel4(false);
+    }
+  }
+
+  async function onImportLevel4(file: File) {
+    if (!selectedLevel3Id) {
+      sileo.warning({
+        title: "Nivel 3 requerido",
+        description: "Selecciona un nivel 3 para importar registros de nivel 4.",
+      });
+      return;
+    }
+
+    try {
+      setImportingLevel4(true);
+      setError(null);
+
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("level", "4");
+      formData.append("parentId", selectedLevel3Id);
+
+      const response = await fetch("/api/forest/patrimony/import", {
+        method: "POST",
+        body: formData,
+      });
+
+      const payload = await response.json().catch(() => null);
+      if (!response.ok || !payload?.success) {
+        throw new Error(payload?.error ?? "No fue posible importar nivel 4");
+      }
+
+      const result = payload?.data as
+        | {
+            created: number;
+            updated: number;
+            skipped: number;
+            errors: Array<{ row: number; code?: string; error: string }>;
+          }
+        | undefined;
+
+      await loadLevel4(selectedLevel3Id, debouncedSearchLevel4, pageLevel4, limitLevel4);
+
+      const created = result?.created ?? 0;
+      const updated = result?.updated ?? 0;
+      const skipped = result?.skipped ?? 0;
+      const errorCount = result?.errors?.length ?? 0;
+      const description = `Creados: ${created} · Actualizados: ${updated} · Omitidos: ${skipped}`;
+
+      if (errorCount > 0) {
+        sileo.warning({
+          title: "Importación parcial",
+          description: `${description} · Errores: ${errorCount}`,
+        });
+      } else {
+        sileo.success({
+          title: "Importación completada",
+          description,
+        });
+      }
+    } catch (importError) {
+      const message = importError instanceof Error ? importError.message : "Error desconocido";
+      setError(message);
+      sileo.error({
+        title: "No se pudo importar",
+        description: message,
+      });
+    } finally {
+      setImportingLevel4(false);
+      if (importLevel4InputRef.current) {
+        importLevel4InputRef.current.value = "";
+      }
+    }
+  }
+
+  async function downloadLevel5Export(format: "csv" | "xlsx") {
+    if (!selectedLevel4Id) {
+      sileo.warning({
+        title: "Nivel 4 requerido",
+        description: "Selecciona un nivel 4 para exportar registros de nivel 5.",
+      });
+      return;
+    }
+
+    try {
+      setExportingLevel5(true);
+      setError(null);
+
+      const params = new URLSearchParams({
+        level: "5",
+        parentId: selectedLevel4Id,
+        format,
+        limit: String(exportLimitLevel5),
+        sortBy: sortByLevel5,
+        sortOrder: sortOrderLevel5,
+      });
+
+      const trimmedSearch = debouncedSearchLevel5.trim();
+      if (trimmedSearch) {
+        params.set("search", trimmedSearch);
+      }
+
+      const response = await fetch(`/api/forest/patrimony/export?${params.toString()}`, {
+        method: "GET",
+      });
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        throw new Error(payload?.error ?? "No fue posible exportar nivel 5");
+      }
+
+      const blob = await response.blob();
+      const disposition = response.headers.get("content-disposition") ?? "";
+      const match = disposition.match(/filename=\"?([^\";]+)\"?/i);
+      const filename = match?.[1] ?? `patrimonio_nivel5.${format}`;
+
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = filename;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(url);
+
+      sileo.success({
+        title: "Exportación lista",
+        description: `Se generó el archivo correctamente (máx. ${exportLimitLevel5} registros).`,
+      });
+    } catch (exportError) {
+      const message = exportError instanceof Error ? exportError.message : "Error desconocido";
+      setError(message);
+      sileo.error({
+        title: "No se pudo exportar",
+        description: message,
+      });
+    } finally {
+      setExportingLevel5(false);
+    }
+  }
+
+  async function onImportLevel5(file: File) {
+    if (!selectedLevel4Id) {
+      sileo.warning({
+        title: "Nivel 4 requerido",
+        description: "Selecciona un nivel 4 para importar registros de nivel 5.",
+      });
+      return;
+    }
+
+    try {
+      setImportingLevel5(true);
+      setError(null);
+
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("level", "5");
+      formData.append("parentId", selectedLevel4Id);
+
+      const response = await fetch("/api/forest/patrimony/import", {
+        method: "POST",
+        body: formData,
+      });
+
+      const payload = await response.json().catch(() => null);
+      if (!response.ok || !payload?.success) {
+        throw new Error(payload?.error ?? "No fue posible importar nivel 5");
+      }
+
+      const result = payload?.data as
+        | {
+            created: number;
+            updated: number;
+            skipped: number;
+            errors: Array<{ row: number; code?: string; error: string }>;
+          }
+        | undefined;
+
+      await loadLevel5(selectedLevel4Id, debouncedSearchLevel5, pageLevel5, limitLevel5);
+
+      const created = result?.created ?? 0;
+      const updated = result?.updated ?? 0;
+      const skipped = result?.skipped ?? 0;
+      const errorCount = result?.errors?.length ?? 0;
+      const description = `Creados: ${created} · Actualizados: ${updated} · Omitidos: ${skipped}`;
+
+      if (errorCount > 0) {
+        sileo.warning({
+          title: "Importación parcial",
+          description: `${description} · Errores: ${errorCount}`,
+        });
+      } else {
+        sileo.success({
+          title: "Importación completada",
+          description,
+        });
+      }
+    } catch (importError) {
+      const message = importError instanceof Error ? importError.message : "Error desconocido";
+      setError(message);
+      sileo.error({
+        title: "No se pudo importar",
+        description: message,
+      });
+    } finally {
+      setImportingLevel5(false);
+      if (importLevel5InputRef.current) {
+        importLevel5InputRef.current.value = "";
+      }
+    }
+  }
 
   const loadLevel2 = useCallback(async (search = "", page = 1, limit = 25) => {
     setLoading(true);
@@ -1255,10 +2003,51 @@ export default function PatrimonioForestalPage() {
       </section>
 
       <section className="rounded-lg border p-4">
-        <h2 className="text-lg font-medium">Registros Nivel 2</h2>
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="text-lg font-medium">Registros Nivel 2</h2>
+          <div className="flex items-center gap-2">
+            <input
+              accept=".csv,.xlsx"
+              className="hidden"
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+                if (file) void onImportLevel2(file);
+              }}
+              ref={importLevel2InputRef}
+              type="file"
+            />
+            <button
+              className="rounded-md border px-3 py-2 text-sm disabled:opacity-60"
+              disabled={importingLevel2 || submitting}
+              onClick={() => importLevel2InputRef.current?.click()}
+              type="button"
+            >
+              Importar
+            </button>
+            <button
+              className="rounded-md border px-3 py-2 text-sm disabled:opacity-60"
+              disabled={exportingLevel2 || submitting}
+              onClick={() => void downloadLevel2Export("csv")}
+              type="button"
+            >
+              Exportar CSV
+            </button>
+            <button
+              className="rounded-md border px-3 py-2 text-sm disabled:opacity-60"
+              disabled={exportingLevel2 || submitting}
+              onClick={() => void downloadLevel2Export("xlsx")}
+              type="button"
+            >
+              Exportar Excel
+            </button>
+          </div>
+        </div>
         <div className="mt-3">
           <TableToolbar
+            canExport
+            exportLimit={exportLimitLevel2}
             limit={limitLevel2}
+            onExportLimitChange={(value) => setExportLimitLevel2(value)}
             onLimitChange={(value) => {
               setPageAdjustReason("límite");
               setPageLevel2(1);
@@ -1280,17 +2069,47 @@ export default function PatrimonioForestalPage() {
           <table className="w-full text-left text-sm">
             <thead>
               <tr className="border-b">
-                <th className="px-3 py-2">Código</th>
-                <th className="px-3 py-2">Nombre</th>
-                <th className="px-3 py-2">Tipo</th>
-                <th className="px-3 py-2">Superficie (ha)</th>
-                <th className="px-3 py-2">Estado legal</th>
-                <th className="px-3 py-2">Estatus</th>
+                <th className="px-3 py-2">
+                  <SortableHeader label="Código" onToggle={toggleSortLevel2} sortBy={sortByLevel2} sortKey="code" sortOrder={sortOrderLevel2} />
+                </th>
+                <th className="px-3 py-2">
+                  <SortableHeader label="Nombre" onToggle={toggleSortLevel2} sortBy={sortByLevel2} sortKey="name" sortOrder={sortOrderLevel2} />
+                </th>
+                <th className="px-3 py-2">
+                  <SortableHeader label="Tipo" onToggle={toggleSortLevel2} sortBy={sortByLevel2} sortKey="type" sortOrder={sortOrderLevel2} />
+                </th>
+                <th className="px-3 py-2">
+                  <SortableHeader
+                    label="Superficie (ha)"
+                    onToggle={toggleSortLevel2}
+                    sortBy={sortByLevel2}
+                    sortKey="totalAreaHa"
+                    sortOrder={sortOrderLevel2}
+                  />
+                </th>
+                <th className="px-3 py-2">
+                  <SortableHeader
+                    label="Estado legal"
+                    onToggle={toggleSortLevel2}
+                    sortBy={sortByLevel2}
+                    sortKey="legalStatus"
+                    sortOrder={sortOrderLevel2}
+                  />
+                </th>
+                <th className="px-3 py-2">
+                  <SortableHeader
+                    label="Estatus"
+                    onToggle={toggleSortLevel2}
+                    sortBy={sortByLevel2}
+                    sortKey="isActive"
+                    sortOrder={sortOrderLevel2}
+                  />
+                </th>
                 <th className="px-3 py-2">Acciones</th>
               </tr>
             </thead>
             <tbody>
-              {items.map((item) => (
+              {sortedLevel2Items.map((item) => (
                 <tr className="border-b" key={item.id}>
                   <td className="px-3 py-2">
                     {editingLevel2Id === item.id ? (
@@ -1659,9 +2478,50 @@ export default function PatrimonioForestalPage() {
         </div>
 
         <div className="mt-5 grid gap-4 md:grid-cols-1">
-          <h3 className="font-medium">Nivel 3</h3>
+          <div className="flex items-center justify-between gap-3">
+            <h3 className="font-medium">Nivel 3</h3>
+            <div className="flex items-center gap-2">
+              <input
+                accept=".csv,.xlsx"
+                className="hidden"
+                onChange={(event) => {
+                  const file = event.target.files?.[0];
+                  if (file) void onImportLevel3(file);
+                }}
+                ref={importLevel3InputRef}
+                type="file"
+              />
+              <button
+                className="rounded-md border px-3 py-2 text-sm disabled:opacity-60"
+                disabled={importingLevel3 || submitting || !selectedLevel2Id}
+                onClick={() => importLevel3InputRef.current?.click()}
+                type="button"
+              >
+                Importar
+              </button>
+              <button
+                className="rounded-md border px-3 py-2 text-sm disabled:opacity-60"
+                disabled={exportingLevel3 || submitting || !selectedLevel2Id}
+                onClick={() => void downloadLevel3Export("csv")}
+                type="button"
+              >
+                Exportar CSV
+              </button>
+              <button
+                className="rounded-md border px-3 py-2 text-sm disabled:opacity-60"
+                disabled={exportingLevel3 || submitting || !selectedLevel2Id}
+                onClick={() => void downloadLevel3Export("xlsx")}
+                type="button"
+              >
+                Exportar Excel
+              </button>
+            </div>
+          </div>
           <TableToolbar
+            canExport
+            exportLimit={exportLimitLevel3}
             limit={limitLevel3}
+            onExportLimitChange={(value) => setExportLimitLevel3(value)}
             onLimitChange={(value) => {
               setPageAdjustReason("límite");
               setPageLevel3(1);
@@ -1680,14 +2540,47 @@ export default function PatrimonioForestalPage() {
             <table className="w-full text-left text-sm">
               <thead>
                 <tr className="border-b">
-                  <th className="px-3 py-2">Código</th>
-                  <th className="px-3 py-2">Nombre</th>
-                  <th className="px-3 py-2">Superficie (ha)</th>
+                  <th className="px-3 py-2">
+                    <SortableHeader label="Código" onToggle={toggleSortLevel3} sortBy={sortByLevel3} sortKey="code" sortOrder={sortOrderLevel3} />
+                  </th>
+                  <th className="px-3 py-2">
+                    <SortableHeader label="Nombre" onToggle={toggleSortLevel3} sortBy={sortByLevel3} sortKey="name" sortOrder={sortOrderLevel3} />
+                  </th>
+                  <th className="px-3 py-2">
+                    <SortableHeader label="Tipo" onToggle={toggleSortLevel3} sortBy={sortByLevel3} sortKey="type" sortOrder={sortOrderLevel3} />
+                  </th>
+                  <th className="px-3 py-2">
+                    <SortableHeader
+                      label="Superficie (ha)"
+                      onToggle={toggleSortLevel3}
+                      sortBy={sortByLevel3}
+                      sortKey="totalAreaHa"
+                      sortOrder={sortOrderLevel3}
+                    />
+                  </th>
+                  <th className="px-3 py-2">
+                    <SortableHeader
+                      label="Estado legal"
+                      onToggle={toggleSortLevel3}
+                      sortBy={sortByLevel3}
+                      sortKey="legalStatus"
+                      sortOrder={sortOrderLevel3}
+                    />
+                  </th>
+                  <th className="px-3 py-2">
+                    <SortableHeader
+                      label="Estatus"
+                      onToggle={toggleSortLevel3}
+                      sortBy={sortByLevel3}
+                      sortKey="isActive"
+                      sortOrder={sortOrderLevel3}
+                    />
+                  </th>
                   <th className="px-3 py-2">Acciones</th>
                 </tr>
               </thead>
               <tbody>
-                {level3Items.map((item) => (
+                {sortedLevel3Items.map((item) => (
                   <tr className="border-b" key={item.id}>
                     <td className="px-3 py-2">
                       {editingLevel3Id === item.id ? (
@@ -1888,9 +2781,50 @@ export default function PatrimonioForestalPage() {
 
 
           <div className="mt-5 grid gap-4 md:grid-cols-1">
-            <h3 className="font-medium">Nivel 4</h3>
+            <div className="flex items-center justify-between gap-3">
+              <h3 className="font-medium">Nivel 4</h3>
+              <div className="flex items-center gap-2">
+                <input
+                  accept=".csv,.xlsx"
+                  className="hidden"
+                  onChange={(event) => {
+                    const file = event.target.files?.[0];
+                    if (file) void onImportLevel4(file);
+                  }}
+                  ref={importLevel4InputRef}
+                  type="file"
+                />
+                <button
+                  className="rounded-md border px-3 py-2 text-sm disabled:opacity-60"
+                  disabled={importingLevel4 || submitting || !selectedLevel3Id}
+                  onClick={() => importLevel4InputRef.current?.click()}
+                  type="button"
+                >
+                  Importar
+                </button>
+                <button
+                  className="rounded-md border px-3 py-2 text-sm disabled:opacity-60"
+                  disabled={exportingLevel4 || submitting || !selectedLevel3Id}
+                  onClick={() => void downloadLevel4Export("csv")}
+                  type="button"
+                >
+                  Exportar CSV
+                </button>
+                <button
+                  className="rounded-md border px-3 py-2 text-sm disabled:opacity-60"
+                  disabled={exportingLevel4 || submitting || !selectedLevel3Id}
+                  onClick={() => void downloadLevel4Export("xlsx")}
+                  type="button"
+                >
+                  Exportar Excel
+                </button>
+              </div>
+            </div>
             <TableToolbar
+              canExport
+              exportLimit={exportLimitLevel4}
               limit={limitLevel4}
+              onExportLimitChange={(value) => setExportLimitLevel4(value)}
               onLimitChange={(value) => {
                 setPageAdjustReason("límite");
                 setPageLevel4(1);
@@ -1909,14 +2843,47 @@ export default function PatrimonioForestalPage() {
               <table className="w-full text-left text-sm">
                 <thead>
                   <tr className="border-b">
-                    <th className="px-3 py-2">Código</th>
-                    <th className="px-3 py-2">Nombre</th>
-                    <th className="px-3 py-2">Superficie (ha)</th>
+                    <th className="px-3 py-2">
+                      <SortableHeader label="Código" onToggle={toggleSortLevel4} sortBy={sortByLevel4} sortKey="code" sortOrder={sortOrderLevel4} />
+                    </th>
+                    <th className="px-3 py-2">
+                      <SortableHeader label="Nombre" onToggle={toggleSortLevel4} sortBy={sortByLevel4} sortKey="name" sortOrder={sortOrderLevel4} />
+                    </th>
+                    <th className="px-3 py-2">
+                      <SortableHeader label="Tipo" onToggle={toggleSortLevel4} sortBy={sortByLevel4} sortKey="type" sortOrder={sortOrderLevel4} />
+                    </th>
+                    <th className="px-3 py-2">
+                      <SortableHeader
+                        label="Superficie (ha)"
+                        onToggle={toggleSortLevel4}
+                        sortBy={sortByLevel4}
+                        sortKey="totalAreaHa"
+                        sortOrder={sortOrderLevel4}
+                      />
+                    </th>
+                    <th className="px-3 py-2">
+                      <SortableHeader
+                        label="Estado legal"
+                        onToggle={toggleSortLevel4}
+                        sortBy={sortByLevel4}
+                        sortKey="legalStatus"
+                        sortOrder={sortOrderLevel4}
+                      />
+                    </th>
+                    <th className="px-3 py-2">
+                      <SortableHeader
+                        label="Estatus"
+                        onToggle={toggleSortLevel4}
+                        sortBy={sortByLevel4}
+                        sortKey="isActive"
+                        sortOrder={sortOrderLevel4}
+                      />
+                    </th>
                     <th className="px-3 py-2">Acciones</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {level4Items.map((item) => (
+                  {sortedLevel4Items.map((item) => (
                     <tr className="border-b" key={item.id}>
                       <td className="px-3 py-2">
                         {editingLevel4Id === item.id ? (
@@ -2153,9 +3120,50 @@ export default function PatrimonioForestalPage() {
           </button>
         </form>
         <div className="rounded-md border p-3">
-          <h3 className="font-medium">Nivel 5</h3>
+          <div className="flex items-center justify-between gap-3">
+            <h3 className="font-medium">Nivel 5</h3>
+            <div className="flex items-center gap-2">
+              <input
+                accept=".csv,.xlsx"
+                className="hidden"
+                onChange={(event) => {
+                  const file = event.target.files?.[0];
+                  if (file) void onImportLevel5(file);
+                }}
+                ref={importLevel5InputRef}
+                type="file"
+              />
+              <button
+                className="rounded-md border px-3 py-2 text-sm disabled:opacity-60"
+                disabled={importingLevel5 || submitting || !selectedLevel4Id}
+                onClick={() => importLevel5InputRef.current?.click()}
+                type="button"
+              >
+                Importar
+              </button>
+              <button
+                className="rounded-md border px-3 py-2 text-sm disabled:opacity-60"
+                disabled={exportingLevel5 || submitting || !selectedLevel4Id}
+                onClick={() => void downloadLevel5Export("csv")}
+                type="button"
+              >
+                Exportar CSV
+              </button>
+              <button
+                className="rounded-md border px-3 py-2 text-sm disabled:opacity-60"
+                disabled={exportingLevel5 || submitting || !selectedLevel4Id}
+                onClick={() => void downloadLevel5Export("xlsx")}
+                type="button"
+              >
+                Exportar Excel
+              </button>
+            </div>
+          </div>
           <TableToolbar
+            canExport
+            exportLimit={exportLimitLevel5}
             limit={limitLevel5}
+            onExportLimitChange={(value) => setExportLimitLevel5(value)}
             onLimitChange={(value) => {
               setPageAdjustReason("límite");
               setPageLevel5(1);
@@ -2174,20 +3182,36 @@ export default function PatrimonioForestalPage() {
             <table className="w-full text-left text-sm">
               <thead>
                 <tr className="border-b">
-                  <th className="px-3 py-2">Codigo</th>
-                  <th className="px-3 py-2">Nombre</th>
-                  <th className="px-3 py-2">Tipo</th>
-                  <th className="px-3 py-2">Area (m2)</th>
+                  <th className="px-3 py-2">
+                    <SortableHeader label="Código" onToggle={toggleSortLevel5} sortBy={sortByLevel5} sortKey="code" sortOrder={sortOrderLevel5} />
+                  </th>
+                  <th className="px-3 py-2">
+                    <SortableHeader label="Nombre" onToggle={toggleSortLevel5} sortBy={sortByLevel5} sortKey="name" sortOrder={sortOrderLevel5} />
+                  </th>
+                  <th className="px-3 py-2">
+                    <SortableHeader label="Tipo" onToggle={toggleSortLevel5} sortBy={sortByLevel5} sortKey="type" sortOrder={sortOrderLevel5} />
+                  </th>
+                  <th className="px-3 py-2">
+                    <SortableHeader label="Forma" onToggle={toggleSortLevel5} sortBy={sortByLevel5} sortKey="shapeType" sortOrder={sortOrderLevel5} />
+                  </th>
+                  <th className="px-3 py-2">
+                    <SortableHeader label="Area (m2)" onToggle={toggleSortLevel5} sortBy={sortByLevel5} sortKey="areaM2" sortOrder={sortOrderLevel5} />
+                  </th>
+                  <th className="px-3 py-2">
+                    <SortableHeader label="Estatus" onToggle={toggleSortLevel5} sortBy={sortByLevel5} sortKey="isActive" sortOrder={sortOrderLevel5} />
+                  </th>
                   <th className="px-3 py-2">Acciones</th>
                 </tr>
               </thead>
               <tbody>
-                {level5Items.map((item) => (
+                {sortedLevel5Items.map((item) => (
                   <tr className="border-b" key={item.id}>
                     <td className="px-3 py-2">{item.code}</td>
                     <td className="px-3 py-2">{item.name}</td>
                     <td className="px-3 py-2">{item.type}</td>
+                    <td className="px-3 py-2">{item.shapeType}</td>
                     <td className="px-3 py-2">{String(item.areaM2)}</td>
+                    <td className="px-3 py-2">{item.isActive ? "Activo" : "Inactivo"}</td>
                     <td className="px-3 py-2">
                       <button className="mr-2 rounded-md border px-2 py-0.5 text-xs" onClick={() => onEditLevel5(item)} type="button">
                         Editar
@@ -2200,7 +3224,7 @@ export default function PatrimonioForestalPage() {
                 ))}
                 {level5Items.length === 0 ? (
                   <tr>
-                    <td className="px-3 py-3" colSpan={5}>
+                    <td className="px-3 py-3" colSpan={7}>
                       Sin registros
                     </td>
                   </tr>

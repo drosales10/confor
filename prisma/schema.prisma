@@ -849,6 +849,7 @@ model LandUseType {
   continentId    String?       @db.Uuid
   code           String        @db.VarChar(80)
   name           String        @db.VarChar(150)
+  category       String        @db.VarChar(150)
   isProductive   Boolean       @default(false)
   isActive       Boolean       @default(true)
   createdAt      DateTime      @default(now())

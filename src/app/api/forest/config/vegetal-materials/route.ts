@@ -5,10 +5,13 @@ import { fail, ok, requireAuth, requirePermission } from "@/lib/api-helpers";
 import { hasPermission } from "@/lib/permissions";
 import {
   deleteByIdSchema,
-  forestConfigQuerySchema,
   vegetalMaterialCreateSchema,
   vegetalMaterialUpdateSchema,
 } from "@/validations/forest-config.schema";
+import { z } from "zod";
+
+const sortKeys = ["code", "name", "speciesName", "provenanceName", "materialType", "isActive", "createdAt", "updatedAt"] as const;
+type SortKey = (typeof sortKeys)[number];
 
 async function safeAuditLog(data: Prisma.AuditLogUncheckedCreateInput) {
   try {
@@ -49,17 +52,25 @@ export async function GET(req: NextRequest) {
   const permissionError = ensureReadPermission(authResult.session.user.permissions ?? [], isSuperAdmin);
   if (permissionError) return permissionError;
 
-  const query = forestConfigQuerySchema.safeParse({
+  const querySchema = z.object({
+    page: z.coerce.number().int().min(1).default(1),
+    limit: z.coerce.number().int().min(1).max(100).default(25),
+    search: z.string().trim().optional(),
+    sortBy: z.enum(sortKeys).default("createdAt"),
+    sortOrder: z.enum(["asc", "desc"]).default("desc"),
+  });
+
+  const query = querySchema.safeParse({
     page: req.nextUrl.searchParams.get("page") ?? 1,
     limit: req.nextUrl.searchParams.get("limit") ?? 25,
     search: req.nextUrl.searchParams.get("search") ?? undefined,
-    sortBy: req.nextUrl.searchParams.get("sortBy") ?? undefined,
+    sortBy: req.nextUrl.searchParams.get("sortBy") ?? "createdAt",
     sortOrder: req.nextUrl.searchParams.get("sortOrder") ?? "desc",
   });
 
   if (!query.success) return fail("Parámetros inválidos", 400, query.error.flatten());
 
-  const { page, limit, search } = query.data;
+  const { page, limit, search, sortBy, sortOrder } = query.data;
   const where: any = search
     ? {
         OR: [
@@ -76,13 +87,29 @@ export async function GET(req: NextRequest) {
     where.organizationId = authResult.session.user.organizationId;
   }
 
+  const scalarOrderBy: Record<Exclude<SortKey, "speciesName" | "provenanceName">, "asc" | "desc"> = {
+    code: sortOrder,
+    name: sortOrder,
+    materialType: sortOrder,
+    isActive: sortOrder,
+    createdAt: sortOrder,
+    updatedAt: sortOrder,
+  };
+
+  const orderBy =
+    sortBy === "speciesName"
+      ? [{ species: { scientificName: sortOrder } }]
+      : sortBy === "provenanceName"
+        ? [{ provenance: { name: sortOrder } }]
+        : [{ [sortBy]: scalarOrderBy[sortBy] }];
+
   const [total, items] = await Promise.all([
     prisma.vegetalMaterial.count({ where }),
     prisma.vegetalMaterial.findMany({
       where,
       skip: (page - 1) * limit,
       take: limit,
-      orderBy: [{ createdAt: "desc" }],
+      orderBy,
       include: {
         species: { select: { id: true, code: true, scientificName: true } },
         provenance: {

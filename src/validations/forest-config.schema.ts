@@ -127,10 +127,20 @@ export const countryUpdateSchema = countryCreateSchema.partial().extend({
   id: uuidSchema,
 });
 
+const landUseCategoryValues = [
+  "BOSQUE",
+  "NO BOSQUE",
+  "BOSQUE DEFORESTADO",
+  "BOSQUE DEGRADADO",
+  "CUERPOS DE AGUA",
+  "SUELO DESNUDO",
+  "INFRAESTRUCTURA",
+] as const;
+
 export const landUseTypeCreateSchema = z.object({
-  continentId: uuidSchema.optional().nullable(),
   code: z.string().trim().min(1).max(80),
   name: z.string().trim().min(1).max(150),
+  category: z.enum(landUseCategoryValues),
   isProductive: z.coerce.boolean().optional(),
   isActive: z.coerce.boolean().optional(),
 });

@@ -2,11 +2,12 @@
 /* eslint-disable */
 "use client";
 
-import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useDebounce } from "@/hooks/useDebounce";
 import { ApiResponse, PaginatedResponse } from "@/types/api.types";
 import { TablePagination } from "@/components/tables/TablePagination";
 import { TableToolbar } from "@/components/tables/TableToolbar";
+import { SortableHeader } from "@/components/tables/SortableHeader";
 import { sileo } from "sileo";
 
 type PaginationState = {
@@ -23,6 +24,77 @@ type SimpleItem = {
   isActive: boolean;
   createdAt: string;
 };
+
+type SchemeSortKey = "code" | "name" | "isActive" | "createdAt";
+
+function isSchemeSortKey(value: string): value is SchemeSortKey {
+  return ["code", "name", "isActive", "createdAt"].includes(value);
+}
+
+type InventorySortKey = "code" | "name" | "isActive" | "createdAt";
+
+function isInventorySortKey(value: string): value is InventorySortKey {
+  return ["code", "name", "isActive", "createdAt"].includes(value);
+}
+
+type ImaSortKey = "code" | "classification" | "name" | "isActive" | "createdAt";
+
+function isImaSortKey(value: string): value is ImaSortKey {
+  return ["code", "classification", "name", "isActive", "createdAt"].includes(value);
+}
+
+type SpeciesSortKey = "code" | "scientificName" | "commonName" | "isActive" | "createdAt";
+
+function isSpeciesSortKey(value: string): value is SpeciesSortKey {
+  return ["code", "scientificName", "commonName", "isActive", "createdAt"].includes(value);
+}
+
+type ProvenanceSortKey = "countryName" | "code" | "name" | "isActive" | "createdAt";
+
+function isProvenanceSortKey(value: string): value is ProvenanceSortKey {
+  return ["countryName", "code", "name", "isActive", "createdAt"].includes(value);
+}
+
+type MaterialSortKey = "code" | "name" | "speciesName" | "provenanceName" | "materialType" | "isActive" | "createdAt";
+
+function isMaterialSortKey(value: string): value is MaterialSortKey {
+  return ["code", "name", "speciesName", "provenanceName", "materialType", "isActive", "createdAt"].includes(value);
+}
+
+type SpacingSortKey = "code" | "name" | "isActive" | "createdAt";
+
+function isSpacingSortKey(value: string): value is SpacingSortKey {
+  return ["code", "name", "isActive", "createdAt"].includes(value);
+}
+
+type Level4CostSortKey = "code" | "plantationAreaHa" | "rotationPhase" | "isActive" | "createdAt";
+
+function isLevel4CostSortKey(value: string): value is Level4CostSortKey {
+  return ["code", "plantationAreaHa", "rotationPhase", "isActive", "createdAt"].includes(value);
+}
+
+type ProductTypeSortKey = "code" | "name" | "recommendedHarvestType" | "isActive" | "createdAt";
+
+function isProductTypeSortKey(value: string): value is ProductTypeSortKey {
+  return ["code", "name", "recommendedHarvestType", "isActive", "createdAt"].includes(value);
+}
+
+const LAND_USE_CATEGORIES = [
+  "BOSQUE",
+  "NO BOSQUE",
+  "BOSQUE DEFORESTADO",
+  "BOSQUE DEGRADADO",
+  "CUERPOS DE AGUA",
+  "SUELO DESNUDO",
+  "INFRAESTRUCTURA",
+] as const;
+
+type LandUseCategory = (typeof LAND_USE_CATEGORIES)[number];
+type LandUseSortKey = "code" | "name" | "category" | "isProductive" | "isActive" | "createdAt";
+
+function isLandUseSortKey(value: string): value is LandUseSortKey {
+  return ["code", "name", "category", "isProductive", "isActive", "createdAt"].includes(value);
+}
 
 type ImaClassification = "I" | "II" | "III" | "IV" | "V";
 
@@ -274,17 +346,12 @@ type VegetalMaterialItem = {
 
 type LandUseTypeItem = {
   id: string;
-  continentId?: string | null;
   code: string;
   name: string;
+  category: LandUseCategory;
   isProductive: boolean;
   isActive: boolean;
   createdAt: string;
-  continent?: {
-    id: string;
-    code: string;
-    name: string;
-  } | null;
 };
 
 const INITIAL_PAGINATION: PaginationState = { page: 1, totalPages: 1, total: 0, limit: 10 };
@@ -344,6 +411,16 @@ function CatalogHeader({ title, subtitle }: { title: string; subtitle: string })
 }
 
 export default function ConfiguracionForestalPage() {
+  const importSchemeInputRef = useRef<HTMLInputElement | null>(null);
+  const importInventoryInputRef = useRef<HTMLInputElement | null>(null);
+  const importImaInputRef = useRef<HTMLInputElement | null>(null);
+  const importSpeciesInputRef = useRef<HTMLInputElement | null>(null);
+  const importProvenanceInputRef = useRef<HTMLInputElement | null>(null);
+  const importMaterialInputRef = useRef<HTMLInputElement | null>(null);
+  const importSpacingInputRef = useRef<HTMLInputElement | null>(null);
+  const importLevel4CostInputRef = useRef<HTMLInputElement | null>(null);
+  const importProductTypeInputRef = useRef<HTMLInputElement | null>(null);
+  const importLandUseInputRef = useRef<HTMLInputElement | null>(null);
   const [globalMessage, setGlobalMessage] = useState<string | null>(null);
 
   const [schemeItems, setSchemeItems] = useState<SimpleItem[]>([]);
@@ -352,6 +429,11 @@ export default function ConfiguracionForestalPage() {
   const [schemePagination, setSchemePagination] = useState<PaginationState>(INITIAL_PAGINATION);
   const [schemeLoading, setSchemeLoading] = useState(false);
   const [schemeError, setSchemeError] = useState<string | null>(null);
+  const [schemeImporting, setSchemeImporting] = useState(false);
+  const [schemeExporting, setSchemeExporting] = useState(false);
+  const [schemeExportLimit, setSchemeExportLimit] = useState(100);
+  const [schemeSortBy, setSchemeSortBy] = useState<SchemeSortKey>("createdAt");
+  const [schemeSortOrder, setSchemeSortOrder] = useState<"asc" | "desc">("desc");
   const [schemeForm, setSchemeForm] = useState({ code: "", name: "", isActive: true });
   const [editingScheme, setEditingScheme] = useState<SimpleItem | null>(null);
 
@@ -361,6 +443,11 @@ export default function ConfiguracionForestalPage() {
   const [inventoryPagination, setInventoryPagination] = useState<PaginationState>(INITIAL_PAGINATION);
   const [inventoryLoading, setInventoryLoading] = useState(false);
   const [inventoryError, setInventoryError] = useState<string | null>(null);
+  const [inventoryImporting, setInventoryImporting] = useState(false);
+  const [inventoryExporting, setInventoryExporting] = useState(false);
+  const [inventoryExportLimit, setInventoryExportLimit] = useState(100);
+  const [inventorySortBy, setInventorySortBy] = useState<InventorySortKey>("createdAt");
+  const [inventorySortOrder, setInventorySortOrder] = useState<"asc" | "desc">("desc");
   const [inventoryForm, setInventoryForm] = useState({ code: "", name: "", isActive: true });
   const [editingInventory, setEditingInventory] = useState<SimpleItem | null>(null);
 
@@ -370,6 +457,11 @@ export default function ConfiguracionForestalPage() {
   const [imaPagination, setImaPagination] = useState<PaginationState>(INITIAL_PAGINATION);
   const [imaLoading, setImaLoading] = useState(false);
   const [imaError, setImaError] = useState<string | null>(null);
+  const [imaImporting, setImaImporting] = useState(false);
+  const [imaExporting, setImaExporting] = useState(false);
+  const [imaExportLimit, setImaExportLimit] = useState(100);
+  const [imaSortBy, setImaSortBy] = useState<ImaSortKey>("createdAt");
+  const [imaSortOrder, setImaSortOrder] = useState<"asc" | "desc">("desc");
   const [imaForm, setImaForm] = useState({
     code: "",
     classification: "I" as ImaClassification,
@@ -464,6 +556,11 @@ export default function ConfiguracionForestalPage() {
   const [spacingPagination, setSpacingPagination] = useState<PaginationState>(INITIAL_PAGINATION);
   const [spacingLoading, setSpacingLoading] = useState(false);
   const [spacingError, setSpacingError] = useState<string | null>(null);
+  const [spacingImporting, setSpacingImporting] = useState(false);
+  const [spacingExporting, setSpacingExporting] = useState(false);
+  const [spacingExportLimit, setSpacingExportLimit] = useState(100);
+  const [spacingSortBy, setSpacingSortBy] = useState<SpacingSortKey>("createdAt");
+  const [spacingSortOrder, setSpacingSortOrder] = useState<"asc" | "desc">("desc");
   const [spacingForm, setSpacingForm] = useState({
     code: "",
     name: "",
@@ -481,6 +578,11 @@ export default function ConfiguracionForestalPage() {
   const [level4CostPagination, setLevel4CostPagination] = useState<PaginationState>(INITIAL_PAGINATION);
   const [level4CostLoading, setLevel4CostLoading] = useState(false);
   const [level4CostError, setLevel4CostError] = useState<string | null>(null);
+  const [level4CostImporting, setLevel4CostImporting] = useState(false);
+  const [level4CostExporting, setLevel4CostExporting] = useState(false);
+  const [level4CostExportLimit, setLevel4CostExportLimit] = useState(100);
+  const [level4CostSortBy, setLevel4CostSortBy] = useState<Level4CostSortKey>("createdAt");
+  const [level4CostSortOrder, setLevel4CostSortOrder] = useState<"asc" | "desc">("desc");
   const [level4CostForm, setLevel4CostForm] = useState({
     level4Id: "",
     code: "",
@@ -497,6 +599,11 @@ export default function ConfiguracionForestalPage() {
   const [productTypePagination, setProductTypePagination] = useState<PaginationState>(INITIAL_PAGINATION);
   const [productTypeLoading, setProductTypeLoading] = useState(false);
   const [productTypeError, setProductTypeError] = useState<string | null>(null);
+  const [productTypeImporting, setProductTypeImporting] = useState(false);
+  const [productTypeExporting, setProductTypeExporting] = useState(false);
+  const [productTypeExportLimit, setProductTypeExportLimit] = useState(100);
+  const [productTypeSortBy, setProductTypeSortBy] = useState<ProductTypeSortKey>("createdAt");
+  const [productTypeSortOrder, setProductTypeSortOrder] = useState<"asc" | "desc">("desc");
   const [productTypeForm, setProductTypeForm] = useState({
     code: "",
     name: "",
@@ -515,10 +622,21 @@ export default function ConfiguracionForestalPage() {
   const [landUsePagination, setLandUsePagination] = useState<PaginationState>(INITIAL_PAGINATION);
   const [landUseLoading, setLandUseLoading] = useState(false);
   const [landUseError, setLandUseError] = useState<string | null>(null);
-  const [landUseForm, setLandUseForm] = useState({
-    continentId: "",
+  const [landUseImporting, setLandUseImporting] = useState(false);
+  const [landUseExporting, setLandUseExporting] = useState(false);
+  const [landUseExportLimit, setLandUseExportLimit] = useState(100);
+  const [landUseSortBy, setLandUseSortBy] = useState<LandUseSortKey>("createdAt");
+  const [landUseSortOrder, setLandUseSortOrder] = useState<"asc" | "desc">("desc");
+  const [landUseForm, setLandUseForm] = useState<{
+    code: string;
+    name: string;
+    category: LandUseCategory;
+    isProductive: boolean;
+    isActive: boolean;
+  }>({
     code: "",
     name: "",
+    category: LAND_USE_CATEGORIES[0],
     isProductive: false,
     isActive: true,
   });
@@ -530,6 +648,11 @@ export default function ConfiguracionForestalPage() {
   const [speciesPagination, setSpeciesPagination] = useState<PaginationState>(INITIAL_PAGINATION);
   const [speciesLoading, setSpeciesLoading] = useState(false);
   const [speciesError, setSpeciesError] = useState<string | null>(null);
+  const [speciesImporting, setSpeciesImporting] = useState(false);
+  const [speciesExporting, setSpeciesExporting] = useState(false);
+  const [speciesExportLimit, setSpeciesExportLimit] = useState(100);
+  const [speciesSortBy, setSpeciesSortBy] = useState<SpeciesSortKey>("createdAt");
+  const [speciesSortOrder, setSpeciesSortOrder] = useState<"asc" | "desc">("desc");
   const [speciesForm, setSpeciesForm] = useState({
     code: "",
     scientificName: "",
@@ -547,6 +670,11 @@ export default function ConfiguracionForestalPage() {
   const [provenancePagination, setProvenancePagination] = useState<PaginationState>(INITIAL_PAGINATION);
   const [provenanceLoading, setProvenanceLoading] = useState(false);
   const [provenanceError, setProvenanceError] = useState<string | null>(null);
+  const [provenanceImporting, setProvenanceImporting] = useState(false);
+  const [provenanceExporting, setProvenanceExporting] = useState(false);
+  const [provenanceExportLimit, setProvenanceExportLimit] = useState(100);
+  const [provenanceSortBy, setProvenanceSortBy] = useState<ProvenanceSortKey>("createdAt");
+  const [provenanceSortOrder, setProvenanceSortOrder] = useState<"asc" | "desc">("desc");
   const [provenanceForm, setProvenanceForm] = useState({
     countryId: "",
     code: "",
@@ -561,6 +689,11 @@ export default function ConfiguracionForestalPage() {
   const [materialPagination, setMaterialPagination] = useState<PaginationState>(INITIAL_PAGINATION);
   const [materialLoading, setMaterialLoading] = useState(false);
   const [materialError, setMaterialError] = useState<string | null>(null);
+  const [materialImporting, setMaterialImporting] = useState(false);
+  const [materialExporting, setMaterialExporting] = useState(false);
+  const [materialExportLimit, setMaterialExportLimit] = useState(100);
+  const [materialSortBy, setMaterialSortBy] = useState<MaterialSortKey>("createdAt");
+  const [materialSortOrder, setMaterialSortOrder] = useState<"asc" | "desc">("desc");
   const [materialForm, setMaterialForm] = useState({
     code: "",
     name: "",
@@ -665,7 +798,6 @@ export default function ConfiguracionForestalPage() {
 
     const active = result.data.items.filter((item) => item.isActive);
     setCountryForm((prev) => ({ ...prev, continentId: prev.continentId || active[0]?.id || "" }));
-    setLandUseForm((prev) => ({ ...prev, continentId: prev.continentId || active[0]?.id || "" }));
   }, [continentPage, continentPagination.limit, debouncedContinentSearch]);
 
   const loadCountries = useCallback(async () => {
@@ -787,7 +919,7 @@ export default function ConfiguracionForestalPage() {
     setSpacingError(null);
 
     const result = await requestJson<PaginatedResponse<SpacingItem>>(
-      `/api/forest/config/spacings?page=${spacingPage}&limit=${spacingPagination.limit}${debouncedSpacingSearch ? `&search=${encodeURIComponent(debouncedSpacingSearch)}` : ""}`,
+      `/api/forest/config/spacings?page=${spacingPage}&limit=${spacingPagination.limit}&sortBy=${spacingSortBy}&sortOrder=${spacingSortOrder}${debouncedSpacingSearch ? `&search=${encodeURIComponent(debouncedSpacingSearch)}` : ""}`,
     );
 
     if (!result.success || !result.data) {
@@ -799,14 +931,14 @@ export default function ConfiguracionForestalPage() {
     setSpacingItems(result.data.items);
     setSpacingPagination(result.data.pagination);
     setSpacingLoading(false);
-  }, [debouncedSpacingSearch, spacingPage, spacingPagination.limit]);
+  }, [debouncedSpacingSearch, spacingPage, spacingPagination.limit, spacingSortBy, spacingSortOrder]);
 
   const loadLevel4Costs = useCallback(async () => {
     setLevel4CostLoading(true);
     setLevel4CostError(null);
 
     const result = await requestJson<PaginatedResponse<Level4AdministrativeCostItem>>(
-      `/api/forest/config/level4-costs?page=${level4CostPage}&limit=${level4CostPagination.limit}${debouncedLevel4CostSearch ? `&search=${encodeURIComponent(debouncedLevel4CostSearch)}` : ""}`,
+      `/api/forest/config/level4-costs?page=${level4CostPage}&limit=${level4CostPagination.limit}&sortBy=${level4CostSortBy}&sortOrder=${level4CostSortOrder}${debouncedLevel4CostSearch ? `&search=${encodeURIComponent(debouncedLevel4CostSearch)}` : ""}`,
     );
 
     if (!result.success || !result.data) {
@@ -818,14 +950,14 @@ export default function ConfiguracionForestalPage() {
     setLevel4CostItems(result.data.items);
     setLevel4CostPagination(result.data.pagination);
     setLevel4CostLoading(false);
-  }, [debouncedLevel4CostSearch, level4CostPage, level4CostPagination.limit]);
+  }, [debouncedLevel4CostSearch, level4CostPage, level4CostPagination.limit, level4CostSortBy, level4CostSortOrder]);
 
   const loadProductTypes = useCallback(async () => {
     setProductTypeLoading(true);
     setProductTypeError(null);
 
     const result = await requestJson<PaginatedResponse<ProductTypeItem>>(
-      `/api/forest/config/product-types?page=${productTypePage}&limit=${productTypePagination.limit}${debouncedProductTypeSearch ? `&search=${encodeURIComponent(debouncedProductTypeSearch)}` : ""}`,
+      `/api/forest/config/product-types?page=${productTypePage}&limit=${productTypePagination.limit}&sortBy=${productTypeSortBy}&sortOrder=${productTypeSortOrder}${debouncedProductTypeSearch ? `&search=${encodeURIComponent(debouncedProductTypeSearch)}` : ""}`,
     );
 
     if (!result.success || !result.data) {
@@ -837,14 +969,14 @@ export default function ConfiguracionForestalPage() {
     setProductTypeItems(result.data.items);
     setProductTypePagination(result.data.pagination);
     setProductTypeLoading(false);
-  }, [debouncedProductTypeSearch, productTypePage, productTypePagination.limit]);
+  }, [debouncedProductTypeSearch, productTypePage, productTypePagination.limit, productTypeSortBy, productTypeSortOrder]);
 
   const loadLandUseTypes = useCallback(async () => {
     setLandUseLoading(true);
     setLandUseError(null);
 
     const result = await requestJson<PaginatedResponse<LandUseTypeItem>>(
-      `/api/forest/config/land-use-types?page=${landUsePage}&limit=${landUsePagination.limit}${debouncedLandUseSearch ? `&search=${encodeURIComponent(debouncedLandUseSearch)}` : ""}`,
+      `/api/forest/config/land-use-types?page=${landUsePage}&limit=${landUsePagination.limit}&sortBy=${landUseSortBy}&sortOrder=${landUseSortOrder}${debouncedLandUseSearch ? `&search=${encodeURIComponent(debouncedLandUseSearch)}` : ""}`,
     );
 
     if (!result.success || !result.data) {
@@ -856,14 +988,14 @@ export default function ConfiguracionForestalPage() {
     setLandUseItems(result.data.items);
     setLandUsePagination(result.data.pagination);
     setLandUseLoading(false);
-  }, [debouncedLandUseSearch, landUsePage, landUsePagination.limit]);
+  }, [debouncedLandUseSearch, landUsePage, landUsePagination.limit, landUseSortBy, landUseSortOrder]);
 
   const loadSchemes = useCallback(async () => {
     setSchemeLoading(true);
     setSchemeError(null);
 
     const result = await requestJson<PaginatedResponse<SimpleItem>>(
-      `/api/forest/config/management-schemes?page=${schemePage}&limit=${schemePagination.limit}${debouncedSchemeSearch ? `&search=${encodeURIComponent(debouncedSchemeSearch)}` : ""}`,
+      `/api/forest/config/management-schemes?page=${schemePage}&limit=${schemePagination.limit}&sortBy=${schemeSortBy}&sortOrder=${schemeSortOrder}${debouncedSchemeSearch ? `&search=${encodeURIComponent(debouncedSchemeSearch)}` : ""}`,
     );
 
     if (!result.success || !result.data) {
@@ -875,14 +1007,14 @@ export default function ConfiguracionForestalPage() {
     setSchemeItems(result.data.items);
     setSchemePagination(result.data.pagination);
     setSchemeLoading(false);
-  }, [debouncedSchemeSearch, schemePage, schemePagination.limit]);
+  }, [debouncedSchemeSearch, schemePage, schemePagination.limit, schemeSortBy, schemeSortOrder]);
 
   const loadInventoryTypes = useCallback(async () => {
     setInventoryLoading(true);
     setInventoryError(null);
 
     const result = await requestJson<PaginatedResponse<SimpleItem>>(
-      `/api/forest/config/inventory-types?page=${inventoryPage}&limit=${inventoryPagination.limit}${debouncedInventorySearch ? `&search=${encodeURIComponent(debouncedInventorySearch)}` : ""}`,
+      `/api/forest/config/inventory-types?page=${inventoryPage}&limit=${inventoryPagination.limit}&sortBy=${inventorySortBy}&sortOrder=${inventorySortOrder}${debouncedInventorySearch ? `&search=${encodeURIComponent(debouncedInventorySearch)}` : ""}`,
     );
 
     if (!result.success || !result.data) {
@@ -894,14 +1026,14 @@ export default function ConfiguracionForestalPage() {
     setInventoryItems(result.data.items);
     setInventoryPagination(result.data.pagination);
     setInventoryLoading(false);
-  }, [debouncedInventorySearch, inventoryPage, inventoryPagination.limit]);
+  }, [debouncedInventorySearch, inventoryPage, inventoryPagination.limit, inventorySortBy, inventorySortOrder]);
 
   const loadImaClasses = useCallback(async () => {
     setImaLoading(true);
     setImaError(null);
 
     const result = await requestJson<PaginatedResponse<ImaItem>>(
-      `/api/forest/config/ima-classes?page=${imaPage}&limit=${imaPagination.limit}${debouncedImaSearch ? `&search=${encodeURIComponent(debouncedImaSearch)}` : ""}`,
+      `/api/forest/config/ima-classes?page=${imaPage}&limit=${imaPagination.limit}&sortBy=${imaSortBy}&sortOrder=${imaSortOrder}${debouncedImaSearch ? `&search=${encodeURIComponent(debouncedImaSearch)}` : ""}`,
     );
 
     if (!result.success || !result.data) {
@@ -913,14 +1045,14 @@ export default function ConfiguracionForestalPage() {
     setImaItems(result.data.items);
     setImaPagination(result.data.pagination);
     setImaLoading(false);
-  }, [debouncedImaSearch, imaPage, imaPagination.limit]);
+  }, [debouncedImaSearch, imaPage, imaPagination.limit, imaSortBy, imaSortOrder]);
 
   const loadSpecies = useCallback(async () => {
     setSpeciesLoading(true);
     setSpeciesError(null);
 
     const result = await requestJson<PaginatedResponse<SpeciesItem>>(
-      `/api/forest/config/species?page=${speciesPage}&limit=${speciesPagination.limit}${debouncedSpeciesSearch ? `&search=${encodeURIComponent(debouncedSpeciesSearch)}` : ""}`,
+      `/api/forest/config/species?page=${speciesPage}&limit=${speciesPagination.limit}&sortBy=${speciesSortBy}&sortOrder=${speciesSortOrder}${debouncedSpeciesSearch ? `&search=${encodeURIComponent(debouncedSpeciesSearch)}` : ""}`,
     );
 
     if (!result.success || !result.data) {
@@ -932,14 +1064,14 @@ export default function ConfiguracionForestalPage() {
     setSpeciesItems(result.data.items);
     setSpeciesPagination(result.data.pagination);
     setSpeciesLoading(false);
-  }, [debouncedSpeciesSearch, speciesPage, speciesPagination.limit]);
+  }, [debouncedSpeciesSearch, speciesPage, speciesPagination.limit, speciesSortBy, speciesSortOrder]);
 
   const loadProvenances = useCallback(async () => {
     setProvenanceLoading(true);
     setProvenanceError(null);
 
     const result = await requestJson<PaginatedResponse<ProvenanceItem>>(
-      `/api/forest/config/provenances?page=${provenancePage}&limit=${provenancePagination.limit}${debouncedProvenanceSearch ? `&search=${encodeURIComponent(debouncedProvenanceSearch)}` : ""}`,
+      `/api/forest/config/provenances?page=${provenancePage}&limit=${provenancePagination.limit}&sortBy=${provenanceSortBy}&sortOrder=${provenanceSortOrder}${debouncedProvenanceSearch ? `&search=${encodeURIComponent(debouncedProvenanceSearch)}` : ""}`,
     );
 
     if (!result.success || !result.data) {
@@ -951,14 +1083,14 @@ export default function ConfiguracionForestalPage() {
     setProvenanceItems(result.data.items);
     setProvenancePagination(result.data.pagination);
     setProvenanceLoading(false);
-  }, [debouncedProvenanceSearch, provenancePage, provenancePagination.limit]);
+  }, [debouncedProvenanceSearch, provenancePage, provenancePagination.limit, provenanceSortBy, provenanceSortOrder]);
 
   const loadVegetalMaterials = useCallback(async () => {
     setMaterialLoading(true);
     setMaterialError(null);
 
     const result = await requestJson<PaginatedResponse<VegetalMaterialItem>>(
-      `/api/forest/config/vegetal-materials?page=${materialPage}&limit=${materialPagination.limit}${debouncedMaterialSearch ? `&search=${encodeURIComponent(debouncedMaterialSearch)}` : ""}`,
+      `/api/forest/config/vegetal-materials?page=${materialPage}&limit=${materialPagination.limit}&sortBy=${materialSortBy}&sortOrder=${materialSortOrder}${debouncedMaterialSearch ? `&search=${encodeURIComponent(debouncedMaterialSearch)}` : ""}`,
     );
 
     if (!result.success || !result.data) {
@@ -970,7 +1102,7 @@ export default function ConfiguracionForestalPage() {
     setMaterialItems(result.data.items);
     setMaterialPagination(result.data.pagination);
     setMaterialLoading(false);
-  }, [debouncedMaterialSearch, materialPage, materialPagination.limit]);
+  }, [debouncedMaterialSearch, materialPage, materialPagination.limit, materialSortBy, materialSortOrder]);
 
   useEffect(() => {
     void loadSchemes();
@@ -1191,7 +1323,7 @@ export default function ConfiguracionForestalPage() {
     [productTypeForm],
   );
   const canCreateLandUse = useMemo(
-    () => landUseForm.code.trim().length > 0 && landUseForm.name.trim().length > 0,
+    () => landUseForm.code.trim().length > 0 && landUseForm.name.trim().length > 0 && landUseForm.category.trim().length > 0,
     [landUseForm],
   );
   const activeContinents = useMemo(() => continentItems.filter((item) => item.isActive), [continentItems]);
@@ -1286,6 +1418,124 @@ export default function ConfiguracionForestalPage() {
     await loadSchemes();
   }
 
+  function toggleSchemeSort(nextSortBy: string) {
+    if (!isSchemeSortKey(nextSortBy)) return;
+
+    const isSameColumn = schemeSortBy === nextSortBy;
+    setSchemeSortBy(nextSortBy);
+    setSchemeSortOrder(isSameColumn ? (schemeSortOrder === "asc" ? "desc" : "asc") : "asc");
+    setSchemePage(1);
+  }
+
+  async function downloadSchemeExport(format: "csv" | "xlsx") {
+    try {
+      setSchemeExporting(true);
+      setSchemeError(null);
+
+      const params = new URLSearchParams({
+        format,
+        limit: String(schemeExportLimit),
+        sortBy: schemeSortBy,
+        sortOrder: schemeSortOrder,
+      });
+
+      const trimmedSearch = debouncedSchemeSearch.trim();
+      if (trimmedSearch) {
+        params.set("search", trimmedSearch);
+      }
+
+      const response = await fetch(`/api/forest/config/management-schemes/export?${params.toString()}`, {
+        method: "GET",
+      });
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        throw new Error(payload?.error ?? "No fue posible exportar esquemas de manejo");
+      }
+
+      const blob = await response.blob();
+      const disposition = response.headers.get("content-disposition") ?? "";
+      const match = disposition.match(/filename=\"?([^\";]+)\"?/i);
+      const filename = match?.[1] ?? `management_schemes.${format}`;
+
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = filename;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(url);
+
+      sileo.success({
+        title: "Exportación lista",
+        description: `Se generó el archivo correctamente (máx. ${schemeExportLimit} registros).`,
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Error desconocido";
+      showCrudError(setSchemeError, message);
+    } finally {
+      setSchemeExporting(false);
+    }
+  }
+
+  async function onImportSchemes(file: File) {
+    try {
+      setSchemeImporting(true);
+      setSchemeError(null);
+
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const response = await fetch("/api/forest/config/management-schemes/import", {
+        method: "POST",
+        body: formData,
+      });
+
+      const payload = await response.json().catch(() => null);
+      if (!response.ok || !payload?.success) {
+        throw new Error(payload?.error ?? "No fue posible importar esquemas de manejo");
+      }
+
+      const result = payload?.data as
+        | {
+            created: number;
+            updated: number;
+            skipped: number;
+            errors: Array<{ row: number; code?: string; error: string }>;
+          }
+        | undefined;
+
+      await loadSchemes();
+
+      const created = result?.created ?? 0;
+      const updated = result?.updated ?? 0;
+      const skipped = result?.skipped ?? 0;
+      const errorCount = result?.errors?.length ?? 0;
+      const description = `Creados: ${created} · Actualizados: ${updated} · Omitidos: ${skipped}`;
+
+      if (errorCount > 0) {
+        sileo.warning({
+          title: "Importación parcial",
+          description: `${description} · Errores: ${errorCount}`,
+        });
+      } else {
+        sileo.success({
+          title: "Importación completada",
+          description,
+        });
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Error desconocido";
+      showCrudError(setSchemeError, message);
+    } finally {
+      setSchemeImporting(false);
+      if (importSchemeInputRef.current) {
+        importSchemeInputRef.current.value = "";
+      }
+    }
+  }
+
   async function createInventoryType(event: FormEvent) {
     event.preventDefault();
     if (!canCreateInventory) return;
@@ -1338,6 +1588,124 @@ export default function ConfiguracionForestalPage() {
 
     showCrudSuccess("Tipo de inventario eliminado");
     await loadInventoryTypes();
+  }
+
+  function toggleInventorySort(nextSortBy: string) {
+    if (!isInventorySortKey(nextSortBy)) return;
+
+    const isSameColumn = inventorySortBy === nextSortBy;
+    setInventorySortBy(nextSortBy);
+    setInventorySortOrder(isSameColumn ? (inventorySortOrder === "asc" ? "desc" : "asc") : "asc");
+    setInventoryPage(1);
+  }
+
+  async function downloadInventoryExport(format: "csv" | "xlsx") {
+    try {
+      setInventoryExporting(true);
+      setInventoryError(null);
+
+      const params = new URLSearchParams({
+        format,
+        limit: String(inventoryExportLimit),
+        sortBy: inventorySortBy,
+        sortOrder: inventorySortOrder,
+      });
+
+      const trimmedSearch = debouncedInventorySearch.trim();
+      if (trimmedSearch) {
+        params.set("search", trimmedSearch);
+      }
+
+      const response = await fetch(`/api/forest/config/inventory-types/export?${params.toString()}`, {
+        method: "GET",
+      });
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        throw new Error(payload?.error ?? "No fue posible exportar tipos de inventario");
+      }
+
+      const blob = await response.blob();
+      const disposition = response.headers.get("content-disposition") ?? "";
+      const match = disposition.match(/filename=\"?([^\";]+)\"?/i);
+      const filename = match?.[1] ?? `inventory_types.${format}`;
+
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = filename;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(url);
+
+      sileo.success({
+        title: "Exportación lista",
+        description: `Se generó el archivo correctamente (máx. ${inventoryExportLimit} registros).`,
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Error desconocido";
+      showCrudError(setInventoryError, message);
+    } finally {
+      setInventoryExporting(false);
+    }
+  }
+
+  async function onImportInventoryTypes(file: File) {
+    try {
+      setInventoryImporting(true);
+      setInventoryError(null);
+
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const response = await fetch("/api/forest/config/inventory-types/import", {
+        method: "POST",
+        body: formData,
+      });
+
+      const payload = await response.json().catch(() => null);
+      if (!response.ok || !payload?.success) {
+        throw new Error(payload?.error ?? "No fue posible importar tipos de inventario");
+      }
+
+      const result = payload?.data as
+        | {
+            created: number;
+            updated: number;
+            skipped: number;
+            errors: Array<{ row: number; code?: string; error: string }>;
+          }
+        | undefined;
+
+      await loadInventoryTypes();
+
+      const created = result?.created ?? 0;
+      const updated = result?.updated ?? 0;
+      const skipped = result?.skipped ?? 0;
+      const errorCount = result?.errors?.length ?? 0;
+      const description = `Creados: ${created} · Actualizados: ${updated} · Omitidos: ${skipped}`;
+
+      if (errorCount > 0) {
+        sileo.warning({
+          title: "Importación parcial",
+          description: `${description} · Errores: ${errorCount}`,
+        });
+      } else {
+        sileo.success({
+          title: "Importación completada",
+          description,
+        });
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Error desconocido";
+      showCrudError(setInventoryError, message);
+    } finally {
+      setInventoryImporting(false);
+      if (importInventoryInputRef.current) {
+        importInventoryInputRef.current.value = "";
+      }
+    }
   }
 
   async function createImaClass(event: FormEvent) {
@@ -1408,6 +1776,124 @@ export default function ConfiguracionForestalPage() {
 
     showCrudSuccess("Clase IMA eliminada");
     await loadImaClasses();
+  }
+
+  function toggleImaSort(nextSortBy: string) {
+    if (!isImaSortKey(nextSortBy)) return;
+
+    const isSameColumn = imaSortBy === nextSortBy;
+    setImaSortBy(nextSortBy);
+    setImaSortOrder(isSameColumn ? (imaSortOrder === "asc" ? "desc" : "asc") : "asc");
+    setImaPage(1);
+  }
+
+  async function downloadImaExport(format: "csv" | "xlsx") {
+    try {
+      setImaExporting(true);
+      setImaError(null);
+
+      const params = new URLSearchParams({
+        format,
+        limit: String(imaExportLimit),
+        sortBy: imaSortBy,
+        sortOrder: imaSortOrder,
+      });
+
+      const trimmedSearch = debouncedImaSearch.trim();
+      if (trimmedSearch) {
+        params.set("search", trimmedSearch);
+      }
+
+      const response = await fetch(`/api/forest/config/ima-classes/export?${params.toString()}`, {
+        method: "GET",
+      });
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        throw new Error(payload?.error ?? "No fue posible exportar clases IMA");
+      }
+
+      const blob = await response.blob();
+      const disposition = response.headers.get("content-disposition") ?? "";
+      const match = disposition.match(/filename=\"?([^\";]+)\"?/i);
+      const filename = match?.[1] ?? `ima_classes.${format}`;
+
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = filename;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(url);
+
+      sileo.success({
+        title: "Exportación lista",
+        description: `Se generó el archivo correctamente (máx. ${imaExportLimit} registros).`,
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Error desconocido";
+      showCrudError(setImaError, message);
+    } finally {
+      setImaExporting(false);
+    }
+  }
+
+  async function onImportImaClasses(file: File) {
+    try {
+      setImaImporting(true);
+      setImaError(null);
+
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const response = await fetch("/api/forest/config/ima-classes/import", {
+        method: "POST",
+        body: formData,
+      });
+
+      const payload = await response.json().catch(() => null);
+      if (!response.ok || !payload?.success) {
+        throw new Error(payload?.error ?? "No fue posible importar clases IMA");
+      }
+
+      const result = payload?.data as
+        | {
+            created: number;
+            updated: number;
+            skipped: number;
+            errors: Array<{ row: number; code?: string; error: string }>;
+          }
+        | undefined;
+
+      await loadImaClasses();
+
+      const created = result?.created ?? 0;
+      const updated = result?.updated ?? 0;
+      const skipped = result?.skipped ?? 0;
+      const errorCount = result?.errors?.length ?? 0;
+      const description = `Creados: ${created} · Actualizados: ${updated} · Omitidos: ${skipped}`;
+
+      if (errorCount > 0) {
+        sileo.warning({
+          title: "Importación parcial",
+          description: `${description} · Errores: ${errorCount}`,
+        });
+      } else {
+        sileo.success({
+          title: "Importación completada",
+          description,
+        });
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Error desconocido";
+      showCrudError(setImaError, message);
+    } finally {
+      setImaImporting(false);
+      if (importImaInputRef.current) {
+        importImaInputRef.current.value = "";
+      }
+    }
   }
 
   async function createSpecies(event: FormEvent) {
@@ -1487,6 +1973,125 @@ export default function ConfiguracionForestalPage() {
     await loadSpeciesOptions();
   }
 
+  function toggleSpeciesSort(nextSortBy: string) {
+    if (!isSpeciesSortKey(nextSortBy)) return;
+
+    const isSameColumn = speciesSortBy === nextSortBy;
+    setSpeciesSortBy(nextSortBy);
+    setSpeciesSortOrder(isSameColumn ? (speciesSortOrder === "asc" ? "desc" : "asc") : "asc");
+    setSpeciesPage(1);
+  }
+
+  async function downloadSpeciesExport(format: "csv" | "xlsx") {
+    try {
+      setSpeciesExporting(true);
+      setSpeciesError(null);
+
+      const params = new URLSearchParams({
+        format,
+        limit: String(speciesExportLimit),
+        sortBy: speciesSortBy,
+        sortOrder: speciesSortOrder,
+      });
+
+      const trimmedSearch = debouncedSpeciesSearch.trim();
+      if (trimmedSearch) {
+        params.set("search", trimmedSearch);
+      }
+
+      const response = await fetch(`/api/forest/config/species/export?${params.toString()}`, {
+        method: "GET",
+      });
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        throw new Error(payload?.error ?? "No fue posible exportar especies vegetales");
+      }
+
+      const blob = await response.blob();
+      const disposition = response.headers.get("content-disposition") ?? "";
+      const match = disposition.match(/filename=\"?([^\";]+)\"?/i);
+      const filename = match?.[1] ?? `species.${format}`;
+
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = filename;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(url);
+
+      sileo.success({
+        title: "Exportación lista",
+        description: `Se generó el archivo correctamente (máx. ${speciesExportLimit} registros).`,
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Error desconocido";
+      showCrudError(setSpeciesError, message);
+    } finally {
+      setSpeciesExporting(false);
+    }
+  }
+
+  async function onImportSpecies(file: File) {
+    try {
+      setSpeciesImporting(true);
+      setSpeciesError(null);
+
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const response = await fetch("/api/forest/config/species/import", {
+        method: "POST",
+        body: formData,
+      });
+
+      const payload = await response.json().catch(() => null);
+      if (!response.ok || !payload?.success) {
+        throw new Error(payload?.error ?? "No fue posible importar especies vegetales");
+      }
+
+      const result = payload?.data as
+        | {
+            created: number;
+            updated: number;
+            skipped: number;
+            errors: Array<{ row: number; code?: string; error: string }>;
+          }
+        | undefined;
+
+      await loadSpecies();
+      await loadSpeciesOptions();
+
+      const created = result?.created ?? 0;
+      const updated = result?.updated ?? 0;
+      const skipped = result?.skipped ?? 0;
+      const errorCount = result?.errors?.length ?? 0;
+      const description = `Creados: ${created} · Actualizados: ${updated} · Omitidos: ${skipped}`;
+
+      if (errorCount > 0) {
+        sileo.warning({
+          title: "Importación parcial",
+          description: `${description} · Errores: ${errorCount}`,
+        });
+      } else {
+        sileo.success({
+          title: "Importación completada",
+          description,
+        });
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Error desconocido";
+      showCrudError(setSpeciesError, message);
+    } finally {
+      setSpeciesImporting(false);
+      if (importSpeciesInputRef.current) {
+        importSpeciesInputRef.current.value = "";
+      }
+    }
+  }
+
   async function createProvenance(event: FormEvent) {
     event.preventDefault();
     if (!canCreateProvenance) return;
@@ -1553,6 +2158,125 @@ export default function ConfiguracionForestalPage() {
     showCrudSuccess("Procedencia eliminada");
     await loadProvenances();
     await loadProvenanceOptions();
+  }
+
+  function toggleProvenanceSort(nextSortBy: string) {
+    if (!isProvenanceSortKey(nextSortBy)) return;
+
+    const isSameColumn = provenanceSortBy === nextSortBy;
+    setProvenanceSortBy(nextSortBy);
+    setProvenanceSortOrder(isSameColumn ? (provenanceSortOrder === "asc" ? "desc" : "asc") : "asc");
+    setProvenancePage(1);
+  }
+
+  async function downloadProvenanceExport(format: "csv" | "xlsx") {
+    try {
+      setProvenanceExporting(true);
+      setProvenanceError(null);
+
+      const params = new URLSearchParams({
+        format,
+        limit: String(provenanceExportLimit),
+        sortBy: provenanceSortBy,
+        sortOrder: provenanceSortOrder,
+      });
+
+      const trimmedSearch = debouncedProvenanceSearch.trim();
+      if (trimmedSearch) {
+        params.set("search", trimmedSearch);
+      }
+
+      const response = await fetch(`/api/forest/config/provenances/export?${params.toString()}`, {
+        method: "GET",
+      });
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        throw new Error(payload?.error ?? "No fue posible exportar procedencias");
+      }
+
+      const blob = await response.blob();
+      const disposition = response.headers.get("content-disposition") ?? "";
+      const match = disposition.match(/filename=\"?([^\";]+)\"?/i);
+      const filename = match?.[1] ?? `provenances.${format}`;
+
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = filename;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(url);
+
+      sileo.success({
+        title: "Exportación lista",
+        description: `Se generó el archivo correctamente (máx. ${provenanceExportLimit} registros).`,
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Error desconocido";
+      showCrudError(setProvenanceError, message);
+    } finally {
+      setProvenanceExporting(false);
+    }
+  }
+
+  async function onImportProvenances(file: File) {
+    try {
+      setProvenanceImporting(true);
+      setProvenanceError(null);
+
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const response = await fetch("/api/forest/config/provenances/import", {
+        method: "POST",
+        body: formData,
+      });
+
+      const payload = await response.json().catch(() => null);
+      if (!response.ok || !payload?.success) {
+        throw new Error(payload?.error ?? "No fue posible importar procedencias");
+      }
+
+      const result = payload?.data as
+        | {
+            created: number;
+            updated: number;
+            skipped: number;
+            errors: Array<{ row: number; code?: string; error: string }>;
+          }
+        | undefined;
+
+      await loadProvenances();
+      await loadProvenanceOptions();
+
+      const created = result?.created ?? 0;
+      const updated = result?.updated ?? 0;
+      const skipped = result?.skipped ?? 0;
+      const errorCount = result?.errors?.length ?? 0;
+      const description = `Creados: ${created} · Actualizados: ${updated} · Omitidos: ${skipped}`;
+
+      if (errorCount > 0) {
+        sileo.warning({
+          title: "Importación parcial",
+          description: `${description} · Errores: ${errorCount}`,
+        });
+      } else {
+        sileo.success({
+          title: "Importación completada",
+          description,
+        });
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Error desconocido";
+      showCrudError(setProvenanceError, message);
+    } finally {
+      setProvenanceImporting(false);
+      if (importProvenanceInputRef.current) {
+        importProvenanceInputRef.current.value = "";
+      }
+    }
   }
 
   async function createMaterial(event: FormEvent) {
@@ -1629,6 +2353,124 @@ export default function ConfiguracionForestalPage() {
 
     showCrudSuccess("Material vegetal eliminado");
     await loadVegetalMaterials();
+  }
+
+  function toggleMaterialSort(nextSortBy: string) {
+    if (!isMaterialSortKey(nextSortBy)) return;
+
+    const isSameColumn = materialSortBy === nextSortBy;
+    setMaterialSortBy(nextSortBy);
+    setMaterialSortOrder(isSameColumn ? (materialSortOrder === "asc" ? "desc" : "asc") : "asc");
+    setMaterialPage(1);
+  }
+
+  async function downloadMaterialExport(format: "csv" | "xlsx") {
+    try {
+      setMaterialExporting(true);
+      setMaterialError(null);
+
+      const params = new URLSearchParams({
+        format,
+        limit: String(materialExportLimit),
+        sortBy: materialSortBy,
+        sortOrder: materialSortOrder,
+      });
+
+      const trimmedSearch = debouncedMaterialSearch.trim();
+      if (trimmedSearch) {
+        params.set("search", trimmedSearch);
+      }
+
+      const response = await fetch(`/api/forest/config/vegetal-materials/export?${params.toString()}`, {
+        method: "GET",
+      });
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        throw new Error(payload?.error ?? "No fue posible exportar materiales vegetales");
+      }
+
+      const blob = await response.blob();
+      const disposition = response.headers.get("content-disposition") ?? "";
+      const match = disposition.match(/filename=\"?([^\";]+)\"?/i);
+      const filename = match?.[1] ?? `vegetal_materials.${format}`;
+
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = filename;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(url);
+
+      sileo.success({
+        title: "Exportación lista",
+        description: `Se generó el archivo correctamente (máx. ${materialExportLimit} registros).`,
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Error desconocido";
+      showCrudError(setMaterialError, message);
+    } finally {
+      setMaterialExporting(false);
+    }
+  }
+
+  async function onImportMaterials(file: File) {
+    try {
+      setMaterialImporting(true);
+      setMaterialError(null);
+
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const response = await fetch("/api/forest/config/vegetal-materials/import", {
+        method: "POST",
+        body: formData,
+      });
+
+      const payload = await response.json().catch(() => null);
+      if (!response.ok || !payload?.success) {
+        throw new Error(payload?.error ?? "No fue posible importar materiales vegetales");
+      }
+
+      const result = payload?.data as
+        | {
+            created: number;
+            updated: number;
+            skipped: number;
+            errors: Array<{ row: number; code?: string; error: string }>;
+          }
+        | undefined;
+
+      await loadVegetalMaterials();
+
+      const created = result?.created ?? 0;
+      const updated = result?.updated ?? 0;
+      const skipped = result?.skipped ?? 0;
+      const errorCount = result?.errors?.length ?? 0;
+      const description = `Creados: ${created} · Actualizados: ${updated} · Omitidos: ${skipped}`;
+
+      if (errorCount > 0) {
+        sileo.warning({
+          title: "Importación parcial",
+          description: `${description} · Errores: ${errorCount}`,
+        });
+      } else {
+        sileo.success({
+          title: "Importación completada",
+          description,
+        });
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Error desconocido";
+      showCrudError(setMaterialError, message);
+    } finally {
+      setMaterialImporting(false);
+      if (importMaterialInputRef.current) {
+        importMaterialInputRef.current.value = "";
+      }
+    }
   }
 
   async function createContinent(event: FormEvent) {
@@ -2170,6 +3012,124 @@ export default function ConfiguracionForestalPage() {
     await loadSpacings();
   }
 
+  function toggleSpacingSort(nextSortBy: string) {
+    if (!isSpacingSortKey(nextSortBy)) return;
+
+    const isSameColumn = spacingSortBy === nextSortBy;
+    setSpacingSortBy(nextSortBy);
+    setSpacingSortOrder(isSameColumn ? (spacingSortOrder === "asc" ? "desc" : "asc") : "asc");
+    setSpacingPage(1);
+  }
+
+  async function downloadSpacingExport(format: "csv" | "xlsx") {
+    try {
+      setSpacingExporting(true);
+      setSpacingError(null);
+
+      const params = new URLSearchParams({
+        format,
+        limit: String(spacingExportLimit),
+        sortBy: spacingSortBy,
+        sortOrder: spacingSortOrder,
+      });
+
+      const trimmedSearch = debouncedSpacingSearch.trim();
+      if (trimmedSearch) {
+        params.set("search", trimmedSearch);
+      }
+
+      const response = await fetch(`/api/forest/config/spacings/export?${params.toString()}`, {
+        method: "GET",
+      });
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        throw new Error(payload?.error ?? "No fue posible exportar espaciamientos");
+      }
+
+      const blob = await response.blob();
+      const disposition = response.headers.get("content-disposition") ?? "";
+      const match = disposition.match(/filename=\"?([^\";]+)\"?/i);
+      const filename = match?.[1] ?? `spacings.${format}`;
+
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = filename;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(url);
+
+      sileo.success({
+        title: "Exportación lista",
+        description: `Se generó el archivo correctamente (máx. ${spacingExportLimit} registros).`,
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Error desconocido";
+      showCrudError(setSpacingError, message);
+    } finally {
+      setSpacingExporting(false);
+    }
+  }
+
+  async function onImportSpacings(file: File) {
+    try {
+      setSpacingImporting(true);
+      setSpacingError(null);
+
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const response = await fetch("/api/forest/config/spacings/import", {
+        method: "POST",
+        body: formData,
+      });
+
+      const payload = await response.json().catch(() => null);
+      if (!response.ok || !payload?.success) {
+        throw new Error(payload?.error ?? "No fue posible importar espaciamientos");
+      }
+
+      const result = payload?.data as
+        | {
+            created: number;
+            updated: number;
+            skipped: number;
+            errors: Array<{ row: number; code?: string; error: string }>;
+          }
+        | undefined;
+
+      await loadSpacings();
+
+      const created = result?.created ?? 0;
+      const updated = result?.updated ?? 0;
+      const skipped = result?.skipped ?? 0;
+      const errorCount = result?.errors?.length ?? 0;
+      const description = `Creados: ${created} · Actualizados: ${updated} · Omitidos: ${skipped}`;
+
+      if (errorCount > 0) {
+        sileo.warning({
+          title: "Importación parcial",
+          description: `${description} · Errores: ${errorCount}`,
+        });
+      } else {
+        sileo.success({
+          title: "Importación completada",
+          description,
+        });
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Error desconocido";
+      showCrudError(setSpacingError, message);
+    } finally {
+      setSpacingImporting(false);
+      if (importSpacingInputRef.current) {
+        importSpacingInputRef.current.value = "";
+      }
+    }
+  }
+
   async function createLevel4Cost(event: FormEvent) {
     event.preventDefault();
     if (!canCreateLevel4Cost) return;
@@ -2266,6 +3226,124 @@ export default function ConfiguracionForestalPage() {
     await loadLevel4Costs();
   }
 
+  function toggleLevel4CostSort(nextSortBy: string) {
+    if (!isLevel4CostSortKey(nextSortBy)) return;
+
+    const isSameColumn = level4CostSortBy === nextSortBy;
+    setLevel4CostSortBy(nextSortBy);
+    setLevel4CostSortOrder(isSameColumn ? (level4CostSortOrder === "asc" ? "desc" : "asc") : "asc");
+    setLevel4CostPage(1);
+  }
+
+  async function downloadLevel4CostExport(format: "csv" | "xlsx") {
+    try {
+      setLevel4CostExporting(true);
+      setLevel4CostError(null);
+
+      const params = new URLSearchParams({
+        format,
+        limit: String(level4CostExportLimit),
+        sortBy: level4CostSortBy,
+        sortOrder: level4CostSortOrder,
+      });
+
+      const trimmedSearch = debouncedLevel4CostSearch.trim();
+      if (trimmedSearch) {
+        params.set("search", trimmedSearch);
+      }
+
+      const response = await fetch(`/api/forest/config/level4-costs/export?${params.toString()}`, {
+        method: "GET",
+      });
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        throw new Error(payload?.error ?? "No fue posible exportar costos nivel 4");
+      }
+
+      const blob = await response.blob();
+      const disposition = response.headers.get("content-disposition") ?? "";
+      const match = disposition.match(/filename=\"?([^\";]+)\"?/i);
+      const filename = match?.[1] ?? `level4_costs.${format}`;
+
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = filename;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(url);
+
+      sileo.success({
+        title: "Exportación lista",
+        description: `Se generó el archivo correctamente (máx. ${level4CostExportLimit} registros).`,
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Error desconocido";
+      showCrudError(setLevel4CostError, message);
+    } finally {
+      setLevel4CostExporting(false);
+    }
+  }
+
+  async function onImportLevel4Costs(file: File) {
+    try {
+      setLevel4CostImporting(true);
+      setLevel4CostError(null);
+
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const response = await fetch("/api/forest/config/level4-costs/import", {
+        method: "POST",
+        body: formData,
+      });
+
+      const payload = await response.json().catch(() => null);
+      if (!response.ok || !payload?.success) {
+        throw new Error(payload?.error ?? "No fue posible importar costos nivel 4");
+      }
+
+      const result = payload?.data as
+        | {
+            created: number;
+            updated: number;
+            skipped: number;
+            errors: Array<{ row: number; code?: string; error: string }>;
+          }
+        | undefined;
+
+      await loadLevel4Costs();
+
+      const created = result?.created ?? 0;
+      const updated = result?.updated ?? 0;
+      const skipped = result?.skipped ?? 0;
+      const errorCount = result?.errors?.length ?? 0;
+      const description = `Creados: ${created} · Actualizados: ${updated} · Omitidos: ${skipped}`;
+
+      if (errorCount > 0) {
+        sileo.warning({
+          title: "Importación parcial",
+          description: `${description} · Errores: ${errorCount}`,
+        });
+      } else {
+        sileo.success({
+          title: "Importación completada",
+          description,
+        });
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Error desconocido";
+      showCrudError(setLevel4CostError, message);
+    } finally {
+      setLevel4CostImporting(false);
+      if (importLevel4CostInputRef.current) {
+        importLevel4CostInputRef.current.value = "";
+      }
+    }
+  }
+
   async function createProductType(event: FormEvent) {
     event.preventDefault();
     if (!canCreateProductType) return;
@@ -2354,6 +3432,124 @@ export default function ConfiguracionForestalPage() {
     await loadProductTypes();
   }
 
+  function toggleProductTypeSort(nextSortBy: string) {
+    if (!isProductTypeSortKey(nextSortBy)) return;
+
+    const isSameColumn = productTypeSortBy === nextSortBy;
+    setProductTypeSortBy(nextSortBy);
+    setProductTypeSortOrder(isSameColumn ? (productTypeSortOrder === "asc" ? "desc" : "asc") : "asc");
+    setProductTypePage(1);
+  }
+
+  async function downloadProductTypeExport(format: "csv" | "xlsx") {
+    try {
+      setProductTypeExporting(true);
+      setProductTypeError(null);
+
+      const params = new URLSearchParams({
+        format,
+        limit: String(productTypeExportLimit),
+        sortBy: productTypeSortBy,
+        sortOrder: productTypeSortOrder,
+      });
+
+      const trimmedSearch = debouncedProductTypeSearch.trim();
+      if (trimmedSearch) {
+        params.set("search", trimmedSearch);
+      }
+
+      const response = await fetch(`/api/forest/config/product-types/export?${params.toString()}`, {
+        method: "GET",
+      });
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        throw new Error(payload?.error ?? "No fue posible exportar tipos de productos");
+      }
+
+      const blob = await response.blob();
+      const disposition = response.headers.get("content-disposition") ?? "";
+      const match = disposition.match(/filename=\"?([^\";]+)\"?/i);
+      const filename = match?.[1] ?? `product_types.${format}`;
+
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = filename;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(url);
+
+      sileo.success({
+        title: "Exportación lista",
+        description: `Se generó el archivo correctamente (máx. ${productTypeExportLimit} registros).`,
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Error desconocido";
+      showCrudError(setProductTypeError, message);
+    } finally {
+      setProductTypeExporting(false);
+    }
+  }
+
+  async function onImportProductTypes(file: File) {
+    try {
+      setProductTypeImporting(true);
+      setProductTypeError(null);
+
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const response = await fetch("/api/forest/config/product-types/import", {
+        method: "POST",
+        body: formData,
+      });
+
+      const payload = await response.json().catch(() => null);
+      if (!response.ok || !payload?.success) {
+        throw new Error(payload?.error ?? "No fue posible importar tipos de productos");
+      }
+
+      const result = payload?.data as
+        | {
+            created: number;
+            updated: number;
+            skipped: number;
+            errors: Array<{ row: number; code?: string; error: string }>;
+          }
+        | undefined;
+
+      await loadProductTypes();
+
+      const created = result?.created ?? 0;
+      const updated = result?.updated ?? 0;
+      const skipped = result?.skipped ?? 0;
+      const errorCount = result?.errors?.length ?? 0;
+      const description = `Creados: ${created} · Actualizados: ${updated} · Omitidos: ${skipped}`;
+
+      if (errorCount > 0) {
+        sileo.warning({
+          title: "Importación parcial",
+          description: `${description} · Errores: ${errorCount}`,
+        });
+      } else {
+        sileo.success({
+          title: "Importación completada",
+          description,
+        });
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Error desconocido";
+      showCrudError(setProductTypeError, message);
+    } finally {
+      setProductTypeImporting(false);
+      if (importProductTypeInputRef.current) {
+        importProductTypeInputRef.current.value = "";
+      }
+    }
+  }
+
   async function createLandUseType(event: FormEvent) {
     event.preventDefault();
     if (!canCreateLandUse) return;
@@ -2361,8 +3557,11 @@ export default function ConfiguracionForestalPage() {
     const result = await requestJson<LandUseTypeItem>("/api/forest/config/land-use-types", {
       method: "POST",
       body: JSON.stringify({
-        ...landUseForm,
-        continentId: landUseForm.continentId || null,
+        code: landUseForm.code,
+        name: landUseForm.name,
+        category: landUseForm.category,
+        isProductive: landUseForm.isProductive,
+        isActive: landUseForm.isActive,
       }),
     });
 
@@ -2372,13 +3571,13 @@ export default function ConfiguracionForestalPage() {
     }
 
     showCrudSuccess("Uso de suelos creado");
-    setLandUseForm((prev) => ({
-      continentId: prev.continentId,
+    setLandUseForm({
       code: "",
       name: "",
+      category: LAND_USE_CATEGORIES[0],
       isProductive: false,
       isActive: true,
-    }));
+    });
     setLandUsePage(1);
     await loadLandUseTypes();
   }
@@ -2391,9 +3590,9 @@ export default function ConfiguracionForestalPage() {
       method: "PATCH",
       body: JSON.stringify({
         id: editingLandUse.id,
-        continentId: editingLandUse.continentId ?? editingLandUse.continent?.id ?? null,
         code: editingLandUse.code,
         name: editingLandUse.name,
+        category: editingLandUse.category,
         isProductive: editingLandUse.isProductive,
         isActive: editingLandUse.isActive,
       }),
@@ -2424,6 +3623,124 @@ export default function ConfiguracionForestalPage() {
     await loadLandUseTypes();
   }
 
+  function toggleLandUseSort(nextSortBy: string) {
+    if (!isLandUseSortKey(nextSortBy)) return;
+
+    const isSameColumn = landUseSortBy === nextSortBy;
+    setLandUseSortBy(nextSortBy);
+    setLandUseSortOrder(isSameColumn ? (landUseSortOrder === "asc" ? "desc" : "asc") : "asc");
+    setLandUsePage(1);
+  }
+
+  async function downloadLandUseExport(format: "csv" | "xlsx") {
+    try {
+      setLandUseExporting(true);
+      setLandUseError(null);
+
+      const params = new URLSearchParams({
+        format,
+        limit: String(landUseExportLimit),
+        sortBy: landUseSortBy,
+        sortOrder: landUseSortOrder,
+      });
+
+      const trimmedSearch = debouncedLandUseSearch.trim();
+      if (trimmedSearch) {
+        params.set("search", trimmedSearch);
+      }
+
+      const response = await fetch(`/api/forest/config/land-use-types/export?${params.toString()}`, {
+        method: "GET",
+      });
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        throw new Error(payload?.error ?? "No fue posible exportar usos de suelos");
+      }
+
+      const blob = await response.blob();
+      const disposition = response.headers.get("content-disposition") ?? "";
+      const match = disposition.match(/filename=\"?([^\";]+)\"?/i);
+      const filename = match?.[1] ?? `land_use_types.${format}`;
+
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = filename;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(url);
+
+      sileo.success({
+        title: "Exportación lista",
+        description: `Se generó el archivo correctamente (máx. ${landUseExportLimit} registros).`,
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Error desconocido";
+      showCrudError(setLandUseError, message);
+    } finally {
+      setLandUseExporting(false);
+    }
+  }
+
+  async function onImportLandUseTypes(file: File) {
+    try {
+      setLandUseImporting(true);
+      setLandUseError(null);
+
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const response = await fetch("/api/forest/config/land-use-types/import", {
+        method: "POST",
+        body: formData,
+      });
+
+      const payload = await response.json().catch(() => null);
+      if (!response.ok || !payload?.success) {
+        throw new Error(payload?.error ?? "No fue posible importar usos de suelos");
+      }
+
+      const result = payload?.data as
+        | {
+            created: number;
+            updated: number;
+            skipped: number;
+            errors: Array<{ row: number; code?: string; error: string }>;
+          }
+        | undefined;
+
+      await loadLandUseTypes();
+
+      const created = result?.created ?? 0;
+      const updated = result?.updated ?? 0;
+      const skipped = result?.skipped ?? 0;
+      const errorCount = result?.errors?.length ?? 0;
+      const description = `Creados: ${created} · Actualizados: ${updated} · Omitidos: ${skipped}`;
+
+      if (errorCount > 0) {
+        sileo.warning({
+          title: "Importación parcial",
+          description: `${description} · Errores: ${errorCount}`,
+        });
+      } else {
+        sileo.success({
+          title: "Importación completada",
+          description,
+        });
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Error desconocido";
+      showCrudError(setLandUseError, message);
+    } finally {
+      setLandUseImporting(false);
+      if (importLandUseInputRef.current) {
+        importLandUseInputRef.current.value = "";
+      }
+    }
+  }
+
   return (
     <div className="space-y-8">
       <div className="space-y-1">
@@ -2435,6 +3752,45 @@ export default function ConfiguracionForestalPage() {
 
       <section className="space-y-4 rounded-xl border p-4">
         <CatalogHeader title="Esquemas de manejo" subtitle="CRUD de catálogo ManagementScheme" />
+
+        <div className="flex flex-wrap gap-2">
+          <input
+            className="hidden"
+            ref={importSchemeInputRef}
+            type="file"
+            accept=".csv,.xlsx"
+            onChange={(event) => {
+              const file = event.target.files?.[0];
+              if (!file) return;
+              void onImportSchemes(file);
+            }}
+          />
+          <button
+            className="rounded-md border px-3 py-2 text-sm disabled:opacity-60"
+            disabled={schemeImporting}
+            onClick={() => importSchemeInputRef.current?.click()}
+            type="button"
+          >
+            {schemeImporting ? "Importando..." : "Importar"}
+          </button>
+          <button
+            className="rounded-md border px-3 py-2 text-sm disabled:opacity-60"
+            disabled={schemeExporting}
+            onClick={() => void downloadSchemeExport("csv")}
+            type="button"
+          >
+            {schemeExporting ? "Exportando..." : "Exportar CSV"}
+          </button>
+          <button
+            className="rounded-md border px-3 py-2 text-sm disabled:opacity-60"
+            disabled={schemeExporting}
+            onClick={() => void downloadSchemeExport("xlsx")}
+            type="button"
+          >
+            {schemeExporting ? "Exportando..." : "Exportar Excel"}
+          </button>
+        </div>
+
         <form className="grid gap-3 md:grid-cols-4" onSubmit={createScheme}>
           <input className="rounded-md border px-3 py-2" placeholder="Código" value={schemeForm.code} onChange={(event) => setSchemeForm((prev) => ({ ...prev, code: event.target.value }))} />
           <input className="rounded-md border px-3 py-2 md:col-span-2" placeholder="Nombre" value={schemeForm.name} onChange={(event) => setSchemeForm((prev) => ({ ...prev, name: event.target.value }))} />
@@ -2448,7 +3804,10 @@ export default function ConfiguracionForestalPage() {
         </form>
 
         <TableToolbar
+          canExport
+          exportLimit={schemeExportLimit}
           limit={schemePagination.limit}
+          onExportLimitChange={setSchemeExportLimit}
           onLimitChange={(value) => {
             setSchemePage(1);
             setSchemePagination((prev) => ({ ...prev, limit: value }));
@@ -2468,9 +3827,15 @@ export default function ConfiguracionForestalPage() {
           <table className="min-w-full text-sm">
             <thead className="border-b">
               <tr>
-                <th className="px-3 py-2 text-left">Código</th>
-                <th className="px-3 py-2 text-left">Nombre</th>
-                <th className="px-3 py-2 text-left">Activo</th>
+                <th className="px-3 py-2 text-left">
+                  <SortableHeader label="Código" sortKey="code" sortBy={schemeSortBy} sortOrder={schemeSortOrder} onToggle={toggleSchemeSort} />
+                </th>
+                <th className="px-3 py-2 text-left">
+                  <SortableHeader label="Nombre" sortKey="name" sortBy={schemeSortBy} sortOrder={schemeSortOrder} onToggle={toggleSchemeSort} />
+                </th>
+                <th className="px-3 py-2 text-left">
+                  <SortableHeader label="Activo" sortKey="isActive" sortBy={schemeSortBy} sortOrder={schemeSortOrder} onToggle={toggleSchemeSort} />
+                </th>
                 <th className="px-3 py-2 text-left">Acciones</th>
               </tr>
             </thead>
@@ -2519,6 +3884,43 @@ export default function ConfiguracionForestalPage() {
 
       <section className="space-y-4 rounded-xl border p-4">
         <CatalogHeader title="Tipos de inventario" subtitle="CRUD de catálogo ForestInventoryTypeCatalog" />
+        <div className="flex flex-wrap items-center gap-2">
+          <input
+            accept=".csv,.xlsx"
+            className="hidden"
+            onChange={(event) => {
+              const file = event.target.files?.[0];
+              if (!file) return;
+              void onImportInventoryTypes(file);
+            }}
+            ref={importInventoryInputRef}
+            type="file"
+          />
+          <button
+            className="rounded-md border px-3 py-2 text-sm"
+            disabled={inventoryImporting}
+            onClick={() => importInventoryInputRef.current?.click()}
+            type="button"
+          >
+            {inventoryImporting ? "Importando..." : "Importar"}
+          </button>
+          <button
+            className="rounded-md border px-3 py-2 text-sm"
+            disabled={inventoryExporting}
+            onClick={() => void downloadInventoryExport("csv")}
+            type="button"
+          >
+            {inventoryExporting ? "Exportando..." : "Exportar CSV"}
+          </button>
+          <button
+            className="rounded-md border px-3 py-2 text-sm"
+            disabled={inventoryExporting}
+            onClick={() => void downloadInventoryExport("xlsx")}
+            type="button"
+          >
+            {inventoryExporting ? "Exportando..." : "Exportar Excel"}
+          </button>
+        </div>
         <form className="grid gap-3 md:grid-cols-4" onSubmit={createInventoryType}>
           <input className="rounded-md border px-3 py-2" placeholder="Código" value={inventoryForm.code} onChange={(event) => setInventoryForm((prev) => ({ ...prev, code: event.target.value }))} />
           <input className="rounded-md border px-3 py-2 md:col-span-2" placeholder="Nombre" value={inventoryForm.name} onChange={(event) => setInventoryForm((prev) => ({ ...prev, name: event.target.value }))} />
@@ -2532,7 +3934,10 @@ export default function ConfiguracionForestalPage() {
         </form>
 
         <TableToolbar
+          canExport
+          exportLimit={inventoryExportLimit}
           limit={inventoryPagination.limit}
+          onExportLimitChange={setInventoryExportLimit}
           onLimitChange={(value) => {
             setInventoryPage(1);
             setInventoryPagination((prev) => ({ ...prev, limit: value }));
@@ -2552,9 +3957,33 @@ export default function ConfiguracionForestalPage() {
           <table className="min-w-full text-sm">
             <thead className="border-b">
               <tr>
-                <th className="px-3 py-2 text-left">Código</th>
-                <th className="px-3 py-2 text-left">Nombre</th>
-                <th className="px-3 py-2 text-left">Activo</th>
+                <th className="px-3 py-2 text-left">
+                  <SortableHeader
+                    label="Código"
+                    onToggle={toggleInventorySort}
+                    sortBy={inventorySortBy}
+                    sortKey="code"
+                    sortOrder={inventorySortOrder}
+                  />
+                </th>
+                <th className="px-3 py-2 text-left">
+                  <SortableHeader
+                    label="Nombre"
+                    onToggle={toggleInventorySort}
+                    sortBy={inventorySortBy}
+                    sortKey="name"
+                    sortOrder={inventorySortOrder}
+                  />
+                </th>
+                <th className="px-3 py-2 text-left">
+                  <SortableHeader
+                    label="Activo"
+                    onToggle={toggleInventorySort}
+                    sortBy={inventorySortBy}
+                    sortKey="isActive"
+                    sortOrder={inventorySortOrder}
+                  />
+                </th>
                 <th className="px-3 py-2 text-left">Acciones</th>
               </tr>
             </thead>
@@ -2603,6 +4032,43 @@ export default function ConfiguracionForestalPage() {
 
       <section className="space-y-4 rounded-xl border p-4">
         <CatalogHeader title="Clases IMA" subtitle="CRUD de catálogo ImaClass" />
+        <div className="flex flex-wrap items-center gap-2">
+          <input
+            accept=".csv,.xlsx"
+            className="hidden"
+            onChange={(event) => {
+              const file = event.target.files?.[0];
+              if (!file) return;
+              void onImportImaClasses(file);
+            }}
+            ref={importImaInputRef}
+            type="file"
+          />
+          <button
+            className="rounded-md border px-3 py-2 text-sm"
+            disabled={imaImporting}
+            onClick={() => importImaInputRef.current?.click()}
+            type="button"
+          >
+            {imaImporting ? "Importando..." : "Importar"}
+          </button>
+          <button
+            className="rounded-md border px-3 py-2 text-sm"
+            disabled={imaExporting}
+            onClick={() => void downloadImaExport("csv")}
+            type="button"
+          >
+            {imaExporting ? "Exportando..." : "Exportar CSV"}
+          </button>
+          <button
+            className="rounded-md border px-3 py-2 text-sm"
+            disabled={imaExporting}
+            onClick={() => void downloadImaExport("xlsx")}
+            type="button"
+          >
+            {imaExporting ? "Exportando..." : "Exportar Excel"}
+          </button>
+        </div>
         <form className="grid gap-3 md:grid-cols-6" onSubmit={createImaClass}>
           <input className="rounded-md border px-3 py-2" placeholder="Código" value={imaForm.code} onChange={(event) => setImaForm((prev) => ({ ...prev, code: event.target.value }))} />
           <select className="rounded-md border px-3 py-2" value={imaForm.classification} onChange={(event) => setImaForm((prev) => ({ ...prev, classification: event.target.value as ImaClassification }))}>
@@ -2626,7 +4092,10 @@ export default function ConfiguracionForestalPage() {
         </form>
 
         <TableToolbar
+          canExport
+          exportLimit={imaExportLimit}
           limit={imaPagination.limit}
+          onExportLimitChange={setImaExportLimit}
           onLimitChange={(value) => {
             setImaPage(1);
             setImaPagination((prev) => ({ ...prev, limit: value }));
@@ -2646,11 +4115,43 @@ export default function ConfiguracionForestalPage() {
           <table className="min-w-full text-sm">
             <thead className="border-b">
               <tr>
-                <th className="px-3 py-2 text-left">Código</th>
-                <th className="px-3 py-2 text-left">Clase</th>
-                <th className="px-3 py-2 text-left">Nombre</th>
+                <th className="px-3 py-2 text-left">
+                  <SortableHeader
+                    label="Código"
+                    onToggle={toggleImaSort}
+                    sortBy={imaSortBy}
+                    sortKey="code"
+                    sortOrder={imaSortOrder}
+                  />
+                </th>
+                <th className="px-3 py-2 text-left">
+                  <SortableHeader
+                    label="Clase"
+                    onToggle={toggleImaSort}
+                    sortBy={imaSortBy}
+                    sortKey="classification"
+                    sortOrder={imaSortOrder}
+                  />
+                </th>
+                <th className="px-3 py-2 text-left">
+                  <SortableHeader
+                    label="Nombre"
+                    onToggle={toggleImaSort}
+                    sortBy={imaSortBy}
+                    sortKey="name"
+                    sortOrder={imaSortOrder}
+                  />
+                </th>
                 <th className="px-3 py-2 text-left">Rango</th>
-                <th className="px-3 py-2 text-left">Activo</th>
+                <th className="px-3 py-2 text-left">
+                  <SortableHeader
+                    label="Activo"
+                    onToggle={toggleImaSort}
+                    sortBy={imaSortBy}
+                    sortKey="isActive"
+                    sortOrder={imaSortOrder}
+                  />
+                </th>
                 <th className="px-3 py-2 text-left">Acciones</th>
               </tr>
             </thead>
@@ -2713,6 +4214,43 @@ export default function ConfiguracionForestalPage() {
 
       <section className="space-y-4 rounded-xl border p-4">
         <CatalogHeader title="Espaciamientos" subtitle="CRUD de catálogo Spacing" />
+        <div className="flex flex-wrap items-center gap-2">
+          <input
+            accept=".csv,.xlsx"
+            className="hidden"
+            onChange={(event) => {
+              const file = event.target.files?.[0];
+              if (!file) return;
+              void onImportSpacings(file);
+            }}
+            ref={importSpacingInputRef}
+            type="file"
+          />
+          <button
+            className="rounded-md border px-3 py-2 text-sm"
+            disabled={spacingImporting}
+            onClick={() => importSpacingInputRef.current?.click()}
+            type="button"
+          >
+            {spacingImporting ? "Importando..." : "Importar"}
+          </button>
+          <button
+            className="rounded-md border px-3 py-2 text-sm"
+            disabled={spacingExporting}
+            onClick={() => void downloadSpacingExport("csv")}
+            type="button"
+          >
+            {spacingExporting ? "Exportando..." : "Exportar CSV"}
+          </button>
+          <button
+            className="rounded-md border px-3 py-2 text-sm"
+            disabled={spacingExporting}
+            onClick={() => void downloadSpacingExport("xlsx")}
+            type="button"
+          >
+            {spacingExporting ? "Exportando..." : "Exportar Excel"}
+          </button>
+        </div>
         <form className="grid gap-3 md:grid-cols-6" onSubmit={createSpacing}>
           <input className="rounded-md border px-3 py-2" placeholder="Código" value={spacingForm.code} onChange={(event) => setSpacingForm((prev) => ({ ...prev, code: event.target.value }))} />
           <input className="rounded-md border px-3 py-2" placeholder="Nombre" value={spacingForm.name} onChange={(event) => setSpacingForm((prev) => ({ ...prev, name: event.target.value }))} />
@@ -2730,7 +4268,10 @@ export default function ConfiguracionForestalPage() {
         </form>
 
         <TableToolbar
+          canExport
+          exportLimit={spacingExportLimit}
           limit={spacingPagination.limit}
+          onExportLimitChange={setSpacingExportLimit}
           onLimitChange={(value) => {
             setSpacingPage(1);
             setSpacingPagination((prev) => ({ ...prev, limit: value }));
@@ -2750,12 +4291,36 @@ export default function ConfiguracionForestalPage() {
           <table className="min-w-full text-sm">
             <thead className="border-b">
               <tr>
-                <th className="px-3 py-2 text-left">Código</th>
-                <th className="px-3 py-2 text-left">Nombre</th>
+                <th className="px-3 py-2 text-left">
+                  <SortableHeader
+                    label="Código"
+                    onToggle={toggleSpacingSort}
+                    sortBy={spacingSortBy}
+                    sortKey="code"
+                    sortOrder={spacingSortOrder}
+                  />
+                </th>
+                <th className="px-3 py-2 text-left">
+                  <SortableHeader
+                    label="Nombre"
+                    onToggle={toggleSpacingSort}
+                    sortBy={spacingSortBy}
+                    sortKey="name"
+                    sortOrder={spacingSortOrder}
+                  />
+                </th>
                 <th className="px-3 py-2 text-left">Entre filas</th>
                 <th className="px-3 py-2 text-left">Entre plantas</th>
                 <th className="px-3 py-2 text-left">Densidad/ha</th>
-                <th className="px-3 py-2 text-left">Activo</th>
+                <th className="px-3 py-2 text-left">
+                  <SortableHeader
+                    label="Activo"
+                    onToggle={toggleSpacingSort}
+                    sortBy={spacingSortBy}
+                    sortKey="isActive"
+                    sortOrder={spacingSortOrder}
+                  />
+                </th>
                 <th className="px-3 py-2 text-left">Acciones</th>
               </tr>
             </thead>
@@ -2811,6 +4376,43 @@ export default function ConfiguracionForestalPage() {
 
       <section className="space-y-4 rounded-xl border p-4">
         <CatalogHeader title="Costos nivel 4" subtitle="CRUD de catálogo Level4AdministrativeCost" />
+        <div className="flex flex-wrap items-center gap-2">
+          <input
+            accept=".csv,.xlsx"
+            className="hidden"
+            onChange={(event) => {
+              const file = event.target.files?.[0];
+              if (!file) return;
+              void onImportLevel4Costs(file);
+            }}
+            ref={importLevel4CostInputRef}
+            type="file"
+          />
+          <button
+            className="rounded-md border px-3 py-2 text-sm"
+            disabled={level4CostImporting}
+            onClick={() => importLevel4CostInputRef.current?.click()}
+            type="button"
+          >
+            {level4CostImporting ? "Importando..." : "Importar"}
+          </button>
+          <button
+            className="rounded-md border px-3 py-2 text-sm"
+            disabled={level4CostExporting}
+            onClick={() => void downloadLevel4CostExport("csv")}
+            type="button"
+          >
+            {level4CostExporting ? "Exportando..." : "Exportar CSV"}
+          </button>
+          <button
+            className="rounded-md border px-3 py-2 text-sm"
+            disabled={level4CostExporting}
+            onClick={() => void downloadLevel4CostExport("xlsx")}
+            type="button"
+          >
+            {level4CostExporting ? "Exportando..." : "Exportar Excel"}
+          </button>
+        </div>
         <form className="grid gap-3 md:grid-cols-6" onSubmit={createLevel4Cost}>
           <select className="rounded-md border px-3 py-2" value={level4CostForm.level4Id} onChange={(event) => setLevel4CostForm((prev) => ({ ...prev, level4Id: event.target.value }))}>
             <option value="">Seleccione unidad nivel 4</option>
@@ -2836,7 +4438,10 @@ export default function ConfiguracionForestalPage() {
         {level4Options.length === 0 ? <p className="text-xs text-muted-foreground">No hay unidades nivel 4 cargadas. Debes cargar unidades para registrar costos.</p> : null}
 
         <TableToolbar
+          canExport
+          exportLimit={level4CostExportLimit}
           limit={level4CostPagination.limit}
+          onExportLimitChange={setLevel4CostExportLimit}
           onLimitChange={(value) => {
             setLevel4CostPage(1);
             setLevel4CostPagination((prev) => ({ ...prev, limit: value }));
@@ -2857,11 +4462,43 @@ export default function ConfiguracionForestalPage() {
             <thead className="border-b">
               <tr>
                 <th className="px-3 py-2 text-left">Unidad nivel 4</th>
-                <th className="px-3 py-2 text-left">Código</th>
-                <th className="px-3 py-2 text-left">Área (ha)</th>
-                <th className="px-3 py-2 text-left">Fase</th>
+                <th className="px-3 py-2 text-left">
+                  <SortableHeader
+                    label="Código"
+                    onToggle={toggleLevel4CostSort}
+                    sortBy={level4CostSortBy}
+                    sortKey="code"
+                    sortOrder={level4CostSortOrder}
+                  />
+                </th>
+                <th className="px-3 py-2 text-left">
+                  <SortableHeader
+                    label="Área (ha)"
+                    onToggle={toggleLevel4CostSort}
+                    sortBy={level4CostSortBy}
+                    sortKey="plantationAreaHa"
+                    sortOrder={level4CostSortOrder}
+                  />
+                </th>
+                <th className="px-3 py-2 text-left">
+                  <SortableHeader
+                    label="Fase"
+                    onToggle={toggleLevel4CostSort}
+                    sortBy={level4CostSortBy}
+                    sortKey="rotationPhase"
+                    sortOrder={level4CostSortOrder}
+                  />
+                </th>
                 <th className="px-3 py-2 text-left">Documento</th>
-                <th className="px-3 py-2 text-left">Activo</th>
+                <th className="px-3 py-2 text-left">
+                  <SortableHeader
+                    label="Activo"
+                    onToggle={toggleLevel4CostSort}
+                    sortBy={level4CostSortBy}
+                    sortKey="isActive"
+                    sortOrder={level4CostSortOrder}
+                  />
+                </th>
                 <th className="px-3 py-2 text-left">Acciones</th>
               </tr>
             </thead>
@@ -2925,6 +4562,43 @@ export default function ConfiguracionForestalPage() {
 
       <section className="space-y-4 rounded-xl border p-4">
         <CatalogHeader title="Tipos de productos" subtitle="CRUD de catálogo ProductType" />
+        <div className="flex flex-wrap items-center gap-2">
+          <input
+            accept=".csv,.xlsx"
+            className="hidden"
+            onChange={(event) => {
+              const file = event.target.files?.[0];
+              if (!file) return;
+              void onImportProductTypes(file);
+            }}
+            ref={importProductTypeInputRef}
+            type="file"
+          />
+          <button
+            className="rounded-md border px-3 py-2 text-sm"
+            disabled={productTypeImporting}
+            onClick={() => importProductTypeInputRef.current?.click()}
+            type="button"
+          >
+            {productTypeImporting ? "Importando..." : "Importar"}
+          </button>
+          <button
+            className="rounded-md border px-3 py-2 text-sm"
+            disabled={productTypeExporting}
+            onClick={() => void downloadProductTypeExport("csv")}
+            type="button"
+          >
+            {productTypeExporting ? "Exportando..." : "Exportar CSV"}
+          </button>
+          <button
+            className="rounded-md border px-3 py-2 text-sm"
+            disabled={productTypeExporting}
+            onClick={() => void downloadProductTypeExport("xlsx")}
+            type="button"
+          >
+            {productTypeExporting ? "Exportando..." : "Exportar Excel"}
+          </button>
+        </div>
         <form className="grid gap-3 md:grid-cols-6" onSubmit={createProductType}>
           <input className="rounded-md border px-3 py-2" placeholder="Código" value={productTypeForm.code} onChange={(event) => setProductTypeForm((prev) => ({ ...prev, code: event.target.value }))} />
           <input className="rounded-md border px-3 py-2" placeholder="Nombre" value={productTypeForm.name} onChange={(event) => setProductTypeForm((prev) => ({ ...prev, name: event.target.value }))} />
@@ -2946,7 +4620,10 @@ export default function ConfiguracionForestalPage() {
         </form>
 
         <TableToolbar
+          canExport
+          exportLimit={productTypeExportLimit}
           limit={productTypePagination.limit}
+          onExportLimitChange={setProductTypeExportLimit}
           onLimitChange={(value) => {
             setProductTypePage(1);
             setProductTypePagination((prev) => ({ ...prev, limit: value }));
@@ -2966,12 +4643,44 @@ export default function ConfiguracionForestalPage() {
           <table className="min-w-full text-sm">
             <thead className="border-b">
               <tr>
-                <th className="px-3 py-2 text-left">Código</th>
-                <th className="px-3 py-2 text-left">Nombre</th>
+                <th className="px-3 py-2 text-left">
+                  <SortableHeader
+                    label="Código"
+                    onToggle={toggleProductTypeSort}
+                    sortBy={productTypeSortBy}
+                    sortKey="code"
+                    sortOrder={productTypeSortOrder}
+                  />
+                </th>
+                <th className="px-3 py-2 text-left">
+                  <SortableHeader
+                    label="Nombre"
+                    onToggle={toggleProductTypeSort}
+                    sortBy={productTypeSortBy}
+                    sortKey="name"
+                    sortOrder={productTypeSortOrder}
+                  />
+                </th>
                 <th className="px-3 py-2 text-left">Longitud</th>
                 <th className="px-3 py-2 text-left">Diámetro</th>
-                <th className="px-3 py-2 text-left">Corte</th>
-                <th className="px-3 py-2 text-left">Activo</th>
+                <th className="px-3 py-2 text-left">
+                  <SortableHeader
+                    label="Corte"
+                    onToggle={toggleProductTypeSort}
+                    sortBy={productTypeSortBy}
+                    sortKey="recommendedHarvestType"
+                    sortOrder={productTypeSortOrder}
+                  />
+                </th>
+                <th className="px-3 py-2 text-left">
+                  <SortableHeader
+                    label="Activo"
+                    onToggle={toggleProductTypeSort}
+                    sortBy={productTypeSortBy}
+                    sortKey="isActive"
+                    sortOrder={productTypeSortOrder}
+                  />
+                </th>
                 <th className="px-3 py-2 text-left">Acciones</th>
               </tr>
             </thead>
@@ -3035,12 +4744,48 @@ export default function ConfiguracionForestalPage() {
 
       <section className="space-y-4 rounded-xl border p-4">
         <CatalogHeader title="Uso de suelos" subtitle="CRUD de catálogo LandUseType" />
-        <form className="grid gap-3 md:grid-cols-6" onSubmit={createLandUseType}>
-          <select className="rounded-md border px-3 py-2" value={landUseForm.continentId} onChange={(event) => setLandUseForm((prev) => ({ ...prev, continentId: event.target.value }))}>
-            <option value="">Sin continente</option>
-            {activeContinents.map((continent) => (
-              <option key={continent.id} value={continent.id}>
-                {continent.code} - {continent.name}
+        <div className="flex flex-wrap items-center gap-2">
+          <input
+            accept=".csv,.xlsx"
+            className="hidden"
+            onChange={(event) => {
+              const file = event.target.files?.[0];
+              if (!file) return;
+              void onImportLandUseTypes(file);
+            }}
+            ref={importLandUseInputRef}
+            type="file"
+          />
+          <button
+            className="rounded-md border px-3 py-2 text-sm"
+            disabled={landUseImporting}
+            onClick={() => importLandUseInputRef.current?.click()}
+            type="button"
+          >
+            {landUseImporting ? "Importando..." : "Importar"}
+          </button>
+          <button
+            className="rounded-md border px-3 py-2 text-sm"
+            disabled={landUseExporting}
+            onClick={() => void downloadLandUseExport("csv")}
+            type="button"
+          >
+            {landUseExporting ? "Exportando..." : "Exportar CSV"}
+          </button>
+          <button
+            className="rounded-md border px-3 py-2 text-sm"
+            disabled={landUseExporting}
+            onClick={() => void downloadLandUseExport("xlsx")}
+            type="button"
+          >
+            {landUseExporting ? "Exportando..." : "Exportar Excel"}
+          </button>
+        </div>
+        <form className="grid gap-3 md:grid-cols-7" onSubmit={createLandUseType}>
+          <select className="rounded-md border px-3 py-2" value={landUseForm.category} onChange={(event) => setLandUseForm((prev) => ({ ...prev, category: event.target.value as LandUseCategory }))}>
+            {LAND_USE_CATEGORIES.map((category) => (
+              <option key={category} value={category}>
+                {category}
               </option>
             ))}
           </select>
@@ -3060,7 +4805,10 @@ export default function ConfiguracionForestalPage() {
         </form>
 
         <TableToolbar
+          canExport
+          exportLimit={landUseExportLimit}
           limit={landUsePagination.limit}
+          onExportLimitChange={setLandUseExportLimit}
           onLimitChange={(value) => {
             setLandUsePage(1);
             setLandUsePagination((prev) => ({ ...prev, limit: value }));
@@ -3070,7 +4818,7 @@ export default function ConfiguracionForestalPage() {
             setLandUseSearch(value);
           }}
           search={landUseSearch}
-          searchPlaceholder="Buscar por código o nombre"
+          searchPlaceholder="Buscar por código, nombre o categoría"
           total={landUsePagination.total}
         />
         {landUseError ? <p className="text-sm text-red-600">{landUseError}</p> : null}
@@ -3080,25 +4828,65 @@ export default function ConfiguracionForestalPage() {
           <table className="min-w-full text-sm">
             <thead className="border-b">
               <tr>
-                <th className="px-3 py-2 text-left">Continente</th>
-                <th className="px-3 py-2 text-left">Código</th>
-                <th className="px-3 py-2 text-left">Nombre</th>
-                <th className="px-3 py-2 text-left">Productivo</th>
-                <th className="px-3 py-2 text-left">Activo</th>
+                <th className="px-3 py-2 text-left">
+                  <SortableHeader
+                    label="Código"
+                    onToggle={toggleLandUseSort}
+                    sortBy={landUseSortBy}
+                    sortKey="code"
+                    sortOrder={landUseSortOrder}
+                  />
+                </th>
+                <th className="px-3 py-2 text-left">
+                  <SortableHeader
+                    label="Nombre"
+                    onToggle={toggleLandUseSort}
+                    sortBy={landUseSortBy}
+                    sortKey="name"
+                    sortOrder={landUseSortOrder}
+                  />
+                </th>
+                <th className="px-3 py-2 text-left">
+                  <SortableHeader
+                    label="Categoría"
+                    onToggle={toggleLandUseSort}
+                    sortBy={landUseSortBy}
+                    sortKey="category"
+                    sortOrder={landUseSortOrder}
+                  />
+                </th>
+                <th className="px-3 py-2 text-left">
+                  <SortableHeader
+                    label="Productivo"
+                    onToggle={toggleLandUseSort}
+                    sortBy={landUseSortBy}
+                    sortKey="isProductive"
+                    sortOrder={landUseSortOrder}
+                  />
+                </th>
+                <th className="px-3 py-2 text-left">
+                  <SortableHeader
+                    label="Activo"
+                    onToggle={toggleLandUseSort}
+                    sortBy={landUseSortBy}
+                    sortKey="isActive"
+                    sortOrder={landUseSortOrder}
+                  />
+                </th>
                 <th className="px-3 py-2 text-left">Acciones</th>
               </tr>
             </thead>
             <tbody>
               {landUseItems.map((item) => (
                 <tr className="border-b" key={item.id}>
-                  <td className="px-3 py-2">{item.continent ? `${item.continent.code} - ${item.continent.name}` : "Sin continente"}</td>
                   <td className="px-3 py-2">{item.code}</td>
                   <td className="px-3 py-2">{item.name}</td>
+                  <td className="px-3 py-2">{item.category}</td>
                   <td className="px-3 py-2">{item.isProductive ? "Sí" : "No"}</td>
                   <td className="px-3 py-2">{item.isActive ? "Sí" : "No"}</td>
                   <td className="px-3 py-2">
                     <div className="flex gap-2">
-                      <button className="rounded border px-2 py-1" onClick={() => setEditingLandUse({ ...item, continentId: item.continentId ?? item.continent?.id ?? "" })} type="button">Editar</button>
+                      <button className="rounded border px-2 py-1" onClick={() => setEditingLandUse(item)} type="button">Editar</button>
                       <button className="rounded border px-2 py-1" onClick={() => void deleteLandUseType(item.id)} type="button">Eliminar</button>
                     </div>
                   </td>
@@ -3118,12 +4906,11 @@ export default function ConfiguracionForestalPage() {
         />
 
         {editingLandUse ? (
-          <form className="grid gap-3 rounded-lg border p-3 md:grid-cols-6" onSubmit={updateLandUseType}>
-            <select className="rounded-md border px-3 py-2" value={editingLandUse.continentId ?? editingLandUse.continent?.id ?? ""} onChange={(event) => setEditingLandUse((prev) => (prev ? { ...prev, continentId: event.target.value } : prev))}>
-              <option value="">Sin continente</option>
-              {activeContinents.map((continent) => (
-                <option key={continent.id} value={continent.id}>
-                  {continent.code} - {continent.name}
+          <form className="grid gap-3 rounded-lg border p-3 md:grid-cols-7" onSubmit={updateLandUseType}>
+            <select className="rounded-md border px-3 py-2" value={editingLandUse.category} onChange={(event) => setEditingLandUse((prev) => (prev ? { ...prev, category: event.target.value as LandUseCategory } : prev))}>
+              {LAND_USE_CATEGORIES.map((category) => (
+                <option key={category} value={category}>
+                  {category}
                 </option>
               ))}
             </select>
@@ -3147,6 +4934,43 @@ export default function ConfiguracionForestalPage() {
 
       <section className="space-y-4 rounded-xl border p-4">
         <CatalogHeader title="Especies vegetales" subtitle="CRUD de catálogo Species" />
+        <div className="flex flex-wrap items-center gap-2">
+          <input
+            accept=".csv,.xlsx"
+            className="hidden"
+            onChange={(event) => {
+              const file = event.target.files?.[0];
+              if (!file) return;
+              void onImportSpecies(file);
+            }}
+            ref={importSpeciesInputRef}
+            type="file"
+          />
+          <button
+            className="rounded-md border px-3 py-2 text-sm"
+            disabled={speciesImporting}
+            onClick={() => importSpeciesInputRef.current?.click()}
+            type="button"
+          >
+            {speciesImporting ? "Importando..." : "Importar"}
+          </button>
+          <button
+            className="rounded-md border px-3 py-2 text-sm"
+            disabled={speciesExporting}
+            onClick={() => void downloadSpeciesExport("csv")}
+            type="button"
+          >
+            {speciesExporting ? "Exportando..." : "Exportar CSV"}
+          </button>
+          <button
+            className="rounded-md border px-3 py-2 text-sm"
+            disabled={speciesExporting}
+            onClick={() => void downloadSpeciesExport("xlsx")}
+            type="button"
+          >
+            {speciesExporting ? "Exportando..." : "Exportar Excel"}
+          </button>
+        </div>
         <form className="grid gap-3 md:grid-cols-4" onSubmit={createSpecies}>
           <input className="rounded-md border px-3 py-2" placeholder="Código" value={speciesForm.code} onChange={(event) => setSpeciesForm((prev) => ({ ...prev, code: event.target.value }))} />
           <input className="rounded-md border px-3 py-2 md:col-span-2" placeholder="Nombre científico" value={speciesForm.scientificName} onChange={(event) => setSpeciesForm((prev) => ({ ...prev, scientificName: event.target.value }))} />
@@ -3164,7 +4988,10 @@ export default function ConfiguracionForestalPage() {
         </form>
 
         <TableToolbar
+          canExport
+          exportLimit={speciesExportLimit}
           limit={speciesPagination.limit}
+          onExportLimitChange={setSpeciesExportLimit}
           onLimitChange={(value) => {
             setSpeciesPage(1);
             setSpeciesPagination((prev) => ({ ...prev, limit: value }));
@@ -3184,10 +5011,42 @@ export default function ConfiguracionForestalPage() {
           <table className="min-w-full text-sm">
             <thead className="border-b">
               <tr>
-                <th className="px-3 py-2 text-left">Código</th>
-                <th className="px-3 py-2 text-left">Nombre científico</th>
-                <th className="px-3 py-2 text-left">Nombre común</th>
-                <th className="px-3 py-2 text-left">Activo</th>
+                <th className="px-3 py-2 text-left">
+                  <SortableHeader
+                    label="Código"
+                    onToggle={toggleSpeciesSort}
+                    sortBy={speciesSortBy}
+                    sortKey="code"
+                    sortOrder={speciesSortOrder}
+                  />
+                </th>
+                <th className="px-3 py-2 text-left">
+                  <SortableHeader
+                    label="Nombre científico"
+                    onToggle={toggleSpeciesSort}
+                    sortBy={speciesSortBy}
+                    sortKey="scientificName"
+                    sortOrder={speciesSortOrder}
+                  />
+                </th>
+                <th className="px-3 py-2 text-left">
+                  <SortableHeader
+                    label="Nombre común"
+                    onToggle={toggleSpeciesSort}
+                    sortBy={speciesSortBy}
+                    sortKey="commonName"
+                    sortOrder={speciesSortOrder}
+                  />
+                </th>
+                <th className="px-3 py-2 text-left">
+                  <SortableHeader
+                    label="Activo"
+                    onToggle={toggleSpeciesSort}
+                    sortBy={speciesSortBy}
+                    sortKey="isActive"
+                    sortOrder={speciesSortOrder}
+                  />
+                </th>
                 <th className="px-3 py-2 text-left">Acciones</th>
               </tr>
             </thead>
@@ -3241,6 +5100,43 @@ export default function ConfiguracionForestalPage() {
 
       <section className="space-y-4 rounded-xl border p-4">
         <CatalogHeader title="Procedencias" subtitle="CRUD de catálogo Provenance" />
+        <div className="flex flex-wrap items-center gap-2">
+          <input
+            accept=".csv,.xlsx"
+            className="hidden"
+            onChange={(event) => {
+              const file = event.target.files?.[0];
+              if (!file) return;
+              void onImportProvenances(file);
+            }}
+            ref={importProvenanceInputRef}
+            type="file"
+          />
+          <button
+            className="rounded-md border px-3 py-2 text-sm"
+            disabled={provenanceImporting}
+            onClick={() => importProvenanceInputRef.current?.click()}
+            type="button"
+          >
+            {provenanceImporting ? "Importando..." : "Importar"}
+          </button>
+          <button
+            className="rounded-md border px-3 py-2 text-sm"
+            disabled={provenanceExporting}
+            onClick={() => void downloadProvenanceExport("csv")}
+            type="button"
+          >
+            {provenanceExporting ? "Exportando..." : "Exportar CSV"}
+          </button>
+          <button
+            className="rounded-md border px-3 py-2 text-sm"
+            disabled={provenanceExporting}
+            onClick={() => void downloadProvenanceExport("xlsx")}
+            type="button"
+          >
+            {provenanceExporting ? "Exportando..." : "Exportar Excel"}
+          </button>
+        </div>
         <form className="grid gap-3 md:grid-cols-4" onSubmit={createProvenance}>
           <select className="rounded-md border px-3 py-2" value={provenanceForm.countryId} onChange={(event) => setProvenanceForm((prev) => ({ ...prev, countryId: event.target.value }))}>
             <option value="">Seleccione país</option>
@@ -3264,7 +5160,10 @@ export default function ConfiguracionForestalPage() {
         {countryOptions.length === 0 ? <p className="text-xs text-muted-foreground">No hay países activos cargados. Debes cargar países para registrar procedencias.</p> : null}
 
         <TableToolbar
+          canExport
+          exportLimit={provenanceExportLimit}
           limit={provenancePagination.limit}
+          onExportLimitChange={setProvenanceExportLimit}
           onLimitChange={(value) => {
             setProvenancePage(1);
             setProvenancePagination((prev) => ({ ...prev, limit: value }));
@@ -3284,10 +5183,42 @@ export default function ConfiguracionForestalPage() {
           <table className="min-w-full text-sm">
             <thead className="border-b">
               <tr>
-                <th className="px-3 py-2 text-left">País</th>
-                <th className="px-3 py-2 text-left">Código</th>
-                <th className="px-3 py-2 text-left">Nombre</th>
-                <th className="px-3 py-2 text-left">Activo</th>
+                <th className="px-3 py-2 text-left">
+                  <SortableHeader
+                    label="País"
+                    onToggle={toggleProvenanceSort}
+                    sortBy={provenanceSortBy}
+                    sortKey="countryName"
+                    sortOrder={provenanceSortOrder}
+                  />
+                </th>
+                <th className="px-3 py-2 text-left">
+                  <SortableHeader
+                    label="Código"
+                    onToggle={toggleProvenanceSort}
+                    sortBy={provenanceSortBy}
+                    sortKey="code"
+                    sortOrder={provenanceSortOrder}
+                  />
+                </th>
+                <th className="px-3 py-2 text-left">
+                  <SortableHeader
+                    label="Nombre"
+                    onToggle={toggleProvenanceSort}
+                    sortBy={provenanceSortBy}
+                    sortKey="name"
+                    sortOrder={provenanceSortOrder}
+                  />
+                </th>
+                <th className="px-3 py-2 text-left">
+                  <SortableHeader
+                    label="Activo"
+                    onToggle={toggleProvenanceSort}
+                    sortBy={provenanceSortBy}
+                    sortKey="isActive"
+                    sortOrder={provenanceSortOrder}
+                  />
+                </th>
                 <th className="px-3 py-2 text-left">Acciones</th>
               </tr>
             </thead>
@@ -3345,6 +5276,43 @@ export default function ConfiguracionForestalPage() {
 
       <section className="space-y-4 rounded-xl border p-4">
         <CatalogHeader title="Material vegetal" subtitle="CRUD de catálogo VegetalMaterial" />
+        <div className="flex flex-wrap items-center gap-2">
+          <input
+            accept=".csv,.xlsx"
+            className="hidden"
+            onChange={(event) => {
+              const file = event.target.files?.[0];
+              if (!file) return;
+              void onImportMaterials(file);
+            }}
+            ref={importMaterialInputRef}
+            type="file"
+          />
+          <button
+            className="rounded-md border px-3 py-2 text-sm"
+            disabled={materialImporting}
+            onClick={() => importMaterialInputRef.current?.click()}
+            type="button"
+          >
+            {materialImporting ? "Importando..." : "Importar"}
+          </button>
+          <button
+            className="rounded-md border px-3 py-2 text-sm"
+            disabled={materialExporting}
+            onClick={() => void downloadMaterialExport("csv")}
+            type="button"
+          >
+            {materialExporting ? "Exportando..." : "Exportar CSV"}
+          </button>
+          <button
+            className="rounded-md border px-3 py-2 text-sm"
+            disabled={materialExporting}
+            onClick={() => void downloadMaterialExport("xlsx")}
+            type="button"
+          >
+            {materialExporting ? "Exportando..." : "Exportar Excel"}
+          </button>
+        </div>
         <form className="grid gap-3 md:grid-cols-4" onSubmit={createMaterial}>
           <input className="rounded-md border px-3 py-2" placeholder="Código" value={materialForm.code} onChange={(event) => setMaterialForm((prev) => ({ ...prev, code: event.target.value }))} />
           <input className="rounded-md border px-3 py-2" placeholder="Nombre" value={materialForm.name} onChange={(event) => setMaterialForm((prev) => ({ ...prev, name: event.target.value }))} />
@@ -3392,7 +5360,10 @@ export default function ConfiguracionForestalPage() {
         </form>
 
         <TableToolbar
+          canExport
+          exportLimit={materialExportLimit}
           limit={materialPagination.limit}
+          onExportLimitChange={setMaterialExportLimit}
           onLimitChange={(value) => {
             setMaterialPage(1);
             setMaterialPagination((prev) => ({ ...prev, limit: value }));
@@ -3412,12 +5383,60 @@ export default function ConfiguracionForestalPage() {
           <table className="min-w-full text-sm">
             <thead className="border-b">
               <tr>
-                <th className="px-3 py-2 text-left">Código</th>
-                <th className="px-3 py-2 text-left">Nombre</th>
-                <th className="px-3 py-2 text-left">Especie</th>
-                <th className="px-3 py-2 text-left">Procedencia</th>
-                <th className="px-3 py-2 text-left">Tipo</th>
-                <th className="px-3 py-2 text-left">Activo</th>
+                <th className="px-3 py-2 text-left">
+                  <SortableHeader
+                    label="Código"
+                    onToggle={toggleMaterialSort}
+                    sortBy={materialSortBy}
+                    sortKey="code"
+                    sortOrder={materialSortOrder}
+                  />
+                </th>
+                <th className="px-3 py-2 text-left">
+                  <SortableHeader
+                    label="Nombre"
+                    onToggle={toggleMaterialSort}
+                    sortBy={materialSortBy}
+                    sortKey="name"
+                    sortOrder={materialSortOrder}
+                  />
+                </th>
+                <th className="px-3 py-2 text-left">
+                  <SortableHeader
+                    label="Especie"
+                    onToggle={toggleMaterialSort}
+                    sortBy={materialSortBy}
+                    sortKey="speciesName"
+                    sortOrder={materialSortOrder}
+                  />
+                </th>
+                <th className="px-3 py-2 text-left">
+                  <SortableHeader
+                    label="Procedencia"
+                    onToggle={toggleMaterialSort}
+                    sortBy={materialSortBy}
+                    sortKey="provenanceName"
+                    sortOrder={materialSortOrder}
+                  />
+                </th>
+                <th className="px-3 py-2 text-left">
+                  <SortableHeader
+                    label="Tipo"
+                    onToggle={toggleMaterialSort}
+                    sortBy={materialSortBy}
+                    sortKey="materialType"
+                    sortOrder={materialSortOrder}
+                  />
+                </th>
+                <th className="px-3 py-2 text-left">
+                  <SortableHeader
+                    label="Activo"
+                    onToggle={toggleMaterialSort}
+                    sortBy={materialSortBy}
+                    sortKey="isActive"
+                    sortOrder={materialSortOrder}
+                  />
+                </th>
                 <th className="px-3 py-2 text-left">Acciones</th>
               </tr>
             </thead>

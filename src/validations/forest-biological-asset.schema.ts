@@ -114,6 +114,8 @@ export const deleteBiologicalAssetSchema = z.object({
 export const getBiologicalAssetQuerySchema = z.object({
   level4Id: uuidSchema.optional(),
   search: z.string().trim().optional(),
+  sortBy: z.enum(["biologicalAssetKey", "accountingKey", "assetType", "plantingYear", "inventoryCode", "isActive", "createdAt"]).default("biologicalAssetKey"),
+  sortOrder: z.enum(["asc", "desc"]).default("asc"),
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(100).default(25),
 });

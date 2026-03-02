@@ -86,6 +86,8 @@ export async function GET(req: NextRequest) {
   const queryResult = getBiologicalAssetQuerySchema.safeParse({
     level4Id: req.nextUrl.searchParams.get("level4Id") ?? undefined,
     search: req.nextUrl.searchParams.get("search") ?? undefined,
+    sortBy: req.nextUrl.searchParams.get("sortBy") ?? "biologicalAssetKey",
+    sortOrder: req.nextUrl.searchParams.get("sortOrder") ?? "asc",
     page: req.nextUrl.searchParams.get("page") ?? 1,
     limit: req.nextUrl.searchParams.get("limit") ?? 25,
   });
@@ -94,7 +96,7 @@ export async function GET(req: NextRequest) {
     return fail("Parámetros inválidos", 400, queryResult.error.flatten());
   }
 
-  const { level4Id, search, page, limit } = queryResult.data;
+  const { level4Id, search, sortBy, sortOrder, page, limit } = queryResult.data;
   const organizationId = await resolveOrganizationId({
     id: authResult.session.user.id,
     organizationId: authResult.session.user.organizationId,
@@ -125,7 +127,7 @@ export async function GET(req: NextRequest) {
       where,
       skip: (page - 1) * limit,
       take: limit,
-      orderBy: [{ createdAt: "desc" }],
+      orderBy: [{ [sortBy]: sortOrder }],
       include: { level4: { select: { id: true, code: true, name: true } } },
     }),
   ]);
