@@ -9,6 +9,8 @@ function normalizeHeader(value: unknown) {
   return String(value ?? "")
     .trim()
     .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
     .replace(/\s+/g, "")
     .replace(/[_-]/g, "");
 }
@@ -79,39 +81,16 @@ function parseBoolean(value: string) {
 
 type ImportRow = {
   id?: string;
-  cityId?: string;
-  cityCode?: string;
-  municipalityCode?: string;
+  cityRef?: string;
+  municipalityRef?: string;
   code: string;
   name: string;
   type: string;
   isActive?: boolean;
 };
 
-async function resolveCityId(cityId: string | undefined, cityCode: string | undefined, municipalityCode: string | undefined) {
-  if (cityId) {
-    return cityId;
-  }
-
-  if (!cityCode) {
-    return null;
-  }
-
-  const city = await prisma.city.findFirst({
-    where: {
-      code: cityCode,
-      ...(municipalityCode
-        ? {
-            municipality: {
-              code: municipalityCode,
-            },
-          }
-        : {}),
-    },
-    select: { id: true },
-  });
-
-  return city?.id ?? null;
+function isUuid(value: string) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 }
 
 export async function POST(req: NextRequest) {
@@ -151,29 +130,40 @@ export async function POST(req: NextRequest) {
     const headerIndex = new Map<string, number>();
     parsed.headers.forEach((header, idx) => headerIndex.set(normalizeHeader(header), idx));
 
-    const required = ["code", "name", "type"];
-    for (const key of required) {
-      if (!headerIndex.has(key)) {
-        return fail(`Falta columna obligatoria: ${key}`, 400);
-      }
+    const hasAnyHeader = (...keys: string[]) => keys.some((key) => headerIndex.has(normalizeHeader(key)));
+
+    if (!hasAnyHeader("code", "codigo", "código")) {
+      return fail("Falta columna obligatoria: code/codigo", 400);
+    }
+    if (!hasAnyHeader("name", "nombre")) {
+      return fail("Falta columna obligatoria: name/nombre", 400);
+    }
+    if (!hasAnyHeader("type", "tipo")) {
+      return fail("Falta columna obligatoria: type/tipo", 400);
     }
 
     rows = parsed.rows
       .map((cols) => {
-        const get = (key: string) => {
-          const idx = headerIndex.get(key);
-          return idx === undefined ? "" : String(cols[idx] ?? "").trim();
+        const get = (...keys: string[]) => {
+          for (const key of keys) {
+            const idx = headerIndex.get(normalizeHeader(key));
+            if (idx !== undefined) {
+              return String(cols[idx] ?? "").trim();
+            }
+          }
+          return "";
         };
 
         return {
           id: get("id") || undefined,
-          cityId: get("cityid") || undefined,
-          cityCode: get("citycode") || undefined,
-          municipalityCode: get("municipalitycode") || undefined,
-          code: get("code"),
-          name: get("name"),
-          type: get("type"),
-          isActive: parseBoolean(get("isactive")),
+          cityRef: get("cityid", "citycode", "cityname", "ciudadid", "ciudadcodigo", "ciudadnombre") || undefined,
+          municipalityRef:
+            get("municipalityid", "municipalitycode", "municipalityname", "municipioid", "municipiocodigo", "municipionombre") ||
+            undefined,
+          code: get("code", "codigo", "código"),
+          name: get("name", "nombre"),
+          type: get("type", "tipo"),
+          isActive: parseBoolean(get("isactive", "activo")),
         } satisfies ImportRow;
       })
       .filter((row) => Boolean(row.code) || Boolean(row.name));
@@ -192,21 +182,28 @@ export async function POST(req: NextRequest) {
 
     rows = jsonRows
       .map((record) => {
-        const get = (target: string) => {
-          const matchKey = Object.keys(record).find((key) => normalizeHeader(key) === target);
-          const value = matchKey ? record[matchKey] : "";
-          return String(value ?? "").trim();
+        const get = (...targets: string[]) => {
+          for (const target of targets) {
+            const normalizedTarget = normalizeHeader(target);
+            const matchKey = Object.keys(record).find((key) => normalizeHeader(key) === normalizedTarget);
+            if (matchKey) {
+              const value = record[matchKey];
+              return String(value ?? "").trim();
+            }
+          }
+          return "";
         };
 
         return {
           id: get("id") || undefined,
-          cityId: get("cityid") || undefined,
-          cityCode: get("citycode") || undefined,
-          municipalityCode: get("municipalitycode") || undefined,
-          code: get("code"),
-          name: get("name"),
-          type: get("type"),
-          isActive: parseBoolean(get("isactive")),
+          cityRef: get("cityid", "citycode", "cityname", "ciudadid", "ciudadcodigo", "ciudadnombre") || undefined,
+          municipalityRef:
+            get("municipalityid", "municipalitycode", "municipalityname", "municipioid", "municipiocodigo", "municipionombre") ||
+            undefined,
+          code: get("code", "codigo", "código"),
+          name: get("name", "nombre"),
+          type: get("type", "tipo"),
+          isActive: parseBoolean(get("isactive", "activo")),
         } satisfies ImportRow;
       })
       .filter((row) => Boolean(row.code) || Boolean(row.name));
@@ -221,11 +218,53 @@ export async function POST(req: NextRequest) {
   let updated = 0;
   let skipped = 0;
 
+  const cities = await prisma.city.findMany({
+    select: {
+      id: true,
+      code: true,
+      name: true,
+      municipality: { select: { id: true, code: true, name: true } },
+    },
+  });
+
+  const citiesById = new Map(cities.map((city) => [city.id, city.id]));
+  const citiesByCode = new Map(cities.map((city) => [normalizeHeader(city.code), city.id]));
+  const citiesByName = new Map(cities.map((city) => [normalizeHeader(city.name), city.id]));
+
+  const citiesByCodeMunicipality = new Map(
+    cities.flatMap((city) => {
+      const keys: Array<[string, string]> = [];
+      if (city.municipality?.code) keys.push([`${normalizeHeader(city.code)}|${normalizeHeader(city.municipality.code)}`, city.id]);
+      if (city.municipality?.name) keys.push([`${normalizeHeader(city.code)}|${normalizeHeader(city.municipality.name)}`, city.id]);
+      return keys;
+    })
+  );
+
   for (let index = 0; index < rows.length; index++) {
     const rowNumber = index + 2;
     const row = rows[index];
 
-    const resolvedCityId = await resolveCityId(row.cityId, row.cityCode, row.municipalityCode);
+    let resolvedCityId: string | null = null;
+    const cityRef = row.cityRef?.trim();
+    const municipalityRef = row.municipalityRef?.trim();
+
+    if (cityRef) {
+      if (isUuid(cityRef) && citiesById.has(cityRef)) {
+        resolvedCityId = cityRef;
+      } else {
+        const normalizedCityRef = normalizeHeader(cityRef);
+        const normalizedMunicipalityRef = municipalityRef ? normalizeHeader(municipalityRef) : "";
+
+        if (normalizedMunicipalityRef) {
+          resolvedCityId = citiesByCodeMunicipality.get(`${normalizedCityRef}|${normalizedMunicipalityRef}`) ?? null;
+        }
+
+        if (!resolvedCityId) {
+          resolvedCityId = citiesByCode.get(normalizedCityRef) ?? citiesByName.get(normalizedCityRef) ?? null;
+        }
+      }
+    }
+
     if (!resolvedCityId) {
       errors.push({ row: rowNumber, code: row.code, error: "Ciudad inválida o no encontrada" });
       skipped++;

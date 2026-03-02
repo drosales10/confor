@@ -8,9 +8,31 @@ function canManageOrganizations(roles: string[]) {
   return roles.includes("ADMIN") || roles.includes("SUPER_ADMIN");
 }
 
+function isSuperAdmin(roles: string[]) {
+  return roles.includes("SUPER_ADMIN");
+}
+
+function isScopedAdmin(roles: string[]) {
+  return roles.includes("ADMIN") && !isSuperAdmin(roles);
+}
+
 export async function GET() {
+  const authResult = await requireAuth();
+  if ("error" in authResult) return authResult.error;
+
+  const roles = authResult.session.user.roles ?? [];
+  const organizationId = authResult.session.user.organizationId ?? null;
+
+  if (!canManageOrganizations(roles)) {
+    const permissionError = requirePermission(authResult.session.user.permissions ?? [], "organizations", "READ");
+    if (permissionError) return permissionError;
+  }
+
   const organizations = await prisma.organization.findMany({
-    where: { deletedAt: null },
+    where: {
+      deletedAt: null,
+      ...(isScopedAdmin(roles) ? { id: organizationId ?? "" } : {}),
+    },
     include: { country: true } as any,
     orderBy: { createdAt: "desc" },
   });
@@ -31,6 +53,10 @@ export async function POST(req: NextRequest) {
   if ("error" in authResult) return authResult.error;
 
   const roles = authResult.session.user.roles ?? [];
+  if (isScopedAdmin(roles)) {
+    return fail("Un usuario ADMIN solo puede ver y editar su propia organización", 403);
+  }
+
   if (!canManageOrganizations(roles)) {
     const permissionError = requirePermission(authResult.session.user.permissions ?? [], "organizations", "CREATE");
     if (permissionError) return permissionError;

@@ -10,6 +10,7 @@ export type SessionUser = {
 export type LoginCredentials = {
   email: string;
   password: string;
+  organizationId: string;
 };
 
 export type RegisterData = {

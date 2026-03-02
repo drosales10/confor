@@ -9,6 +9,8 @@ function normalizeHeader(value: unknown) {
   return String(value ?? "")
     .trim()
     .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
     .replace(/\s+/g, "")
     .replace(/[_-]/g, "");
 }
@@ -79,30 +81,14 @@ function parseBoolean(value: string) {
 
 type ImportRow = {
   id?: string;
-  continentId?: string;
-  continentCode?: string;
+  continentRef?: string;
   code: string;
   name: string;
   isActive?: boolean;
 };
 
-async function resolveContinentId(continentId: string | undefined, continentCode: string | undefined) {
-  if (continentId) {
-    return continentId;
-  }
-
-  if (!continentCode) {
-    return null;
-  }
-
-  const continent = await prisma.continent.findFirst({
-    where: {
-      code: continentCode,
-    },
-    select: { id: true },
-  });
-
-  return continent?.id ?? null;
+function isUuid(value: string) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 }
 
 export async function POST(req: NextRequest) {
@@ -142,27 +128,35 @@ export async function POST(req: NextRequest) {
     const headerIndex = new Map<string, number>();
     parsed.headers.forEach((header, idx) => headerIndex.set(normalizeHeader(header), idx));
 
-    const required = ["code", "name"];
-    for (const key of required) {
-      if (!headerIndex.has(key)) {
-        return fail(`Falta columna obligatoria: ${key}`, 400);
-      }
+    const hasAnyHeader = (...keys: string[]) => keys.some((key) => headerIndex.has(normalizeHeader(key)));
+
+    if (!hasAnyHeader("code", "codigo", "código")) {
+      return fail("Falta columna obligatoria: code/codigo", 400);
+    }
+    if (!hasAnyHeader("name", "nombre")) {
+      return fail("Falta columna obligatoria: name/nombre", 400);
     }
 
     rows = parsed.rows
       .map((cols) => {
-        const get = (key: string) => {
-          const idx = headerIndex.get(key);
-          return idx === undefined ? "" : String(cols[idx] ?? "").trim();
+        const get = (...keys: string[]) => {
+          for (const key of keys) {
+            const idx = headerIndex.get(normalizeHeader(key));
+            if (idx !== undefined) {
+              return String(cols[idx] ?? "").trim();
+            }
+          }
+          return "";
         };
 
         return {
           id: get("id") || undefined,
-          continentId: get("continentid") || undefined,
-          continentCode: get("continentcode") || undefined,
-          code: get("code"),
-          name: get("name"),
-          isActive: parseBoolean(get("isactive")),
+          continentRef:
+            get("continentid", "continentcode", "continentname", "continenteid", "continentecodigo", "continentenombre") ||
+            undefined,
+          code: get("code", "codigo", "código"),
+          name: get("name", "nombre"),
+          isActive: parseBoolean(get("isactive", "activo")),
         } satisfies ImportRow;
       })
       .filter((row) => Boolean(row.code) || Boolean(row.name));
@@ -181,19 +175,26 @@ export async function POST(req: NextRequest) {
 
     rows = jsonRows
       .map((record) => {
-        const get = (target: string) => {
-          const matchKey = Object.keys(record).find((key) => normalizeHeader(key) === target);
-          const value = matchKey ? record[matchKey] : "";
-          return String(value ?? "").trim();
+        const get = (...targets: string[]) => {
+          for (const target of targets) {
+            const normalizedTarget = normalizeHeader(target);
+            const matchKey = Object.keys(record).find((key) => normalizeHeader(key) === normalizedTarget);
+            if (matchKey) {
+              const value = record[matchKey];
+              return String(value ?? "").trim();
+            }
+          }
+          return "";
         };
 
         return {
           id: get("id") || undefined,
-          continentId: get("continentid") || undefined,
-          continentCode: get("continentcode") || undefined,
-          code: get("code"),
-          name: get("name"),
-          isActive: parseBoolean(get("isactive")),
+          continentRef:
+            get("continentid", "continentcode", "continentname", "continenteid", "continentecodigo", "continentenombre") ||
+            undefined,
+          code: get("code", "codigo", "código"),
+          name: get("name", "nombre"),
+          isActive: parseBoolean(get("isactive", "activo")),
         } satisfies ImportRow;
       })
       .filter((row) => Boolean(row.code) || Boolean(row.name));
@@ -208,11 +209,27 @@ export async function POST(req: NextRequest) {
   let updated = 0;
   let skipped = 0;
 
+  const continents = await prisma.continent.findMany({
+    select: { id: true, code: true, name: true },
+  });
+  const continentByCode = new Map(continents.map((continent) => [normalizeHeader(continent.code), continent.id]));
+  const continentByName = new Map(continents.map((continent) => [normalizeHeader(continent.name), continent.id]));
+
   for (let index = 0; index < rows.length; index++) {
     const rowNumber = index + 2;
     const row = rows[index];
 
-    const resolvedContinentId = await resolveContinentId(row.continentId, row.continentCode);
+    let resolvedContinentId: string | null = null;
+    if (row.continentRef) {
+      const ref = row.continentRef.trim();
+      if (isUuid(ref)) {
+        resolvedContinentId = ref;
+      } else {
+        const normalizedRef = normalizeHeader(ref);
+        resolvedContinentId = continentByCode.get(normalizedRef) ?? continentByName.get(normalizedRef) ?? null;
+      }
+    }
+
     if (!resolvedContinentId) {
       errors.push({ row: rowNumber, code: row.code, error: "Continente inválido o no encontrado" });
       skipped++;

@@ -33,3 +33,18 @@ export const resetPasswordSchema = z
     message: "Las contraseñas no coinciden",
     path: ["confirmPassword"],
   });
+
+export const changePasswordSchema = z
+  .object({
+    currentPassword: z.string().min(1, "La contraseña actual es requerida"),
+    newPassword: passwordSchema,
+    confirmPassword: z.string().min(1, "Debe confirmar la nueva contraseña"),
+  })
+  .refine((data) => data.newPassword === data.confirmPassword, {
+    message: "Las contraseñas no coinciden",
+    path: ["confirmPassword"],
+  })
+  .refine((data) => data.currentPassword !== data.newPassword, {
+    message: "La nueva contraseña debe ser diferente a la actual",
+    path: ["newPassword"],
+  });

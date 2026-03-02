@@ -26,6 +26,8 @@ function normalizeHeader(value: unknown) {
   return String(value ?? "")
     .trim()
     .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
     .replace(/\s+/g, "")
     .replace(/[_-]/g, "");
 }
@@ -213,22 +215,28 @@ export async function POST(req: NextRequest) {
 
     rows = jsonRows
       .map((record) => {
-        const get = (target: string) => {
-          const matchKey = Object.keys(record).find((key) => normalizeHeader(key) === target);
-          const value = matchKey ? record[matchKey] : "";
-          return String(value ?? "").trim();
+        const get = (...targets: string[]) => {
+          for (const target of targets) {
+            const normalizedTarget = normalizeHeader(target);
+            const matchKey = Object.keys(record).find((key) => normalizeHeader(key) === normalizedTarget);
+            if (matchKey) {
+              const value = record[matchKey];
+              return String(value ?? "").trim();
+            }
+          }
+          return "";
         };
 
         return {
           id: get("id") || undefined,
-          countryId: get("countryid") || undefined,
-          countryCode: get("countrycode") || undefined,
-          code: get("code"),
-          name: get("name"),
-          isActive: parseBoolean(get("isactive")),
-          createdAt: get("createdat") || undefined,
-          updatedAt: get("updatedat") || undefined,
-          organizationId: get("organizationid") || undefined,
+          countryId: get("countryid", "paisid", "paísid") || undefined,
+          countryCode: get("countrycode", "paiscodigo", "paíscódigo") || undefined,
+          code: get("code", "codigo", "código"),
+          name: get("name", "nombre"),
+          isActive: parseBoolean(get("isactive", "activo")),
+          createdAt: get("createdat", "creado en") || undefined,
+          updatedAt: get("updatedat", "actualizado en") || undefined,
+          organizationId: get("organizationid", "organizacionid", "organizaciónid") || undefined,
         } satisfies ImportRow;
       })
       .filter((row) => Boolean(row.code) || Boolean(row.name));

@@ -9,6 +9,8 @@ function normalizeHeader(value: unknown) {
   return String(value ?? "")
     .trim()
     .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
     .replace(/\s+/g, "")
     .replace(/[_-]/g, "");
 }
@@ -79,42 +81,15 @@ function parseBoolean(value: string) {
 
 type ImportRow = {
   id?: string;
-  stateId?: string;
-  stateCode?: string;
-  countryCode?: string;
+  stateRef?: string;
+  countryRef?: string;
   code: string;
   name: string;
   isActive?: boolean;
 };
 
-async function resolveStateId(
-  stateId: string | undefined,
-  stateCode: string | undefined,
-  countryCode: string | undefined,
-) {
-  if (stateId) {
-    return stateId;
-  }
-
-  if (!stateCode) {
-    return null;
-  }
-
-  const state = await prisma.stateDepartment.findFirst({
-    where: {
-      code: stateCode,
-      ...(countryCode
-        ? {
-            country: {
-              code: countryCode,
-            },
-          }
-        : {}),
-    },
-    select: { id: true },
-  });
-
-  return state?.id ?? null;
+function isUuid(value: string) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 }
 
 export async function POST(req: NextRequest) {
@@ -154,28 +129,34 @@ export async function POST(req: NextRequest) {
     const headerIndex = new Map<string, number>();
     parsed.headers.forEach((header, idx) => headerIndex.set(normalizeHeader(header), idx));
 
-    const required = ["code", "name"];
-    for (const key of required) {
-      if (!headerIndex.has(key)) {
-        return fail(`Falta columna obligatoria: ${key}`, 400);
-      }
+    const hasAnyHeader = (...keys: string[]) => keys.some((key) => headerIndex.has(normalizeHeader(key)));
+
+    if (!hasAnyHeader("code", "codigo", "código")) {
+      return fail("Falta columna obligatoria: code/codigo", 400);
+    }
+    if (!hasAnyHeader("name", "nombre")) {
+      return fail("Falta columna obligatoria: name/nombre", 400);
     }
 
     rows = parsed.rows
       .map((cols) => {
-        const get = (key: string) => {
-          const idx = headerIndex.get(key);
-          return idx === undefined ? "" : String(cols[idx] ?? "").trim();
+        const get = (...keys: string[]) => {
+          for (const key of keys) {
+            const idx = headerIndex.get(normalizeHeader(key));
+            if (idx !== undefined) {
+              return String(cols[idx] ?? "").trim();
+            }
+          }
+          return "";
         };
 
         return {
           id: get("id") || undefined,
-          stateId: get("stateid") || undefined,
-          stateCode: get("statecode") || undefined,
-          countryCode: get("countrycode") || undefined,
-          code: get("code"),
-          name: get("name"),
-          isActive: parseBoolean(get("isactive")),
+          stateRef: get("stateid", "statecode", "statename", "estadoid", "estadocodigo", "estadonombre") || undefined,
+          countryRef: get("countryid", "countrycode", "countryname", "paisid", "paiscodigo", "paisnombre") || undefined,
+          code: get("code", "codigo", "código"),
+          name: get("name", "nombre"),
+          isActive: parseBoolean(get("isactive", "activo")),
         } satisfies ImportRow;
       })
       .filter((row) => Boolean(row.code) || Boolean(row.name));
@@ -194,20 +175,25 @@ export async function POST(req: NextRequest) {
 
     rows = jsonRows
       .map((record) => {
-        const get = (target: string) => {
-          const matchKey = Object.keys(record).find((key) => normalizeHeader(key) === target);
-          const value = matchKey ? record[matchKey] : "";
-          return String(value ?? "").trim();
+        const get = (...targets: string[]) => {
+          for (const target of targets) {
+            const normalizedTarget = normalizeHeader(target);
+            const matchKey = Object.keys(record).find((key) => normalizeHeader(key) === normalizedTarget);
+            if (matchKey) {
+              const value = record[matchKey];
+              return String(value ?? "").trim();
+            }
+          }
+          return "";
         };
 
         return {
           id: get("id") || undefined,
-          stateId: get("stateid") || undefined,
-          stateCode: get("statecode") || undefined,
-          countryCode: get("countrycode") || undefined,
-          code: get("code"),
-          name: get("name"),
-          isActive: parseBoolean(get("isactive")),
+          stateRef: get("stateid", "statecode", "statename", "estadoid", "estadocodigo", "estadonombre") || undefined,
+          countryRef: get("countryid", "countrycode", "countryname", "paisid", "paiscodigo", "paisnombre") || undefined,
+          code: get("code", "codigo", "código"),
+          name: get("name", "nombre"),
+          isActive: parseBoolean(get("isactive", "activo")),
         } satisfies ImportRow;
       })
       .filter((row) => Boolean(row.code) || Boolean(row.name));
@@ -222,11 +208,64 @@ export async function POST(req: NextRequest) {
   let updated = 0;
   let skipped = 0;
 
+  const states = await prisma.stateDepartment.findMany({
+    select: {
+      id: true,
+      code: true,
+      name: true,
+      country: { select: { id: true, code: true, name: true } },
+    },
+  });
+
+  const statesById = new Map(states.map((state) => [state.id, state.id]));
+  const statesByCode = new Map(states.map((state) => [normalizeHeader(state.code), state.id]));
+  const statesByName = new Map(states.map((state) => [normalizeHeader(state.name), state.id]));
+
+  const statesByCodeCountry = new Map(
+    states.flatMap((state) => {
+      const keys: Array<[string, string]> = [];
+      if (state.country?.code) keys.push([`${normalizeHeader(state.code)}|${normalizeHeader(state.country.code)}`, state.id]);
+      if (state.country?.name) keys.push([`${normalizeHeader(state.code)}|${normalizeHeader(state.country.name)}`, state.id]);
+      return keys;
+    })
+  );
+  const statesByNameCountry = new Map(
+    states.flatMap((state) => {
+      const keys: Array<[string, string]> = [];
+      if (state.country?.code) keys.push([`${normalizeHeader(state.name)}|${normalizeHeader(state.country.code)}`, state.id]);
+      if (state.country?.name) keys.push([`${normalizeHeader(state.name)}|${normalizeHeader(state.country.name)}`, state.id]);
+      return keys;
+    })
+  );
+
   for (let index = 0; index < rows.length; index++) {
     const rowNumber = index + 2;
     const row = rows[index];
 
-    const resolvedStateId = await resolveStateId(row.stateId, row.stateCode, row.countryCode);
+    let resolvedStateId: string | null = null;
+    const stateRef = row.stateRef?.trim();
+    const countryRef = row.countryRef?.trim();
+
+    if (stateRef) {
+      if (isUuid(stateRef) && statesById.has(stateRef)) {
+        resolvedStateId = stateRef;
+      } else {
+        const normalizedStateRef = normalizeHeader(stateRef);
+        const normalizedCountryRef = countryRef ? normalizeHeader(countryRef) : "";
+
+        if (normalizedCountryRef) {
+          resolvedStateId =
+            statesByCodeCountry.get(`${normalizedStateRef}|${normalizedCountryRef}`) ??
+            statesByNameCountry.get(`${normalizedStateRef}|${normalizedCountryRef}`) ??
+            null;
+        }
+
+        if (!resolvedStateId) {
+          resolvedStateId = statesByCode.get(normalizedStateRef) ?? statesByName.get(normalizedStateRef) ?? null;
+        }
+      }
+    }
+
     if (!resolvedStateId) {
       errors.push({ row: rowNumber, code: row.code, error: "Estado/departamento inválido o no encontrado" });
       skipped++;

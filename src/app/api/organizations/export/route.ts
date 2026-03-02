@@ -20,6 +20,14 @@ function canManageOrganizations(roles: string[]) {
   return roles.includes("ADMIN") || roles.includes("SUPER_ADMIN");
 }
 
+function isSuperAdmin(roles: string[]) {
+  return roles.includes("SUPER_ADMIN");
+}
+
+function isScopedAdmin(roles: string[]) {
+  return roles.includes("ADMIN") && !isSuperAdmin(roles);
+}
+
 function resolveExportMaxLimit() {
   const raw = process.env.ORGANIZATIONS_EXPORT_MAX_LIMIT;
   const parsed = raw ? Number(raw) : NaN;
@@ -60,6 +68,7 @@ export async function GET(req: NextRequest) {
   if ("error" in authResult) return authResult.error;
 
   const roles = authResult.session.user.roles ?? [];
+  const organizationId = authResult.session.user.organizationId ?? null;
   const isAdmin = canManageOrganizations(roles);
   if (!isAdmin) {
     const permissionError = requirePermission(authResult.session.user.permissions ?? [], "organizations", "EXPORT");
@@ -94,7 +103,10 @@ export async function GET(req: NextRequest) {
   const limit = Math.min(requestedLimit, exportMaxLimit);
 
   const organizations = await prisma.organization.findMany({
-    where: { deletedAt: null },
+    where: {
+      deletedAt: null,
+      ...(isScopedAdmin(roles) ? { id: organizationId ?? "" } : {}),
+    },
     include: { country: true },
   });
 

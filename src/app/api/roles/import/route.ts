@@ -32,8 +32,14 @@ function normalizeHeader(value: unknown) {
   return String(value ?? "")
     .trim()
     .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
     .replace(/\s+/g, "")
     .replace(/[_-]/g, "");
+}
+
+function isUuid(value: string) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 }
 
 function parseCsvLine(line: string) {
@@ -95,7 +101,7 @@ type ImportRow = {
   name: string;
   slug: string;
   description?: string;
-  organizationId?: string;
+  organizationRef?: string;
 };
 
 export async function POST(req: NextRequest) {
@@ -143,25 +149,32 @@ export async function POST(req: NextRequest) {
     const headerIndex = new Map<string, number>();
     parsed.headers.forEach((header, idx) => headerIndex.set(normalizeHeader(header), idx));
 
-    const required = ["name", "slug"];
-    for (const key of required) {
-      if (!headerIndex.has(key)) {
-        return fail(`Falta columna obligatoria: ${key}`, 400);
-      }
+    const hasAnyHeader = (...keys: string[]) => keys.some((key) => headerIndex.has(normalizeHeader(key)));
+
+    if (!hasAnyHeader("name", "nombre")) {
+      return fail("Falta columna obligatoria: name/nombre", 400);
+    }
+    if (!hasAnyHeader("slug")) {
+      return fail("Falta columna obligatoria: slug", 400);
     }
 
     rows = parsed.rows
       .map((cols) => {
-        const get = (key: string) => {
-          const idx = headerIndex.get(key);
-          return idx === undefined ? "" : String(cols[idx] ?? "").trim();
+        const get = (...keys: string[]) => {
+          for (const key of keys) {
+            const idx = headerIndex.get(normalizeHeader(key));
+            if (idx !== undefined) {
+              return String(cols[idx] ?? "").trim();
+            }
+          }
+          return "";
         };
 
         return {
-          name: get("name"),
+          name: get("name", "nombre"),
           slug: get("slug"),
-          description: get("description") || undefined,
-          organizationId: get("organizationid") || undefined,
+          description: get("description", "descripcion", "descripción") || undefined,
+          organizationRef: get("organizationid", "organization", "organizacionid", "organizacion", "organizaciónid", "organización") || undefined,
         } satisfies ImportRow;
       })
       .filter((row) => Boolean(row.name) || Boolean(row.slug));
@@ -180,17 +193,23 @@ export async function POST(req: NextRequest) {
 
     rows = jsonRows
       .map((record) => {
-        const get = (target: string) => {
-          const matchKey = Object.keys(record).find((key) => normalizeHeader(key) === target);
-          const value = matchKey ? record[matchKey] : "";
-          return String(value ?? "").trim();
+        const get = (...targets: string[]) => {
+          for (const target of targets) {
+            const normalizedTarget = normalizeHeader(target);
+            const matchKey = Object.keys(record).find((key) => normalizeHeader(key) === normalizedTarget);
+            if (matchKey) {
+              const value = record[matchKey];
+              return String(value ?? "").trim();
+            }
+          }
+          return "";
         };
 
         return {
-          name: get("name"),
+          name: get("name", "nombre"),
           slug: get("slug"),
-          description: get("description") || undefined,
-          organizationId: get("organizationid") || undefined,
+          description: get("description", "descripcion", "descripción") || undefined,
+          organizationRef: get("organizationid", "organization", "organizacionid", "organizacion", "organizaciónid", "organización") || undefined,
         } satisfies ImportRow;
       })
       .filter((row) => Boolean(row.name) || Boolean(row.slug));
@@ -205,6 +224,14 @@ export async function POST(req: NextRequest) {
   let updated = 0;
   let skipped = 0;
 
+  const organizations = await prisma.organization.findMany({
+    where: { deletedAt: null },
+    select: { id: true, name: true, slug: true },
+  });
+  const organizationById = new Map(organizations.map((organization) => [organization.id, organization.id]));
+  const organizationByName = new Map(organizations.map((organization) => [normalizeHeader(organization.name), organization.id]));
+  const organizationBySlug = new Map(organizations.map((organization) => [normalizeHeader(organization.slug), organization.id]));
+
   for (let i = 0; i < rows.length; i++) {
     const row = rows[i];
     const rowNumber = i + 2;
@@ -218,7 +245,16 @@ export async function POST(req: NextRequest) {
       continue;
     }
 
-    const organizationId = row.organizationId || defaultOrganizationId;
+    let organizationId = defaultOrganizationId;
+    if (row.organizationRef) {
+      const ref = row.organizationRef.trim();
+      if (isUuid(ref) && organizationById.has(ref)) {
+        organizationId = ref;
+      } else {
+        const normalizedRef = normalizeHeader(ref);
+        organizationId = organizationByName.get(normalizedRef) ?? organizationBySlug.get(normalizedRef) ?? organizationId;
+      }
+    }
 
     if (!organizationId && !isAdmin) {
       errors.push({ row: rowNumber, slug: normalizedSlug, error: "No se pudo resolver organizationId" });

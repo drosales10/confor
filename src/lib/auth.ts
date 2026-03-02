@@ -16,12 +16,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       credentials: {
         email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" },
+        organizationId: { label: "Organization", type: "text" },
       },
       async authorize(credentials) {
         const email = credentials?.email as string;
         const password = credentials?.password as string;
+        const organizationId = credentials?.organizationId as string | undefined;
 
-        if (!email || !password) {
+        if (!email || !password || !organizationId) {
           return null;
         }
 
@@ -34,6 +36,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         }
 
         if (user.status !== "ACTIVE") {
+          return null;
+        }
+
+        if (!user.organizationId || user.organizationId !== organizationId) {
+          return null;
+        }
+
+        if (!user.organization || user.organization.deletedAt || !user.organization.isActive) {
           return null;
         }
 

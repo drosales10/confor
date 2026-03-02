@@ -26,6 +26,8 @@ function normalizeHeader(value: unknown) {
   return String(value ?? "")
     .trim()
     .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
     .replace(/\s+/g, "")
     .replace(/[_-]/g, "");
 }
@@ -271,24 +273,30 @@ export async function POST(req: NextRequest) {
 
     rows = jsonRows
       .map((record) => {
-        const get = (target: string) => {
-          const matchKey = Object.keys(record).find((key) => normalizeHeader(key) === target);
-          const value = matchKey ? record[matchKey] : "";
-          return String(value ?? "").trim();
+        const get = (...targets: string[]) => {
+          for (const target of targets) {
+            const normalizedTarget = normalizeHeader(target);
+            const matchKey = Object.keys(record).find((key) => normalizeHeader(key) === normalizedTarget);
+            if (matchKey) {
+              const value = record[matchKey];
+              return String(value ?? "").trim();
+            }
+          }
+          return "";
         };
 
         return {
           id: get("id") || undefined,
-          level4Id: get("level4id") || undefined,
-          level4Code: get("level4code") || undefined,
-          code: get("code"),
-          plantationAreaHa: parseNumber(get("plantationareaha")),
-          rotationPhase: get("rotationphase") || undefined,
-          accountingDocumentId: get("accountingdocumentid") || undefined,
-          accountingDocumentCode: get("accountingdocumentcode") || undefined,
-          isActive: parseBoolean(get("isactive")),
-          createdAt: get("createdat") || undefined,
-          updatedAt: get("updatedat") || undefined,
+          level4Id: get("level4id", "nivel4id") || undefined,
+          level4Code: get("level4code", "nivel4codigo", "nivel4código") || undefined,
+          code: get("code", "codigo", "código"),
+          plantationAreaHa: parseNumber(get("plantationareaha", "area plantacion (ha)", "área plantación (ha)")),
+          rotationPhase: get("rotationphase", "fase rotacion", "fase rotación") || undefined,
+          accountingDocumentId: get("accountingdocumentid", "documentoid") || undefined,
+          accountingDocumentCode: get("accountingdocumentcode", "documentocodigo", "documentocódigo") || undefined,
+          isActive: parseBoolean(get("isactive", "activo")),
+          createdAt: get("createdat", "creado en") || undefined,
+          updatedAt: get("updatedat", "actualizado en") || undefined,
         } satisfies ImportRow;
       })
       .filter((row) => Boolean(row.code) || row.plantationAreaHa !== null);

@@ -67,6 +67,8 @@ function normalizeHeader(value: unknown) {
   return String(value ?? "")
     .trim()
     .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
     .replace(/\s+/g, "")
     .replace(/[_-]/g, "");
 }
@@ -183,7 +185,7 @@ function parseShapeType(value: string): PlotShapeType | null {
 function parseLegalStatus(value: string): LegalStatus | undefined {
   const normalized = value.trim().toUpperCase();
   if (!normalized) return undefined;
-  if (["ADQUISICION", "ARRIENDO", "USUFRUCTO", "COMODATO"].includes(normalized)) {
+  if (["ADQUISICION", "ADQUISICIÓN", "ARRIENDO", "USUFRUCTO", "COMODATO"].includes(normalized)) {
     return normalized as LegalStatus;
   }
   return undefined;
@@ -293,93 +295,128 @@ export async function POST(req: NextRequest) {
     const headerIndex = new Map<string, number>();
     parsed.headers.forEach((header, index) => headerIndex.set(normalizeHeader(header), index));
 
-    const required = level === "5" ? ["code", "name", "type", "shapetype", "aream2"] : ["code", "name", "type", "totalareaha"];
-    for (const key of required) {
-      if (!headerIndex.has(key)) {
-        return fail(`Falta columna obligatoria: ${key}`, 400);
+    const hasAnyHeader = (...keys: string[]) => keys.some((key) => headerIndex.has(normalizeHeader(key)));
+
+    if (!hasAnyHeader("code", "codigo", "código")) {
+      return fail("Falta columna obligatoria: code/codigo", 400);
+    }
+    if (!hasAnyHeader("name", "nombre")) {
+      return fail("Falta columna obligatoria: name/nombre", 400);
+    }
+    if (!hasAnyHeader("type", "tipo")) {
+      return fail("Falta columna obligatoria: type/tipo", 400);
+    }
+    if (level === "5") {
+      if (!hasAnyHeader("shapetype", "forma")) {
+        return fail("Falta columna obligatoria: shapeType/forma", 400);
       }
+      if (!hasAnyHeader("aream2", "area(m2)", "área(m2)", "area") ) {
+        return fail("Falta columna obligatoria: areaM2/area", 400);
+      }
+    } else if (!hasAnyHeader("totalareaha", "superficie(ha)", "superficie")) {
+      return fail("Falta columna obligatoria: totalAreaHa/superficie", 400);
     }
 
     if (level === "2") {
       rows = parsed.rows
         .map((cols) => {
-          const get = (key: string) => {
-            const index = headerIndex.get(key);
-            return index === undefined ? "" : String(cols[index] ?? "").trim();
+          const get = (...keys: string[]) => {
+            for (const key of keys) {
+              const index = headerIndex.get(normalizeHeader(key));
+              if (index !== undefined) {
+                return String(cols[index] ?? "").trim();
+              }
+            }
+            return "";
           };
 
-          const type = parseType(get("type"));
-          const totalAreaHa = parseNumber(get("totalareaha"));
+          const type = parseType(get("type", "tipo"));
+          const totalAreaHa = parseNumber(get("totalareaha", "superficie(ha)", "superficie"));
 
           return {
-            code: get("code"),
-            name: get("name"),
+            code: get("code", "codigo", "código"),
+            name: get("name", "nombre"),
             type: type ?? "FINCA",
             totalAreaHa,
-            legalStatus: parseLegalStatus(get("legalstatus")),
-            isActive: parseBoolean(get("isactive")),
+            legalStatus: parseLegalStatus(get("legalstatus", "estadolegal")),
+            isActive: parseBoolean(get("isactive", "estatus", "estado")),
           } satisfies ImportRow;
         })
         .filter((row) => Boolean(row.code) || Boolean(row.name));
     } else if (level === "3") {
       level3Rows = parsed.rows
         .map((cols) => {
-          const get = (key: string) => {
-            const index = headerIndex.get(key);
-            return index === undefined ? "" : String(cols[index] ?? "").trim();
+          const get = (...keys: string[]) => {
+            for (const key of keys) {
+              const index = headerIndex.get(normalizeHeader(key));
+              if (index !== undefined) {
+                return String(cols[index] ?? "").trim();
+              }
+            }
+            return "";
           };
 
-          const type = parseLevel3Type(get("type"));
-          const totalAreaHa = parseNumber(get("totalareaha"));
+          const type = parseLevel3Type(get("type", "tipo"));
+          const totalAreaHa = parseNumber(get("totalareaha", "superficie(ha)", "superficie"));
 
           return {
-            code: get("code"),
-            name: get("name"),
+            code: get("code", "codigo", "código"),
+            name: get("name", "nombre"),
             type: type ?? "LOTE",
             totalAreaHa,
-            isActive: parseBoolean(get("isactive")),
+            isActive: parseBoolean(get("isactive", "estatus", "estado")),
           } satisfies ImportLevel3Row;
         })
         .filter((row) => Boolean(row.code) || Boolean(row.name));
     } else if (level === "4") {
       level4Rows = parsed.rows
         .map((cols) => {
-          const get = (key: string) => {
-            const index = headerIndex.get(key);
-            return index === undefined ? "" : String(cols[index] ?? "").trim();
+          const get = (...keys: string[]) => {
+            for (const key of keys) {
+              const index = headerIndex.get(normalizeHeader(key));
+              if (index !== undefined) {
+                return String(cols[index] ?? "").trim();
+              }
+            }
+            return "";
           };
 
-          const type = parseLevel4Type(get("type"));
-          const totalAreaHa = parseNumber(get("totalareaha"));
+          const type = parseLevel4Type(get("type", "tipo"));
+          const totalAreaHa = parseNumber(get("totalareaha", "superficie(ha)", "superficie"));
 
           return {
-            code: get("code"),
-            name: get("name"),
+            code: get("code", "codigo", "código"),
+            name: get("name", "nombre"),
             type: type ?? "RODAL",
             totalAreaHa,
-            isActive: parseBoolean(get("isactive")),
+            isActive: parseBoolean(get("isactive", "estatus", "estado")),
           } satisfies ImportLevel4Row;
         })
         .filter((row) => Boolean(row.code) || Boolean(row.name));
     } else {
       level5Rows = parsed.rows
         .map((cols) => {
-          const get = (key: string) => {
-            const index = headerIndex.get(key);
-            return index === undefined ? "" : String(cols[index] ?? "").trim();
+          const get = (...keys: string[]) => {
+            for (const key of keys) {
+              const index = headerIndex.get(normalizeHeader(key));
+              if (index !== undefined) {
+                return String(cols[index] ?? "").trim();
+              }
+            }
+            return "";
           };
 
-          const type = parseLevel5Type(get("type"));
-          const shapeType = parseShapeType(get("shapetype"));
-          const areaM2 = parseNumber(get("aream2"));
+          const type = parseLevel5Type(get("type", "tipo"));
+          const shapeType = parseShapeType(get("shapetype", "forma"));
+          const areaM2 = parseNumber(get("aream2", "area(m2)", "área(m2)", "area"));
 
           return {
-            code: get("code"),
-            name: get("name"),
+            code: get("code", "codigo", "código"),
+            name: get("name", "nombre"),
             type: type ?? "SUBUNIDAD",
             shapeType: shapeType ?? "RECTANGULAR",
             areaM2,
-            isActive: parseBoolean(get("isactive")),
+            isActive: parseBoolean(get("isactive", "estatus", "estado")),
           } satisfies ImportLevel5Row;
         })
         .filter((row) => Boolean(row.code) || Boolean(row.name));
@@ -400,87 +437,107 @@ export async function POST(req: NextRequest) {
     if (level === "2") {
       rows = jsonRows
         .map((record) => {
-          const get = (target: string) => {
-            const key = Object.keys(record).find((item) => normalizeHeader(item) === target);
-            const value = key ? record[key] : "";
-            return String(value ?? "").trim();
+          const get = (...targets: string[]) => {
+            for (const target of targets) {
+              const key = Object.keys(record).find((item) => normalizeHeader(item) === normalizeHeader(target));
+              if (key) {
+                const value = record[key];
+                return String(value ?? "").trim();
+              }
+            }
+            return "";
           };
 
-          const type = parseType(get("type"));
-          const totalAreaHa = parseNumber(get("totalareaha"));
+          const type = parseType(get("type", "tipo"));
+          const totalAreaHa = parseNumber(get("totalareaha", "superficie(ha)", "superficie"));
 
           return {
-            code: get("code"),
-            name: get("name"),
+            code: get("code", "codigo", "código"),
+            name: get("name", "nombre"),
             type: type ?? "FINCA",
             totalAreaHa,
-            legalStatus: parseLegalStatus(get("legalstatus")),
-            isActive: parseBoolean(get("isactive")),
+            legalStatus: parseLegalStatus(get("legalstatus", "estadolegal")),
+            isActive: parseBoolean(get("isactive", "estatus", "estado")),
           } satisfies ImportRow;
         })
         .filter((row) => Boolean(row.code) || Boolean(row.name));
     } else if (level === "3") {
       level3Rows = jsonRows
         .map((record) => {
-          const get = (target: string) => {
-            const key = Object.keys(record).find((item) => normalizeHeader(item) === target);
-            const value = key ? record[key] : "";
-            return String(value ?? "").trim();
+          const get = (...targets: string[]) => {
+            for (const target of targets) {
+              const key = Object.keys(record).find((item) => normalizeHeader(item) === normalizeHeader(target));
+              if (key) {
+                const value = record[key];
+                return String(value ?? "").trim();
+              }
+            }
+            return "";
           };
 
-          const type = parseLevel3Type(get("type"));
-          const totalAreaHa = parseNumber(get("totalareaha"));
+          const type = parseLevel3Type(get("type", "tipo"));
+          const totalAreaHa = parseNumber(get("totalareaha", "superficie(ha)", "superficie"));
 
           return {
-            code: get("code"),
-            name: get("name"),
+            code: get("code", "codigo", "código"),
+            name: get("name", "nombre"),
             type: type ?? "LOTE",
             totalAreaHa,
-            isActive: parseBoolean(get("isactive")),
+            isActive: parseBoolean(get("isactive", "estatus", "estado")),
           } satisfies ImportLevel3Row;
         })
         .filter((row) => Boolean(row.code) || Boolean(row.name));
     } else if (level === "4") {
       level4Rows = jsonRows
         .map((record) => {
-          const get = (target: string) => {
-            const key = Object.keys(record).find((item) => normalizeHeader(item) === target);
-            const value = key ? record[key] : "";
-            return String(value ?? "").trim();
+          const get = (...targets: string[]) => {
+            for (const target of targets) {
+              const key = Object.keys(record).find((item) => normalizeHeader(item) === normalizeHeader(target));
+              if (key) {
+                const value = record[key];
+                return String(value ?? "").trim();
+              }
+            }
+            return "";
           };
 
-          const type = parseLevel4Type(get("type"));
-          const totalAreaHa = parseNumber(get("totalareaha"));
+          const type = parseLevel4Type(get("type", "tipo"));
+          const totalAreaHa = parseNumber(get("totalareaha", "superficie(ha)", "superficie"));
 
           return {
-            code: get("code"),
-            name: get("name"),
+            code: get("code", "codigo", "código"),
+            name: get("name", "nombre"),
             type: type ?? "RODAL",
             totalAreaHa,
-            isActive: parseBoolean(get("isactive")),
+            isActive: parseBoolean(get("isactive", "estatus", "estado")),
           } satisfies ImportLevel4Row;
         })
         .filter((row) => Boolean(row.code) || Boolean(row.name));
     } else {
       level5Rows = jsonRows
         .map((record) => {
-          const get = (target: string) => {
-            const key = Object.keys(record).find((item) => normalizeHeader(item) === target);
-            const value = key ? record[key] : "";
-            return String(value ?? "").trim();
+          const get = (...targets: string[]) => {
+            for (const target of targets) {
+              const key = Object.keys(record).find((item) => normalizeHeader(item) === normalizeHeader(target));
+              if (key) {
+                const value = record[key];
+                return String(value ?? "").trim();
+              }
+            }
+            return "";
           };
 
-          const type = parseLevel5Type(get("type"));
-          const shapeType = parseShapeType(get("shapetype"));
-          const areaM2 = parseNumber(get("aream2"));
+          const type = parseLevel5Type(get("type", "tipo"));
+          const shapeType = parseShapeType(get("shapetype", "forma"));
+          const areaM2 = parseNumber(get("aream2", "area(m2)", "área(m2)", "area"));
 
           return {
-            code: get("code"),
-            name: get("name"),
+            code: get("code", "codigo", "código"),
+            name: get("name", "nombre"),
             type: type ?? "SUBUNIDAD",
             shapeType: shapeType ?? "RECTANGULAR",
             areaM2,
-            isActive: parseBoolean(get("isactive")),
+            isActive: parseBoolean(get("isactive", "estatus", "estado")),
           } satisfies ImportLevel5Row;
         })
         .filter((row) => Boolean(row.code) || Boolean(row.name));

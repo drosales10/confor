@@ -26,6 +26,8 @@ function normalizeHeader(value: unknown) {
   return String(value ?? "")
     .trim()
     .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
     .replace(/\s+/g, "")
     .replace(/[_-]/g, "");
 }
@@ -215,25 +217,31 @@ export async function POST(req: NextRequest) {
 
     rows = jsonRows
       .map((record) => {
-        const get = (target: string) => {
-          const matchKey = Object.keys(record).find((key) => normalizeHeader(key) === target);
-          const value = matchKey ? record[matchKey] : "";
-          return String(value ?? "").trim();
+        const get = (...targets: string[]) => {
+          for (const target of targets) {
+            const normalizedTarget = normalizeHeader(target);
+            const matchKey = Object.keys(record).find((key) => normalizeHeader(key) === normalizedTarget);
+            if (matchKey) {
+              const value = record[matchKey];
+              return String(value ?? "").trim();
+            }
+          }
+          return "";
         };
 
         return {
           id: get("id") || undefined,
-          code: get("code"),
-          name: get("name"),
-          minLengthM: parseNumberOrNull(get("minlengthm")),
-          maxLengthM: parseNumberOrNull(get("maxlengthm")),
-          minSmallEndDiameterCm: parseNumberOrNull(get("minsmallenddiametercm")),
-          maxSmallEndDiameterCm: parseNumberOrNull(get("maxsmallenddiametercm")),
-          recommendedHarvestType: parseHarvestType(get("recommendedharvesttype")),
-          isActive: parseBoolean(get("isactive")),
-          createdAt: get("createdat") || undefined,
-          updatedAt: get("updatedat") || undefined,
-          organizationId: get("organizationid") || undefined,
+          code: get("code", "codigo", "código"),
+          name: get("name", "nombre"),
+          minLengthM: parseNumberOrNull(get("minlengthm", "longitud min (m)", "longitud mín (m)")),
+          maxLengthM: parseNumberOrNull(get("maxlengthm", "longitud max (m)", "longitud máx (m)")),
+          minSmallEndDiameterCm: parseNumberOrNull(get("minsmallenddiametercm", "diametro min (cm)", "diámetro mín (cm)")),
+          maxSmallEndDiameterCm: parseNumberOrNull(get("maxsmallenddiametercm", "diametro max (cm)", "diámetro máx (cm)")),
+          recommendedHarvestType: parseHarvestType(get("recommendedharvesttype", "tipo de corte")),
+          isActive: parseBoolean(get("isactive", "activo")),
+          createdAt: get("createdat", "creado en") || undefined,
+          updatedAt: get("updatedat", "actualizado en") || undefined,
+          organizationId: get("organizationid", "organizacionid", "organizaciónid") || undefined,
         } satisfies ImportRow;
       })
       .filter((row) => Boolean(row.code) || Boolean(row.name));

@@ -10,12 +10,26 @@ function canManageOrganizations(roles: string[]) {
   return roles.includes("ADMIN") || roles.includes("SUPER_ADMIN");
 }
 
+function isSuperAdmin(roles: string[]) {
+  return roles.includes("SUPER_ADMIN");
+}
+
+function isScopedAdmin(roles: string[]) {
+  return roles.includes("ADMIN") && !isSuperAdmin(roles);
+}
+
 function normalizeHeader(value: unknown) {
   return String(value ?? "")
     .trim()
     .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
     .replace(/\s+/g, "")
     .replace(/[_-]/g, "");
+}
+
+function isUuid(value: string) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 }
 
 function parseCsvLine(line: string) {
@@ -77,7 +91,7 @@ function parseCsv(content: string) {
 type ImportRow = {
   name: string;
   rif: string;
-  countryId?: string;
+  countryRef?: string;
 };
 
 export async function POST(req: NextRequest) {
@@ -85,6 +99,10 @@ export async function POST(req: NextRequest) {
   if ("error" in authResult) return authResult.error;
 
   const roles = authResult.session.user.roles ?? [];
+  if (isScopedAdmin(roles)) {
+    return fail("Un usuario ADMIN solo puede ver y editar su propia organización", 403);
+  }
+
   if (!canManageOrganizations(roles)) {
     const permissionError = requirePermission(authResult.session.user.permissions ?? [], "organizations", "CREATE");
     if (permissionError) return permissionError;
@@ -111,24 +129,31 @@ export async function POST(req: NextRequest) {
     const headerIndex = new Map<string, number>();
     parsed.headers.forEach((header, idx) => headerIndex.set(normalizeHeader(header), idx));
 
-    const required = ["name", "rif"];
-    for (const key of required) {
-      if (!headerIndex.has(key)) {
-        return fail(`Falta columna obligatoria: ${key}`, 400);
-      }
+    const hasAnyHeader = (...keys: string[]) => keys.some((key) => headerIndex.has(normalizeHeader(key)));
+
+    if (!hasAnyHeader("name", "nombre")) {
+      return fail("Falta columna obligatoria: name/nombre", 400);
+    }
+    if (!hasAnyHeader("rif")) {
+      return fail("Falta columna obligatoria: rif", 400);
     }
 
     rows = parsed.rows
       .map((cols) => {
-        const get = (key: string) => {
-          const idx = headerIndex.get(key);
-          return idx === undefined ? "" : String(cols[idx] ?? "").trim();
+        const get = (...keys: string[]) => {
+          for (const key of keys) {
+            const idx = headerIndex.get(normalizeHeader(key));
+            if (idx !== undefined) {
+              return String(cols[idx] ?? "").trim();
+            }
+          }
+          return "";
         };
 
         return {
-          name: get("name"),
+          name: get("name", "nombre"),
           rif: get("rif"),
-          countryId: get("countryid") || undefined,
+          countryRef: get("countryid", "country", "countryname", "pais", "país") || undefined,
         } satisfies ImportRow;
       })
       .filter((row) => Boolean(row.name) || Boolean(row.rif));
@@ -147,16 +172,22 @@ export async function POST(req: NextRequest) {
 
     rows = jsonRows
       .map((record) => {
-        const get = (target: string) => {
-          const matchKey = Object.keys(record).find((key) => normalizeHeader(key) === target);
-          const value = matchKey ? record[matchKey] : "";
-          return String(value ?? "").trim();
+        const get = (...targets: string[]) => {
+          for (const target of targets) {
+            const normalizedTarget = normalizeHeader(target);
+            const matchKey = Object.keys(record).find((key) => normalizeHeader(key) === normalizedTarget);
+            if (matchKey) {
+              const value = record[matchKey];
+              return String(value ?? "").trim();
+            }
+          }
+          return "";
         };
 
         return {
-          name: get("name"),
+          name: get("name", "nombre"),
           rif: get("rif"),
-          countryId: get("countryid") || undefined,
+          countryRef: get("countryid", "country", "countryname", "pais", "país") || undefined,
         } satisfies ImportRow;
       })
       .filter((row) => Boolean(row.name) || Boolean(row.rif));
@@ -171,14 +202,44 @@ export async function POST(req: NextRequest) {
   let updated = 0;
   let skipped = 0;
 
+  const countryRefs = Array.from(
+    new Set(
+      rows
+        .map((row) => row.countryRef?.trim())
+        .filter((value): value is string => Boolean(value))
+        .map((value) => value.toLowerCase())
+    )
+  );
+
+  const countries =
+    countryRefs.length > 0
+      ? await prisma.country.findMany({
+          select: { id: true, name: true, code: true },
+        })
+      : [];
+
+  const countryByNormalizedName = new Map(countries.map((country) => [normalizeHeader(country.name), country.id]));
+  const countryByNormalizedCode = new Map(countries.map((country) => [normalizeHeader(country.code), country.id]));
+
   for (let index = 0; index < rows.length; index++) {
     const rowNumber = index + 2;
     const row = rows[index];
 
+    let resolvedCountryId = "";
+    if (row.countryRef) {
+      const ref = row.countryRef.trim();
+      if (isUuid(ref)) {
+        resolvedCountryId = ref;
+      } else {
+        const normalizedRef = normalizeHeader(ref);
+        resolvedCountryId = countryByNormalizedName.get(normalizedRef) ?? countryByNormalizedCode.get(normalizedRef) ?? "";
+      }
+    }
+
     const payload = {
       name: row.name,
       rif: row.rif,
-      countryId: row.countryId ?? "",
+      countryId: resolvedCountryId,
     };
 
     const parsed = createOrganizationSchema.safeParse(payload);

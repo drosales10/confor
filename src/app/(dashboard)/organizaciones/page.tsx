@@ -5,9 +5,20 @@ import { getUserRolesAndPermissions } from "@/lib/permissions";
 import { buildAbilityFromPermissions } from "@/lib/ability";
 import { OrganizationClient } from "./OrganizationClient";
 
-async function getOrganizations() {
+function isSuperAdmin(roles: string[]) {
+  return roles.includes("SUPER_ADMIN");
+}
+
+function isScopedAdmin(roles: string[]) {
+  return roles.includes("ADMIN") && !isSuperAdmin(roles);
+}
+
+async function getOrganizations(roles: string[], organizationId?: string | null) {
   const organizations = await prisma.organization.findMany({
-    where: { deletedAt: null },
+    where: {
+      deletedAt: null,
+      ...(isScopedAdmin(roles) ? { id: organizationId ?? "" } : {}),
+    },
     include: { country: true },
     orderBy: { createdAt: "desc" },
   });
@@ -35,7 +46,7 @@ export default async function OrganizacionesPage() {
     redirect("/unauthorized");
   }
 
-  const organizations = await getOrganizations();
+  const organizations = await getOrganizations(session.user.roles ?? [], session.user.organizationId ?? null);
 
   return <OrganizationClient initialData={organizations} />;
 }

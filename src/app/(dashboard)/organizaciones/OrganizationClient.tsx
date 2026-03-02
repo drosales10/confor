@@ -64,6 +64,7 @@ export function OrganizationClient({ initialData }: { initialData: Organization[
   const [organizations, setOrganizations] = useState<Organization[]>(initialData);
   const [countries, setCountries] = useState<Country[]>([]);
   const [permissions, setPermissions] = useState<string[]>([]);
+  const [roles, setRoles] = useState<string[]>([]);
 
   const [isOpen, setIsOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -94,10 +95,11 @@ export function OrganizationClient({ initialData }: { initialData: Organization[
   const selectedCountryId = watch("countryId");
 
   const permissionSet = useMemo(() => new Set(permissions), [permissions]);
+  const isScopedAdmin = useMemo(() => roles.includes("ADMIN") && !roles.includes("SUPER_ADMIN"), [roles]);
   const hasOrganizationsAdmin = permissionSet.has("organizations:ADMIN");
-  const canCreate = hasOrganizationsAdmin || permissionSet.has("organizations:CREATE");
+  const canCreate = !isScopedAdmin && (hasOrganizationsAdmin || permissionSet.has("organizations:CREATE"));
   const canUpdate = hasOrganizationsAdmin || permissionSet.has("organizations:UPDATE");
-  const canDelete = hasOrganizationsAdmin || permissionSet.has("organizations:DELETE");
+  const canDelete = !isScopedAdmin && (hasOrganizationsAdmin || permissionSet.has("organizations:DELETE"));
   const canExport = hasOrganizationsAdmin || permissionSet.has("organizations:EXPORT");
 
   const selectedCountry = useMemo(
@@ -197,9 +199,12 @@ export function OrganizationClient({ initialData }: { initialData: Organization[
         const sessionResponse = await fetch("/api/auth/session");
         const sessionPayload = sessionResponse.ok ? await sessionResponse.json().catch(() => null) : null;
         const sessionPermissions = (sessionPayload?.user?.permissions ?? []) as string[];
+        const sessionRoles = (sessionPayload?.user?.roles ?? []) as string[];
         setPermissions(sessionPermissions);
+        setRoles(sessionRoles);
       } catch {
         setPermissions([]);
+        setRoles([]);
       }
 
       await loadCountries();
@@ -334,15 +339,48 @@ export function OrganizationClient({ initialData }: { initialData: Organization[
       setOrganizations((prev) => prev.filter((org) => org.id !== id));
       router.refresh();
 
-      sileo.success({
+      sileo.action({
         title: "Organización eliminada",
         description: `Se eliminó ${name}.`,
+        duration: 9000,
+        button: {
+          title: "Restaurar",
+          onClick: () => {
+            void executeRestore(id, name);
+          },
+        },
       });
     } catch (err) {
       const message = err instanceof Error ? err.message : "Error desconocido";
       setError(message);
       sileo.error({
         title: "No se pudo eliminar",
+        description: message,
+      });
+    }
+  }
+
+  async function executeRestore(id: string, name: string) {
+    try {
+      setError(null);
+      const response = await fetch(`/api/organizations/${id}/restore`, { method: "POST" });
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        throw new Error(payload?.error ?? "No fue posible restaurar la organización");
+      }
+
+      await refreshOrganizations();
+      router.refresh();
+
+      sileo.success({
+        title: "Organización restaurada",
+        description: `Se restauró ${name}.`,
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Error desconocido";
+      setError(message);
+      sileo.error({
+        title: "No se pudo restaurar",
         description: message,
       });
     }

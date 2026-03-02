@@ -28,8 +28,14 @@ function normalizeHeader(value: unknown) {
   return String(value ?? "")
     .trim()
     .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
     .replace(/\s+/g, "")
     .replace(/[_-]/g, "");
+}
+
+function isUuid(value: string) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 }
 
 function parseCsvLine(line: string) {
@@ -93,7 +99,7 @@ type ImportRow = {
   lastName?: string;
   roleSlug: string;
   password?: string;
-  organizationId?: string;
+  organizationRef?: string;
 };
 
 export async function POST(req: NextRequest) {
@@ -138,26 +144,33 @@ export async function POST(req: NextRequest) {
     const headerIndex = new Map<string, number>();
     parsed.headers.forEach((header, idx) => headerIndex.set(normalizeHeader(header), idx));
 
-    const required = ["email", "roleslug"];
-    for (const key of required) {
-      if (!headerIndex.has(key)) {
-        return fail(`Falta columna obligatoria: ${key}`, 400);
-      }
+    const hasAnyHeader = (...keys: string[]) => keys.some((key) => headerIndex.has(normalizeHeader(key)));
+
+    if (!hasAnyHeader("email")) {
+      return fail("Falta columna obligatoria: email", 400);
+    }
+    if (!hasAnyHeader("roleslug", "role", "rol")) {
+      return fail("Falta columna obligatoria: roleSlug/role/rol", 400);
     }
 
     rows = parsed.rows.map((cols) => {
-      const get = (key: string) => {
-        const idx = headerIndex.get(key);
-        return idx === undefined ? "" : String(cols[idx] ?? "").trim();
+      const get = (...keys: string[]) => {
+        for (const key of keys) {
+          const idx = headerIndex.get(normalizeHeader(key));
+          if (idx !== undefined) {
+            return String(cols[idx] ?? "").trim();
+          }
+        }
+        return "";
       };
 
       return {
         email: get("email"),
-        firstName: get("firstname") || undefined,
-        lastName: get("lastname") || undefined,
-        roleSlug: get("roleslug"),
-        password: get("password") || undefined,
-        organizationId: get("organizationid") || undefined,
+        firstName: get("firstname", "nombres", "nombre") || undefined,
+        lastName: get("lastname", "apellidos", "apellido") || undefined,
+        roleSlug: get("roleslug", "role", "rol"),
+        password: get("password", "contrasena", "contraseña") || undefined,
+        organizationRef: get("organizationid", "organization", "organizacionid", "organizacion", "organizaciónid", "organización") || undefined,
       };
     });
   }
@@ -177,30 +190,37 @@ export async function POST(req: NextRequest) {
     } else {
       const normalizedKeys = new Set<string>();
       Object.keys(jsonRows[0] ?? {}).forEach((key) => normalizedKeys.add(normalizeHeader(key)));
-      const required = ["email", "roleslug"];
-      for (const key of required) {
-        if (!normalizedKeys.has(key)) {
-          return fail(`Falta columna obligatoria: ${key}`, 400);
-        }
+      const hasAnyHeader = (...keys: string[]) => keys.some((key) => normalizedKeys.has(normalizeHeader(key)));
+      if (!hasAnyHeader("email")) {
+        return fail("Falta columna obligatoria: email", 400);
+      }
+      if (!hasAnyHeader("roleslug", "role", "rol")) {
+        return fail("Falta columna obligatoria: roleSlug/role/rol", 400);
       }
 
-      const get = (record: Record<string, unknown>, target: string) => {
-        const matchKey = Object.keys(record).find((k) => normalizeHeader(k) === target);
-        const value = matchKey ? record[matchKey] : "";
-        return String(value ?? "").trim();
+      const get = (record: Record<string, unknown>, ...targets: string[]) => {
+        for (const target of targets) {
+          const normalizedTarget = normalizeHeader(target);
+          const matchKey = Object.keys(record).find((k) => normalizeHeader(k) === normalizedTarget);
+          if (matchKey) {
+            const value = record[matchKey];
+            return String(value ?? "").trim();
+          }
+        }
+        return "";
       };
 
       rows = jsonRows
         .map((record) => {
           const email = get(record, "email");
-          const roleSlug = get(record, "roleslug");
+          const roleSlug = get(record, "roleslug", "role", "rol");
           return {
             email,
-            firstName: get(record, "firstname") || undefined,
-            lastName: get(record, "lastname") || undefined,
+            firstName: get(record, "firstname", "nombres", "nombre") || undefined,
+            lastName: get(record, "lastname", "apellidos", "apellido") || undefined,
             roleSlug,
-            password: get(record, "password") || undefined,
-            organizationId: get(record, "organizationid") || undefined,
+            password: get(record, "password", "contrasena", "contraseña") || undefined,
+            organizationRef: get(record, "organizationid", "organization", "organizacionid", "organizacion", "organizaciónid", "organización") || undefined,
           } satisfies ImportRow;
         })
         .filter((row) => Boolean(row.email) || Boolean(row.roleSlug));
@@ -216,9 +236,28 @@ export async function POST(req: NextRequest) {
   let updated = 0;
   let skipped = 0;
 
+  const organizations = await prisma.organization.findMany({
+    where: { deletedAt: null },
+    select: { id: true, name: true, slug: true },
+  });
+  const organizationById = new Map(organizations.map((organization) => [organization.id, organization.id]));
+  const organizationByName = new Map(organizations.map((organization) => [normalizeHeader(organization.name), organization.id]));
+  const organizationBySlug = new Map(organizations.map((organization) => [normalizeHeader(organization.slug), organization.id]));
+
   for (let i = 0; i < rows.length; i++) {
     const rowNumber = i + 2;
     const row = rows[i];
+
+    let resolvedOrganizationId = currentOrganizationId ?? undefined;
+    if (row.organizationRef) {
+      const ref = row.organizationRef.trim();
+      if (isUuid(ref) && organizationById.has(ref)) {
+        resolvedOrganizationId = ref;
+      } else {
+        const normalizedRef = normalizeHeader(ref);
+        resolvedOrganizationId = organizationByName.get(normalizedRef) ?? organizationBySlug.get(normalizedRef) ?? resolvedOrganizationId;
+      }
+    }
 
     const payload = {
       email: row.email,
@@ -226,7 +265,7 @@ export async function POST(req: NextRequest) {
       lastName: row.lastName,
       roleSlug: row.roleSlug,
       password: row.password,
-      organizationId: row.organizationId ?? (currentOrganizationId ?? undefined),
+      organizationId: resolvedOrganizationId,
     };
 
     if (!isSuperAdmin && payload.organizationId !== currentOrganizationId) {

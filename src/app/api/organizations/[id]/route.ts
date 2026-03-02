@@ -7,6 +7,14 @@ function canManageOrganizations(roles: string[]) {
     return roles.includes("ADMIN") || roles.includes("SUPER_ADMIN");
 }
 
+function isSuperAdmin(roles: string[]) {
+    return roles.includes("SUPER_ADMIN");
+}
+
+function isScopedAdmin(roles: string[]) {
+    return roles.includes("ADMIN") && !isSuperAdmin(roles);
+}
+
 export async function PATCH(
     req: NextRequest,
     { params }: { params: Promise<{ id: string }> }
@@ -16,9 +24,14 @@ export async function PATCH(
     if ("error" in authResult) return authResult.error;
 
     const roles = authResult.session.user.roles ?? [];
+    const organizationId = authResult.session.user.organizationId ?? null;
     if (!canManageOrganizations(roles)) {
         const permissionError = requirePermission(authResult.session.user.permissions ?? [], "organizations", "UPDATE");
         if (permissionError) return permissionError;
+    }
+
+    if (isScopedAdmin(roles) && organizationId !== id) {
+        return fail("Un usuario ADMIN solo puede editar su propia organización", 403);
     }
 
     const body = await req.json();
@@ -57,6 +70,12 @@ export async function DELETE(
     if ("error" in authResult) return authResult.error;
 
     const roles = authResult.session.user.roles ?? [];
+    const organizationId = authResult.session.user.organizationId ?? null;
+
+    if (isScopedAdmin(roles)) {
+        return fail("Un usuario ADMIN solo puede ver y editar su propia organización", 403);
+    }
+
     if (!canManageOrganizations(roles)) {
         const permissionError = requirePermission(authResult.session.user.permissions ?? [], "organizations", "DELETE");
         if (permissionError) return permissionError;

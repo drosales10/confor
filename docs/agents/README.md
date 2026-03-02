@@ -10,6 +10,7 @@ Estos agentes están diseñados para replicar el mismo patrón implementado en `
 5. `03-ui-crud-agent.md`
 6. `04-qa-crud-agent.md`
 7. `06-ui-tabla-import-export-sort-agent.md`
+9. `07-import-export-header-compat-agent.md`
 
 ## Qué cubren
 - Formulario con campos requeridos
@@ -24,6 +25,7 @@ Estos agentes están diseñados para replicar el mismo patrón implementado en `
 - Alertas/confirmaciones con `sileo`
 - Verificación final (lint/types/build)
 - Patrón de tabla reusable: Importar + Exportar CSV/Excel + ordenación asc/desc en todas las columnas
+- Compatibilidad total import/export por encabezados (ES/EN), incluyendo validación round-trip por lote
 
 ## Input sugerido por tabla
 - `entityName`

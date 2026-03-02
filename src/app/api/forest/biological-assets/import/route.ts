@@ -9,6 +9,8 @@ function normalizeHeader(value: unknown) {
   return String(value ?? "")
     .trim()
     .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
     .replace(/\s+/g, "")
     .replace(/[_-]/g, "");
 }
@@ -198,32 +200,35 @@ export async function POST(req: NextRequest) {
     const headerIndex = new Map<string, number>();
     parsed.headers.forEach((header, index) => headerIndex.set(normalizeHeader(header), index));
 
-    const required = ["biologicalassetkey"];
-    for (const key of required) {
-      if (!headerIndex.has(key)) {
-        return fail(`Falta columna obligatoria: ${key}`, 400);
-      }
+    const hasAnyHeader = (...keys: string[]) => keys.some((key) => headerIndex.has(normalizeHeader(key)));
+    if (!hasAnyHeader("biologicalassetkey", "clavebiologica", "clavebiológica")) {
+      return fail("Falta columna obligatoria: biologicalAssetKey/clave biológica", 400);
     }
 
     rows = parsed.rows
       .map((cols) => {
-        const get = (key: string) => {
-          const index = headerIndex.get(key);
-          return index === undefined ? "" : String(cols[index] ?? "").trim();
+        const get = (...keys: string[]) => {
+          for (const key of keys) {
+            const index = headerIndex.get(normalizeHeader(key));
+            if (index !== undefined) {
+              return String(cols[index] ?? "").trim();
+            }
+          }
+          return "";
         };
 
-        const assetType = parseAssetType(get("assettype"));
+        const assetType = parseAssetType(get("assettype", "tipoactivo", "tipo"));
 
         return {
-          biologicalAssetKey: get("biologicalassetkey"),
-          accountingKey: get("accountingkey") || undefined,
+          biologicalAssetKey: get("biologicalassetkey", "clavebiologica", "clavebiológica"),
+          accountingKey: get("accountingkey", "clavecontable") || undefined,
           assetType: assetType ?? undefined,
-          establishmentDate: parseDateValue(get("establishmentdate")),
-          plantingYear: parseIntValue(get("plantingyear")),
-          inventoryCode: get("inventorycode") || undefined,
-          inventoryType: get("inventorytype") || undefined,
-          inventoryDate: parseDateValue(get("inventorydate")),
-          isActive: parseBoolean(get("isactive")),
+          establishmentDate: parseDateValue(get("establishmentdate", "fechaestablecimiento")),
+          plantingYear: parseIntValue(get("plantingyear", "anoplantacion", "añoplantación")),
+          inventoryCode: get("inventorycode", "inventariocodigo") || undefined,
+          inventoryType: get("inventorytype", "inventariotipo") || undefined,
+          inventoryDate: parseDateValue(get("inventorydate", "fechainventario")),
+          isActive: parseBoolean(get("isactive", "estado", "estatus")),
         } satisfies ImportRow;
       })
       .filter((row) => Boolean(row.biologicalAssetKey));
@@ -242,24 +247,30 @@ export async function POST(req: NextRequest) {
 
     rows = jsonRows
       .map((record) => {
-        const get = (target: string) => {
-          const key = Object.keys(record).find((item) => normalizeHeader(item) === target);
-          const value = key ? record[key] : "";
-          return String(value ?? "").trim();
+        const get = (...targets: string[]) => {
+          for (const target of targets) {
+            const normalizedTarget = normalizeHeader(target);
+            const key = Object.keys(record).find((item) => normalizeHeader(item) === normalizedTarget);
+            if (key) {
+              const value = record[key];
+              return String(value ?? "").trim();
+            }
+          }
+          return "";
         };
 
-        const assetType = parseAssetType(get("assettype"));
+        const assetType = parseAssetType(get("assettype", "tipoactivo", "tipo"));
 
         return {
-          biologicalAssetKey: get("biologicalassetkey"),
-          accountingKey: get("accountingkey") || undefined,
+          biologicalAssetKey: get("biologicalassetkey", "clavebiologica", "clavebiológica"),
+          accountingKey: get("accountingkey", "clavecontable") || undefined,
           assetType: assetType ?? undefined,
-          establishmentDate: parseDateValue(get("establishmentdate")),
-          plantingYear: parseIntValue(get("plantingyear")),
-          inventoryCode: get("inventorycode") || undefined,
-          inventoryType: get("inventorytype") || undefined,
-          inventoryDate: parseDateValue(get("inventorydate")),
-          isActive: parseBoolean(get("isactive")),
+          establishmentDate: parseDateValue(get("establishmentdate", "fechaestablecimiento")),
+          plantingYear: parseIntValue(get("plantingyear", "anoplantacion", "añoplantación")),
+          inventoryCode: get("inventorycode", "inventariocodigo") || undefined,
+          inventoryType: get("inventorytype", "inventariotipo") || undefined,
+          inventoryDate: parseDateValue(get("inventorydate", "fechainventario")),
+          isActive: parseBoolean(get("isactive", "estado", "estatus")),
         } satisfies ImportRow;
       })
       .filter((row) => Boolean(row.biologicalAssetKey));

@@ -1,16 +1,15 @@
 import Image from "next/image";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { signOut } from "@/lib/auth";
 import { auth } from "@/lib/auth";
 import { getRolePermissions, normalizeRole } from "@/lib/rbac";
 import StatusBar from "@/components/StatusBar";
 import { buildAbilityFromPermissions } from "@/lib/ability";
 import { prisma } from "@/lib/prisma";
 import { getUserRolesAndPermissions } from "@/lib/permissions";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { DashboardNav } from "@/components/DashboardNav";
+import { UserMenu } from "@/components/UserMenu";
 
 const nav = [
   { href: "/dashboard", label: "Inicio", module: "dashboard" },
@@ -21,10 +20,7 @@ const nav = [
   { href: "/activo-biologico", label: "Activo biológico", module: "forest-biological-asset" },
   { href: "/configuracion-forestal", label: "Configuración forestal", module: "forest-config" },
   { href: "/configuracion-general", label: "Configuración general", module: "general-config" },
-  { href: "/profile", label: "Perfil", module: "profile" },
-  { href: "/analytics", label: "Analítica", module: "analytics" },
   { href: "/settings", label: "Configuración", module: "settings" },
-  { href: "/audit", label: "Auditoría", module: "audit" },
 ];
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -72,6 +68,30 @@ export default async function DashboardLayout({ children }: { children: React.Re
     redirect("/login");
   }
 
+  const currentUser = session?.user?.id
+    ? await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: {
+        firstName: true,
+        lastName: true,
+        displayName: true,
+        avatarUrl: true,
+      },
+    })
+    : null;
+
+  const fullName =
+    `${currentUser?.firstName ?? ""} ${currentUser?.lastName ?? ""}`.trim() ||
+    currentUser?.displayName?.trim() ||
+    session?.user?.name?.trim() ||
+    "Usuario";
+
+  const userMenuItems = [
+    { href: "/profile", label: "Ver perfil", module: "profile" },
+    { href: "/analytics", label: "Analítica", module: "analytics" },
+    { href: "/audit", label: "Auditoría", module: "audit" },
+  ].filter((item) => ability.can("read", item.module));
+
   const visibleNav = nav.filter((item) => ability.can("read", item.module));
 
   return (
@@ -94,24 +114,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
             </div>
             <div className="text-sm font-semibold">{appName}</div>
           </div>
-          <form
-            action={async () => {
-              "use server";
-              const cookieStore = await cookies();
-              cookieStore.set("RolUsuario", "", { maxAge: 0, path: "/" });
-              cookieStore.set("OrgName", "", { maxAge: 0, path: "/" });
-              cookieStore.set("EmailUsuario", "", { maxAge: 0, path: "/" });
-              const currentSession = await auth();
-              if (currentSession?.user?.id) {
-                await signOut({ redirectTo: "/login" });
-              }
-              redirect("/login");
-            }}
-          >
-            <Button variant="outline" size="sm" type="submit">
-              Cerrar sesión
-            </Button>
-          </form>
+          <UserMenu fullName={fullName} avatarUrl={currentUser?.avatarUrl ?? null} items={userMenuItems} />
         </div>
       </header>
       <div className="mx-auto grid w-full max-w-6xl grid-cols-1 gap-4 p-4 md:grid-cols-[240px_1fr]">

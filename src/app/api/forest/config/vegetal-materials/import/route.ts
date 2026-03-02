@@ -26,6 +26,8 @@ function normalizeHeader(value: unknown) {
   return String(value ?? "")
     .trim()
     .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
     .replace(/\s+/g, "")
     .replace(/[_-]/g, "");
 }
@@ -283,25 +285,31 @@ export async function POST(req: NextRequest) {
 
     rows = jsonRows
       .map((record) => {
-        const get = (target: string) => {
-          const matchKey = Object.keys(record).find((key) => normalizeHeader(key) === target);
-          const value = matchKey ? record[matchKey] : "";
-          return String(value ?? "").trim();
+        const get = (...targets: string[]) => {
+          for (const target of targets) {
+            const normalizedTarget = normalizeHeader(target);
+            const matchKey = Object.keys(record).find((key) => normalizeHeader(key) === normalizedTarget);
+            if (matchKey) {
+              const value = record[matchKey];
+              return String(value ?? "").trim();
+            }
+          }
+          return "";
         };
 
         return {
           id: get("id") || undefined,
-          code: get("code"),
-          name: get("name"),
-          speciesId: get("speciesid") || undefined,
-          speciesCode: get("speciescode") || undefined,
-          materialType: parseMaterialType(get("materialtype")),
-          plantType: parsePlantType(get("planttype")),
-          plantOrigin: parsePlantOrigin(get("plantorigin")),
-          provenanceId: get("provenanceid") || undefined,
-          provenanceCode: get("provenancecode") || undefined,
-          isActive: parseBoolean(get("isactive")),
-          organizationId: get("organizationid") || undefined,
+          code: get("code", "codigo", "código"),
+          name: get("name", "nombre"),
+          speciesId: get("speciesid", "especieid") || undefined,
+          speciesCode: get("speciescode", "especiecodigo", "especiecódigo") || undefined,
+          materialType: parseMaterialType(get("materialtype", "tipo material")),
+          plantType: parsePlantType(get("planttype", "tipo planta")),
+          plantOrigin: parsePlantOrigin(get("plantorigin", "origen planta")),
+          provenanceId: get("provenanceid", "procedenciaid") || undefined,
+          provenanceCode: get("provenancecode", "procedenciacodigo", "procedenciacódigo") || undefined,
+          isActive: parseBoolean(get("isactive", "activo")),
+          organizationId: get("organizationid", "organizacionid", "organizaciónid") || undefined,
         } satisfies ImportRow;
       })
       .filter((row) => Boolean(row.code) || Boolean(row.name));

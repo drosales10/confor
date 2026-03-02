@@ -65,7 +65,7 @@ export default function LoginPage() {
     const load = async () => {
       try {
         setOrgError(null);
-        const response = await fetch("/api/organizations");
+        const response = await fetch("/api/organizations/public");
         if (!response.ok) {
           throw new Error("No fue posible cargar organizaciones");
         }
@@ -86,14 +86,29 @@ export default function LoginPage() {
     setLoading(true);
     setError(null);
 
+    const validationResponse = await fetch("/api/auth/login-validation", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, organizationId }),
+    });
+
+    if (!validationResponse.ok) {
+      const validationPayload = await validationResponse.json().catch(() => null);
+      const message = validationPayload?.error ?? "No se pudo validar la organización seleccionada";
+      setError(message);
+      setLoading(false);
+      return;
+    }
+
     const result = await signIn("credentials", {
       email,
       password,
+      organizationId,
       redirect: false,
     });
 
     if (result?.error) {
-      setError("Credenciales inválidas o usuario pendiente de aprobación");
+      setError("Credenciales inválidas");
       setLoading(false);
       return;
     }

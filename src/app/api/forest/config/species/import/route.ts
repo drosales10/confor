@@ -26,6 +26,8 @@ function normalizeHeader(value: unknown) {
   return String(value ?? "")
     .trim()
     .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
     .replace(/\s+/g, "")
     .replace(/[_-]/g, "");
 }
@@ -198,24 +200,30 @@ export async function POST(req: NextRequest) {
 
     rows = jsonRows
       .map((record) => {
-        const get = (target: string) => {
-          const matchKey = Object.keys(record).find((key) => normalizeHeader(key) === target);
-          const value = matchKey ? record[matchKey] : "";
-          return String(value ?? "").trim();
+        const get = (...targets: string[]) => {
+          for (const target of targets) {
+            const normalizedTarget = normalizeHeader(target);
+            const matchKey = Object.keys(record).find((key) => normalizeHeader(key) === normalizedTarget);
+            if (matchKey) {
+              const value = record[matchKey];
+              return String(value ?? "").trim();
+            }
+          }
+          return "";
         };
 
         return {
           id: get("id") || undefined,
-          code: get("code"),
-          scientificName: get("scientificname"),
-          commonName: get("commonname") || undefined,
-          genus: get("genus") || undefined,
-          family: get("family") || undefined,
-          taxonomicOrder: get("taxonomicorder") || undefined,
-          isActive: parseBoolean(get("isactive")),
-          createdAt: get("createdat") || undefined,
-          updatedAt: get("updatedat") || undefined,
-          organizationId: get("organizationid") || undefined,
+          code: get("code", "codigo", "código"),
+          scientificName: get("scientificname", "nombre cientifico", "nombre científico"),
+          commonName: get("commonname", "nombre comun", "nombre común") || undefined,
+          genus: get("genus", "genero", "género") || undefined,
+          family: get("family", "familia") || undefined,
+          taxonomicOrder: get("taxonomicorder", "orden taxonomico", "orden taxonómico") || undefined,
+          isActive: parseBoolean(get("isactive", "activo")),
+          createdAt: get("createdat", "creado en") || undefined,
+          updatedAt: get("updatedat", "actualizado en") || undefined,
+          organizationId: get("organizationid", "organizacionid", "organizaciónid") || undefined,
         } satisfies ImportRow;
       })
       .filter((row) => Boolean(row.code) || Boolean(row.scientificName));

@@ -26,6 +26,8 @@ function normalizeHeader(value: unknown) {
   return String(value ?? "")
     .trim()
     .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
     .replace(/\s+/g, "")
     .replace(/[_-]/g, "");
 }
@@ -207,26 +209,32 @@ export async function POST(req: NextRequest) {
 
     rows = jsonRows
       .map((record) => {
-        const get = (target: string) => {
-          const matchKey = Object.keys(record).find((key) => normalizeHeader(key) === target);
-          const value = matchKey ? record[matchKey] : "";
-          return String(value ?? "").trim();
+        const get = (...targets: string[]) => {
+          for (const target of targets) {
+            const normalizedTarget = normalizeHeader(target);
+            const matchKey = Object.keys(record).find((key) => normalizeHeader(key) === normalizedTarget);
+            if (matchKey) {
+              const value = record[matchKey];
+              return String(value ?? "").trim();
+            }
+          }
+          return "";
         };
 
-        const description = get("description");
+        const description = get("description", "descripcion", "descripción");
 
         return {
           id: get("id") || undefined,
-          code: get("code"),
-          name: get("name"),
+          code: get("code", "codigo", "código"),
+          name: get("name", "nombre"),
           description: description || undefined,
-          betweenRowsM: parseNumberOrNull(get("betweenrowsm")),
-          betweenTreesM: parseNumberOrNull(get("betweentreesm")),
-          treeDensityPerHa: parseNumberOrNull(get("treedensityperha")),
-          isActive: parseBoolean(get("isactive")),
-          createdAt: get("createdat") || undefined,
-          updatedAt: get("updatedat") || undefined,
-          organizationId: get("organizationid") || undefined,
+          betweenRowsM: parseNumberOrNull(get("betweenrowsm", "entre filas (m)")),
+          betweenTreesM: parseNumberOrNull(get("betweentreesm", "entre plantas (m)")),
+          treeDensityPerHa: parseNumberOrNull(get("treedensityperha", "densidad/ha")),
+          isActive: parseBoolean(get("isactive", "activo")),
+          createdAt: get("createdat", "creado en") || undefined,
+          updatedAt: get("updatedat", "actualizado en") || undefined,
+          organizationId: get("organizationid", "organizacionid", "organizaciónid") || undefined,
         } satisfies ImportRow;
       })
       .filter((row) => Boolean(row.code) || Boolean(row.name));
