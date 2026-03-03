@@ -78,6 +78,17 @@ type ProductTypeSortKey = "code" | "name" | "recommendedHarvestType" | "isActive
 function isProductTypeSortKey(value: string): value is ProductTypeSortKey {
   return ["code", "name", "recommendedHarvestType", "isActive", "createdAt"].includes(value);
 }
+type ForestConfigTab =
+  | "esquemas"
+  | "inventarios"
+  | "ima"
+  | "espaciamientos"
+  | "costosNivel4"
+  | "productos"
+  | "usoSuelos"
+  | "especies"
+  | "procedencias"
+  | "materialVegetal";
 
 const LAND_USE_CATEGORIES = [
   "BOSQUE",
@@ -422,6 +433,7 @@ export default function ConfiguracionForestalPage() {
   const importProductTypeInputRef = useRef<HTMLInputElement | null>(null);
   const importLandUseInputRef = useRef<HTMLInputElement | null>(null);
   const [globalMessage, setGlobalMessage] = useState<string | null>(null);
+  const [activeConfigTab, setActiveConfigTab] = useState<ForestConfigTab>("esquemas");
 
   const [schemeItems, setSchemeItems] = useState<SimpleItem[]>([]);
   const [schemeSearch, setSchemeSearch] = useState("");
@@ -3750,6 +3762,22 @@ export default function ConfiguracionForestalPage() {
 
       {globalMessage ? <p className="rounded-md border px-3 py-2 text-sm">{globalMessage}</p> : null}
 
+      <div className="border-b pb-2">
+        <nav aria-label="Pestañas de configuración forestal" className="flex flex-wrap gap-2">
+          <button className={`rounded-md border px-3 py-2 text-sm ${activeConfigTab === "esquemas" ? "font-medium" : "text-muted-foreground"}`} onClick={() => setActiveConfigTab("esquemas")} type="button">Esquemas</button>
+          <button className={`rounded-md border px-3 py-2 text-sm ${activeConfigTab === "inventarios" ? "font-medium" : "text-muted-foreground"}`} onClick={() => setActiveConfigTab("inventarios")} type="button">Inventarios</button>
+          <button className={`rounded-md border px-3 py-2 text-sm ${activeConfigTab === "ima" ? "font-medium" : "text-muted-foreground"}`} onClick={() => setActiveConfigTab("ima")} type="button">IMA</button>
+          <button className={`rounded-md border px-3 py-2 text-sm ${activeConfigTab === "espaciamientos" ? "font-medium" : "text-muted-foreground"}`} onClick={() => setActiveConfigTab("espaciamientos")} type="button">Espaciamientos</button>
+          <button className={`rounded-md border px-3 py-2 text-sm ${activeConfigTab === "costosNivel4" ? "font-medium" : "text-muted-foreground"}`} onClick={() => setActiveConfigTab("costosNivel4")} type="button">Costos nivel 4</button>
+          <button className={`rounded-md border px-3 py-2 text-sm ${activeConfigTab === "productos" ? "font-medium" : "text-muted-foreground"}`} onClick={() => setActiveConfigTab("productos")} type="button">Productos</button>
+          <button className={`rounded-md border px-3 py-2 text-sm ${activeConfigTab === "usoSuelos" ? "font-medium" : "text-muted-foreground"}`} onClick={() => setActiveConfigTab("usoSuelos")} type="button">Uso de suelos</button>
+          <button className={`rounded-md border px-3 py-2 text-sm ${activeConfigTab === "especies" ? "font-medium" : "text-muted-foreground"}`} onClick={() => setActiveConfigTab("especies")} type="button">Especies</button>
+          <button className={`rounded-md border px-3 py-2 text-sm ${activeConfigTab === "procedencias" ? "font-medium" : "text-muted-foreground"}`} onClick={() => setActiveConfigTab("procedencias")} type="button">Procedencias</button>
+          <button className={`rounded-md border px-3 py-2 text-sm ${activeConfigTab === "materialVegetal" ? "font-medium" : "text-muted-foreground"}`} onClick={() => setActiveConfigTab("materialVegetal")} type="button">Material vegetal</button>
+        </nav>
+      </div>
+
+      {activeConfigTab === "esquemas" && (
       <section className="space-y-4 rounded-xl border p-4">
         <CatalogHeader title="Esquemas de manejo" subtitle="CRUD de catálogo ManagementScheme" />
 
@@ -3881,7 +3909,9 @@ export default function ConfiguracionForestalPage() {
           </form>
         ) : null}
       </section>
+      )}
 
+      {activeConfigTab === "inventarios" && (
       <section className="space-y-4 rounded-xl border p-4">
         <CatalogHeader title="Tipos de inventario" subtitle="CRUD de catálogo ForestInventoryTypeCatalog" />
         <div className="flex flex-wrap items-center gap-2">
@@ -4029,7 +4059,9 @@ export default function ConfiguracionForestalPage() {
           </form>
         ) : null}
       </section>
+      )}
 
+      {activeConfigTab === "ima" && (
       <section className="space-y-4 rounded-xl border p-4">
         <CatalogHeader title="Clases IMA" subtitle="CRUD de catálogo ImaClass" />
         <div className="flex flex-wrap items-center gap-2">
@@ -4211,7 +4243,9 @@ export default function ConfiguracionForestalPage() {
           </form>
         ) : null}
       </section>
+      )}
 
+      {activeConfigTab === "espaciamientos" && (
       <section className="space-y-4 rounded-xl border p-4">
         <CatalogHeader title="Espaciamientos" subtitle="CRUD de catálogo Spacing" />
         <div className="flex flex-wrap items-center gap-2">
@@ -4373,7 +4407,9 @@ export default function ConfiguracionForestalPage() {
           </form>
         ) : null}
       </section>
+      )}
 
+      {activeConfigTab === "costosNivel4" && (
       <section className="space-y-4 rounded-xl border p-4">
         <CatalogHeader title="Costos nivel 4" subtitle="CRUD de catálogo Level4AdministrativeCost" />
         <div className="flex flex-wrap items-center gap-2">
@@ -4559,7 +4595,9 @@ export default function ConfiguracionForestalPage() {
           </form>
         ) : null}
       </section>
+      )}
 
+      {activeConfigTab === "productos" && (
       <section className="space-y-4 rounded-xl border p-4">
         <CatalogHeader title="Tipos de productos" subtitle="CRUD de catálogo ProductType" />
         <div className="flex flex-wrap items-center gap-2">
@@ -4741,7 +4779,9 @@ export default function ConfiguracionForestalPage() {
           </form>
         ) : null}
       </section>
+      )}
 
+      {activeConfigTab === "usoSuelos" && (
       <section className="space-y-4 rounded-xl border p-4">
         <CatalogHeader title="Uso de suelos" subtitle="CRUD de catálogo LandUseType" />
         <div className="flex flex-wrap items-center gap-2">
@@ -4931,7 +4971,9 @@ export default function ConfiguracionForestalPage() {
           </form>
         ) : null}
       </section>
+      )}
 
+      {activeConfigTab === "especies" && (
       <section className="space-y-4 rounded-xl border p-4">
         <CatalogHeader title="Especies vegetales" subtitle="CRUD de catálogo Species" />
         <div className="flex flex-wrap items-center gap-2">
@@ -5097,7 +5139,9 @@ export default function ConfiguracionForestalPage() {
           </form>
         ) : null}
       </section>
+      )}
 
+      {activeConfigTab === "procedencias" && (
       <section className="space-y-4 rounded-xl border p-4">
         <CatalogHeader title="Procedencias" subtitle="CRUD de catálogo Provenance" />
         <div className="flex flex-wrap items-center gap-2">
@@ -5273,7 +5317,9 @@ export default function ConfiguracionForestalPage() {
           </form>
         ) : null}
       </section>
+      )}
 
+      {activeConfigTab === "materialVegetal" && (
       <section className="space-y-4 rounded-xl border p-4">
         <CatalogHeader title="Material vegetal" subtitle="CRUD de catálogo VegetalMaterial" />
         <div className="flex flex-wrap items-center gap-2">
@@ -5519,6 +5565,7 @@ export default function ConfiguracionForestalPage() {
           </form>
         ) : null}
       </section>
+      )}
     </div>
   );
 }

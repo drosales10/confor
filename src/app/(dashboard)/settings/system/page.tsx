@@ -36,6 +36,7 @@ type OrganizationInfo = {
 };
 
 type ConfigSortKey = "category" | "key" | "configType" | "value" | "updatedAt";
+type SettingsTab = "identificacion" | "modulos" | "parametros";
 
 function isConfigSortKey(value: string): value is ConfigSortKey {
   return ["category", "key", "configType", "value", "updatedAt"].includes(value);
@@ -66,6 +67,7 @@ export default function SystemSettingsPage() {
   const [moduleSlug, setModuleSlug] = useState("");
   const [routePath, setRoutePath] = useState("");
   const [displayOrder, setDisplayOrder] = useState(0);
+  const [activeTab, setActiveTab] = useState<SettingsTab>("identificacion");
   const [modulesSearch, setModulesSearch] = useState("");
   const debouncedModulesSearch = useDebounce(modulesSearch, 300);
   const [modulesPage, setModulesPage] = useState(1);
@@ -492,6 +494,33 @@ export default function SystemSettingsPage() {
 
       {loading ? <p className="text-sm">Cargando configuración...</p> : null}
 
+      <div className="border-b pb-2">
+        <nav aria-label="Pestañas de configuración" className="flex flex-wrap gap-2">
+          <button
+            className={`rounded-md border px-3 py-2 text-sm ${activeTab === "identificacion" ? "font-medium" : "text-muted-foreground"}`}
+            onClick={() => setActiveTab("identificacion")}
+            type="button"
+          >
+            Identificación de la organización
+          </button>
+          <button
+            className={`rounded-md border px-3 py-2 text-sm ${activeTab === "modulos" ? "font-medium" : "text-muted-foreground"}`}
+            onClick={() => setActiveTab("modulos")}
+            type="button"
+          >
+            Módulos del sistema
+          </button>
+          <button
+            className={`rounded-md border px-3 py-2 text-sm ${activeTab === "parametros" ? "font-medium" : "text-muted-foreground"}`}
+            onClick={() => setActiveTab("parametros")}
+            type="button"
+          >
+            Parámetros de configuración
+          </button>
+        </nav>
+      </div>
+
+      {activeTab === "identificacion" && (
       <section className="space-y-3 rounded-lg border p-4">
         <h2 className="text-lg font-semibold">Organización activa</h2>
         <div className="flex flex-wrap items-center gap-4">
@@ -533,9 +562,11 @@ export default function SystemSettingsPage() {
           </div>
         </div>
       </section>
+      )}
 
       
 
+      {activeTab === "modulos" && (
       <section className="space-y-3 rounded-lg border p-4">
         <h2 className="text-lg font-semibold">Módulos del sistema</h2>
         <div className="grid gap-3 md:grid-cols-2">
@@ -630,8 +661,11 @@ export default function SystemSettingsPage() {
           totalPages={modulesTotalPages}
         />
       </section>
+          )}
       
-<section className="space-y-3 rounded-lg border p-4">
+      {activeTab === "parametros" && (
+      <>
+      <section className="space-y-3 rounded-lg border p-4">
         <h2 className="text-lg font-semibold">Parámetros de configuración</h2>
         <div className="flex flex-wrap gap-2">
           <input
@@ -788,6 +822,8 @@ export default function SystemSettingsPage() {
           totalPages={configsTotalPages}
         />
       </section>
+      </>
+      )}
     </div>
   );
 }

@@ -113,6 +113,7 @@ type SelectedLevel4Detail = {
 };
 
 type PolygonVisibilityMode = "all" | "none" | "selected";
+type RightPanelTab = "buscar" | "filtros" | "gis" | "capas";
 
 const WORLD_BBOX = "-180,-85,180,85";
 const LAYER_SETTINGS_KEY = "geoDashboard.layerSettings.v1";
@@ -406,6 +407,20 @@ function MapViewResetController({
   return null;
 }
 
+function MapInstanceController({
+  onMapReady,
+}: {
+  onMapReady: (map: ReturnType<typeof useMap>) => void;
+}) {
+  const map = useMap();
+
+  useEffect(() => {
+    onMapReady(map);
+  }, [map, onMapReady]);
+
+  return null;
+}
+
 function collectGeometryCoordinates(geometry: unknown): number[][] {
   if (!geometry || typeof geometry !== "object") return [];
 
@@ -490,6 +505,7 @@ export function GeoDashboardMap() {
   const viewerRef = useRef<HTMLDivElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const mapWrapperRef = useRef<HTMLDivElement | null>(null);
+  const mapInstanceRef = useRef<ReturnType<typeof useMap> | null>(null);
   const pollerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const persistedSettingsRef = useRef<PersistedLayerSetting[]>([]);
   const editModeRef = useRef<EditMode>("none");
@@ -508,6 +524,7 @@ export function GeoDashboardMap() {
   const [selectedLevel2, setSelectedLevel2] = useState("");
   const [selectedLevel3, setSelectedLevel3] = useState("");
   const [selectedLevel4, setSelectedLevel4] = useState("");
+  const [activeRightTab, setActiveRightTab] = useState<RightPanelTab>("buscar");
   const [focusSignal, setFocusSignal] = useState(0);
   const [focusGeometry, setFocusGeometry] = useState<unknown | null>(null);
   const [selectedBasemap, setSelectedBasemap] = useState<BasemapKey>(DEFAULT_BASEMAP);
@@ -1271,6 +1288,11 @@ export function GeoDashboardMap() {
     [filteredVisibleLayers],
   );
 
+  const exportableFeatureCount = useMemo(
+    () => filteredVisibleLayers.reduce((sum, layer) => sum + layer.data.features.length, 0),
+    [filteredVisibleLayers],
+  );
+
   const resizeToken = useMemo(
     () => `${sidebarOpen ? "left-open" : "left-closed"}-${isPanelCollapsed ? "right-closed" : "right-open"}`,
     [isPanelCollapsed, sidebarOpen],
@@ -1939,37 +1961,299 @@ export function GeoDashboardMap() {
       })),
     );
 
+    if (mergedFeatures.length === 0) {
+      sileo.warning({ title: "Sin datos para exportar", description: "No hay rodales visibles para exportar en GeoJSON." });
+      return;
+    }
+
     const payload = {
       type: "FeatureCollection",
       features: mergedFeatures,
     };
 
-    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `mapa-rodales-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-")}.geojson`;
-    link.click();
-    URL.revokeObjectURL(url);
+    try {
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/geo+json" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `mapa-rodales-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-")}.geojson`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 500);
+      sileo.success({ title: "GeoJSON exportado", description: `${mergedFeatures.length} elementos exportados.` });
+    } catch {
+      sileo.error({ title: "Error al exportar GeoJSON", description: "No fue posible generar el archivo GeoJSON." });
+    }
   }, [filteredVisibleLayers]);
 
   const exportMapAsPng = useCallback(async () => {
     const container = mapWrapperRef.current;
-    if (!container) return;
+    if (!container) {
+      sileo.error({ title: "Error al exportar PNG", description: "No se encontró el contenedor del mapa." });
+      return;
+    }
 
-    const canvas = await html2canvas(container, {
+    const downloadCanvas = async (canvas: HTMLCanvasElement) => {
+      const filename = `mapa-rodales-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-")}.png`;
+
+      const blob = await new Promise<Blob>((resolve, reject) => {
+        canvas.toBlob((result) => {
+          if (result) {
+            resolve(result);
+            return;
+          }
+
+          reject(new Error("No se pudo convertir el lienzo a PNG"));
+        }, "image/png");
+      });
+
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 500);
+    };
+
+    const renderCanvas = (excludeTilePane: boolean) => html2canvas(container, {
       useCORS: true,
       allowTaint: false,
       scale: 2,
       backgroundColor: null,
+      logging: false,
+      imageTimeout: 15000,
+      ignoreElements: (element) => {
+        if (!excludeTilePane) return false;
+
+        const htmlElement = element as HTMLElement;
+        if (htmlElement.classList?.contains("leaflet-tile-pane")) {
+          return true;
+        }
+
+        return false;
+      },
     });
 
-    const dataUrl = canvas.toDataURL("image/png");
-    const link = document.createElement("a");
-    link.href = dataUrl;
-    link.download = `mapa-rodales-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-")}.png`;
-    link.click();
-  }, []);
+    const hexToRgba = (hex: string, alpha: number) => {
+      const normalized = hex.replace("#", "").trim();
+      if (normalized.length !== 6) {
+        return `rgba(37,99,235,${alpha})`;
+      }
+
+      const r = Number.parseInt(normalized.slice(0, 2), 16);
+      const g = Number.parseInt(normalized.slice(2, 4), 16);
+      const b = Number.parseInt(normalized.slice(4, 6), 16);
+      return `rgba(${r},${g},${b},${alpha})`;
+    };
+
+    const renderVectorFallbackCanvas = () => {
+      type LngLat = [number, number];
+      const map = mapInstanceRef.current;
+      if (!map) {
+        throw new Error("No hay instancia de mapa disponible para proyectar");
+      }
+
+      const polygons: Array<{ rings: LngLat[][]; color: string; opacity: number }> = [];
+      const lines: Array<{ path: LngLat[]; color: string; opacity: number }> = [];
+      const points: Array<{ point: LngLat; color: string; opacity: number }> = [];
+
+      const asLngLat = (value: unknown): LngLat | null => {
+        if (!Array.isArray(value) || value.length < 2) return null;
+        const lng = Number(value[0]);
+        const lat = Number(value[1]);
+        if (!Number.isFinite(lng) || !Number.isFinite(lat)) return null;
+        return [lng, lat];
+      };
+
+      for (const layer of filteredVisibleLayers) {
+        for (const feature of layer.data.features) {
+          const geometry = feature.geometry as { type?: string; coordinates?: unknown } | null;
+          const type = geometry?.type;
+          const coordinates = geometry?.coordinates;
+
+          if (!type || !coordinates) continue;
+
+          if (type === "Polygon" && Array.isArray(coordinates)) {
+            const rings: LngLat[][] = [];
+            for (const ring of coordinates) {
+              if (!Array.isArray(ring)) continue;
+              const parsed = ring.map(asLngLat).filter((value): value is LngLat => value !== null);
+              if (parsed.length >= 3) rings.push(parsed);
+            }
+            if (rings.length > 0) {
+              polygons.push({ rings, color: layer.color, opacity: layer.opacity });
+            }
+            continue;
+          }
+
+          if (type === "MultiPolygon" && Array.isArray(coordinates)) {
+            for (const polygon of coordinates) {
+              if (!Array.isArray(polygon)) continue;
+              const rings: LngLat[][] = [];
+              for (const ring of polygon) {
+                if (!Array.isArray(ring)) continue;
+                const parsed = ring.map(asLngLat).filter((value): value is LngLat => value !== null);
+                if (parsed.length >= 3) rings.push(parsed);
+              }
+              if (rings.length > 0) {
+                polygons.push({ rings, color: layer.color, opacity: layer.opacity });
+              }
+            }
+            continue;
+          }
+
+          if (type === "LineString" && Array.isArray(coordinates)) {
+            const parsed = coordinates.map(asLngLat).filter((value): value is LngLat => value !== null);
+            if (parsed.length >= 2) {
+              lines.push({ path: parsed, color: layer.color, opacity: layer.opacity });
+            }
+            continue;
+          }
+
+          if (type === "MultiLineString" && Array.isArray(coordinates)) {
+            for (const line of coordinates) {
+              if (!Array.isArray(line)) continue;
+              const parsed = line.map(asLngLat).filter((value): value is LngLat => value !== null);
+              if (parsed.length >= 2) {
+                lines.push({ path: parsed, color: layer.color, opacity: layer.opacity });
+              }
+            }
+            continue;
+          }
+
+          if (type === "Point") {
+            const parsed = asLngLat(coordinates);
+            if (parsed) {
+              points.push({ point: parsed, color: layer.color, opacity: layer.opacity });
+            }
+            continue;
+          }
+
+          if (type === "MultiPoint" && Array.isArray(coordinates)) {
+            for (const point of coordinates) {
+              const parsed = asLngLat(point);
+              if (parsed) {
+                points.push({ point: parsed, color: layer.color, opacity: layer.opacity });
+              }
+            }
+          }
+        }
+      }
+
+      const allCoords: LngLat[] = [];
+      polygons.forEach((polygon) => polygon.rings.forEach((ring) => allCoords.push(...ring)));
+      lines.forEach((line) => allCoords.push(...line.path));
+      points.forEach((point) => allCoords.push(point.point));
+
+      if (allCoords.length === 0) {
+        throw new Error("Sin geometrías visibles para exportar");
+      }
+
+      const mapSize = map.getSize();
+      const exportScale = 2;
+      const width = Math.max(1, Math.floor(mapSize.x * exportScale));
+      const height = Math.max(1, Math.floor(mapSize.y * exportScale));
+
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+
+      const context = canvas.getContext("2d");
+      if (!context) {
+        throw new Error("No fue posible inicializar el lienzo de exportación");
+      }
+
+      context.fillStyle = "#ffffff";
+      context.fillRect(0, 0, width, height);
+
+      const project = ([lng, lat]: LngLat): [number, number] => {
+        const projected = map.latLngToContainerPoint([lat, lng]);
+        const x = projected.x * exportScale;
+        const y = projected.y * exportScale;
+        return [x, y];
+      };
+
+      for (const polygon of polygons) {
+        context.beginPath();
+        for (const ring of polygon.rings) {
+          ring.forEach((coord, index) => {
+            const [x, y] = project(coord);
+            if (index === 0) context.moveTo(x, y);
+            else context.lineTo(x, y);
+          });
+          context.closePath();
+        }
+        context.fillStyle = hexToRgba(polygon.color, Math.max(0.15, Math.min(0.55, polygon.opacity / 180)));
+        context.strokeStyle = hexToRgba(polygon.color, Math.max(0.6, Math.min(1, polygon.opacity / 100)));
+        context.lineWidth = 2 * exportScale;
+        context.fill("evenodd");
+        context.stroke();
+      }
+
+      for (const line of lines) {
+        context.beginPath();
+        line.path.forEach((coord, index) => {
+          const [x, y] = project(coord);
+          if (index === 0) context.moveTo(x, y);
+          else context.lineTo(x, y);
+        });
+        context.strokeStyle = hexToRgba(line.color, Math.max(0.7, Math.min(1, line.opacity / 100)));
+        context.lineWidth = 2 * exportScale;
+        context.stroke();
+      }
+
+      for (const point of points) {
+        const [x, y] = project(point.point);
+        context.beginPath();
+        context.arc(x, y, 4 * exportScale, 0, Math.PI * 2);
+        context.fillStyle = hexToRgba(point.color, Math.max(0.7, Math.min(1, point.opacity / 100)));
+        context.fill();
+      }
+
+      context.fillStyle = "#111827";
+      context.font = `${600 * exportScale / 2} ${20 * exportScale / 2}px sans-serif`;
+      context.fillText("Mapa de rodales (exportación vectorial)", 24 * exportScale, 34 * exportScale);
+      context.font = `${400 * exportScale / 2} ${14 * exportScale / 2}px sans-serif`;
+      context.fillText(`Elementos visibles: ${filteredVisibleLayers.reduce((sum, layer) => sum + layer.data.features.length, 0)}`, 24 * exportScale, 56 * exportScale);
+
+      return canvas;
+    };
+
+    try {
+      const canvas = await renderCanvas(false);
+      await downloadCanvas(canvas);
+      sileo.success({ title: "PNG exportado", description: "Se descargó la imagen del mapa." });
+      return;
+    } catch {
+      const tilePane = container.querySelector(".leaflet-tile-pane") as HTMLElement | null;
+      const previousVisibility = tilePane?.style.visibility;
+
+      try {
+        if (tilePane) {
+          tilePane.style.visibility = "hidden";
+        }
+
+        const fallbackCanvas = await renderCanvas(true);
+        await downloadCanvas(fallbackCanvas);
+        sileo.warning({ title: "PNG exportado sin mapa base", description: "Se exportaron capas y gráficos sin teselas de fondo por restricciones CORS." });
+      } catch {
+        try {
+          const vectorCanvas = renderVectorFallbackCanvas();
+          await downloadCanvas(vectorCanvas);
+          sileo.warning({ title: "PNG exportado en modo seguro", description: "Se generó una imagen vectorial de las geometrías visibles." });
+        } catch {
+          sileo.error({ title: "Error al exportar PNG", description: "No fue posible generar la imagen. Verifica que haya geometrías visibles e inténtalo nuevamente." });
+        }
+      } finally {
+        if (tilePane) {
+          tilePane.style.visibility = previousVisibility ?? "";
+        }
+      }
+    }
+  }, [filteredVisibleLayers]);
 
   const clearHierarchyFilters = useCallback(() => {
     setSelectedLevel2("");
@@ -2153,7 +2437,6 @@ export function GeoDashboardMap() {
             onClick={() => {
               void exportMapAsPng();
             }}
-            disabled={filteredVisibleLayers.length === 0}
           >
             <Download className="mr-2 size-4" /> Exportar PNG
           </Button>
@@ -2161,9 +2444,9 @@ export function GeoDashboardMap() {
             type="button"
             variant="outline"
             onClick={exportVisibleAsJson}
-            disabled={filteredVisibleLayers.length === 0}
+            disabled={exportableFeatureCount === 0}
           >
-            <Download className="mr-2 size-4" /> Exportar JSON
+            <Download className="mr-2 size-4" /> Exportar GeoJSON
           </Button>
           <Button
             type="button"
@@ -2216,6 +2499,7 @@ export function GeoDashboardMap() {
       >
         <div ref={mapWrapperRef} className={`relative overflow-hidden rounded-lg border ${isFullscreen ? "h-[calc(100vh-140px)]" : "h-[520px]"}`}>
           <LeafletMapContainer center={[mapView.lat, mapView.lng]} zoom={mapView.zoom} className={`h-full w-full ${isDrawingMode ? "cursor-crosshair" : "cursor-default"}`} scrollWheelZoom>
+            <MapInstanceController onMapReady={(map) => { mapInstanceRef.current = map; }} />
             <MapResizeController resizeToken={resizeToken} />
             <MapCursorController isDrawingMode={isDrawingMode} />
             <MapInteractionController
@@ -2409,13 +2693,50 @@ export function GeoDashboardMap() {
           ) : null}
 
           {!isPanelCollapsed ? (
+            <div className="grid grid-cols-4 gap-1 rounded-md border p-1">
+              <Button
+                type="button"
+                variant={activeRightTab === "buscar" ? "default" : "ghost"}
+                className="h-7 px-1 text-[11px]"
+                onClick={() => setActiveRightTab("buscar")}
+              >
+                Buscar
+              </Button>
+              <Button
+                type="button"
+                variant={activeRightTab === "filtros" ? "default" : "ghost"}
+                className="h-7 px-1 text-[11px]"
+                onClick={() => setActiveRightTab("filtros")}
+              >
+                Filtros
+              </Button>
+              <Button
+                type="button"
+                variant={activeRightTab === "gis" ? "default" : "ghost"}
+                className="h-7 px-1 text-[11px]"
+                onClick={() => setActiveRightTab("gis")}
+              >
+                GIS
+              </Button>
+              <Button
+                type="button"
+                variant={activeRightTab === "capas" ? "default" : "ghost"}
+                className="h-7 px-1 text-[11px]"
+                onClick={() => setActiveRightTab("capas")}
+              >
+                Capas
+              </Button>
+            </div>
+          ) : null}
+
+          {!isPanelCollapsed && activeRightTab === "buscar" ? (
             <div className="rounded-md border bg-muted/30 p-2 text-xs text-muted-foreground">
               <p>Rodales visibles: {currentSurfaceSummary.count}</p>
               <p>Superficie visible: {currentSurfaceSummary.total.toFixed(2)} ha</p>
             </div>
           ) : null}
 
-          {!isPanelCollapsed ? (
+          {!isPanelCollapsed && activeRightTab === "buscar" ? (
             <div className="space-y-1 rounded-md border p-2">
               <label className="text-xs text-muted-foreground">Buscar capa o Nivel 4</label>
               <div className="flex items-center gap-2 rounded-md border px-2">
@@ -2442,7 +2763,7 @@ export function GeoDashboardMap() {
             </div>
           ) : null}
 
-          {!isPanelCollapsed ? (
+          {!isPanelCollapsed && activeRightTab === "filtros" ? (
             <div className="space-y-2 rounded-md border p-2">
               <div className="flex items-center justify-between gap-2">
                 <p className="text-xs text-muted-foreground">Filtrar por nivel</p>
@@ -2536,7 +2857,7 @@ export function GeoDashboardMap() {
             </div>
           ) : null}
 
-          {!isPanelCollapsed ? (
+          {!isPanelCollapsed && activeRightTab === "gis" ? (
             <div className="space-y-2 rounded-md border p-2">
               <p className="text-xs text-muted-foreground">Herramientas GIS</p>
               <div className="grid grid-cols-2 gap-2">
@@ -2892,7 +3213,7 @@ export function GeoDashboardMap() {
             </div>
           ) : null}
 
-          {!isPanelCollapsed ? (
+          {!isPanelCollapsed && activeRightTab === "capas" ? (
             <div className="flex items-center justify-between rounded-md border p-2 text-xs">
               <span className="text-muted-foreground">Leyenda flotante</span>
               <Button
@@ -2906,7 +3227,7 @@ export function GeoDashboardMap() {
             </div>
           ) : null}
 
-          {!isPanelCollapsed ? <div className="space-y-2">
+          {!isPanelCollapsed && activeRightTab === "capas" ? <div className="space-y-2">
             {panelLayers.length === 0 ? (
               <p className="text-sm text-muted-foreground">No hay capas disponibles.</p>
             ) : (

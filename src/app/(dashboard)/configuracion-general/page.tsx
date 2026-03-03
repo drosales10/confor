@@ -52,6 +52,8 @@ function isCommunitySortKey(value: string): value is CommunitySortKey {
   return ["cityName", "municipalityName", "type", "code", "name", "isActive", "createdAt"].includes(value);
 }
 
+type GeneralConfigTab = "continentes" | "paises" | "regiones" | "estados" | "municipios" | "ciudades" | "desarrolloLocal";
+
 type PaginationState = {
   page: number;
   totalPages: number;
@@ -395,6 +397,7 @@ export default function ConfiguracionGeneralPage() {
   const importCityInputRef = useRef<HTMLInputElement | null>(null);
   const importCommunityInputRef = useRef<HTMLInputElement | null>(null);
   const [globalMessage, setGlobalMessage] = useState<string | null>(null);
+  const [activeGeneralTab, setActiveGeneralTab] = useState<GeneralConfigTab>("continentes");
 
   const [schemeItems, setSchemeItems] = useState<SimpleItem[]>([]);
   const [schemeSearch, setSchemeSearch] = useState("");
@@ -3360,6 +3363,19 @@ export default function ConfiguracionGeneralPage() {
 
       {globalMessage ? <p className="rounded-md border px-3 py-2 text-sm">{globalMessage}</p> : null}
 
+      <div className="border-b pb-2">
+        <nav aria-label="Pestañas de configuración general" className="flex flex-wrap gap-2">
+          <button className={`rounded-md border px-3 py-2 text-sm ${activeGeneralTab === "continentes" ? "font-medium" : "text-muted-foreground"}`} onClick={() => setActiveGeneralTab("continentes")} type="button">Continentes</button>
+          <button className={`rounded-md border px-3 py-2 text-sm ${activeGeneralTab === "paises" ? "font-medium" : "text-muted-foreground"}`} onClick={() => setActiveGeneralTab("paises")} type="button">Países</button>
+          <button className={`rounded-md border px-3 py-2 text-sm ${activeGeneralTab === "regiones" ? "font-medium" : "text-muted-foreground"}`} onClick={() => setActiveGeneralTab("regiones")} type="button">Regiones</button>
+          <button className={`rounded-md border px-3 py-2 text-sm ${activeGeneralTab === "estados" ? "font-medium" : "text-muted-foreground"}`} onClick={() => setActiveGeneralTab("estados")} type="button">Estados</button>
+          <button className={`rounded-md border px-3 py-2 text-sm ${activeGeneralTab === "municipios" ? "font-medium" : "text-muted-foreground"}`} onClick={() => setActiveGeneralTab("municipios")} type="button">Municipios</button>
+          <button className={`rounded-md border px-3 py-2 text-sm ${activeGeneralTab === "ciudades" ? "font-medium" : "text-muted-foreground"}`} onClick={() => setActiveGeneralTab("ciudades")} type="button">Ciudades</button>
+          <button className={`rounded-md border px-3 py-2 text-sm ${activeGeneralTab === "desarrolloLocal" ? "font-medium" : "text-muted-foreground"}`} onClick={() => setActiveGeneralTab("desarrolloLocal")} type="button">Desarrollo local</button>
+        </nav>
+      </div>
+
+      {activeGeneralTab === "continentes" && (
       <section className="space-y-4 rounded-xl border p-4">
         <CatalogHeader title="Continentes" subtitle="CRUD de catálogo Continent" />
         <div className="flex flex-wrap items-center gap-2">
@@ -3507,7 +3523,9 @@ export default function ConfiguracionGeneralPage() {
           </form>
         ) : null}
       </section>
+      )}
 
+      {activeGeneralTab === "paises" && (
       <section className="space-y-4 rounded-xl border p-4">
         <CatalogHeader title="Países" subtitle="CRUD de catálogo Country" />
         <div className="flex flex-wrap items-center gap-2">
@@ -3683,7 +3701,9 @@ export default function ConfiguracionGeneralPage() {
           </form>
         ) : null}
       </section>
+      )}
 
+      {activeGeneralTab === "regiones" && (
       <section className="space-y-4 rounded-xl border p-4">
         <CatalogHeader title="Regiones" subtitle="CRUD de catálogo Region" />
         <div className="flex flex-wrap items-center gap-2">
@@ -3859,7 +3879,9 @@ export default function ConfiguracionGeneralPage() {
           </form>
         ) : null}
       </section>
+      )}
 
+      {activeGeneralTab === "estados" && (
       <section className="space-y-4 rounded-xl border p-4">
         <CatalogHeader title="Estados / Departamentos" subtitle="CRUD de catálogo StateDepartment" />
         <div className="flex flex-wrap items-center gap-2">
@@ -4035,7 +4057,9 @@ export default function ConfiguracionGeneralPage() {
           </form>
         ) : null}
       </section>
+      )}
 
+      {activeGeneralTab === "municipios" && (
       <section className="space-y-4 rounded-xl border p-4">
         <CatalogHeader title="Municipios / Distritos" subtitle="CRUD de catálogo MunicipalityDistrict" />
         <div className="flex flex-wrap items-center gap-2">
@@ -4221,7 +4245,9 @@ export default function ConfiguracionGeneralPage() {
           </form>
         ) : null}
       </section>
+      )}
 
+      {activeGeneralTab === "ciudades" && (
       <section className="space-y-4 rounded-xl border p-4">
         <CatalogHeader title="Ciudades" subtitle="CRUD de catálogo City" />
         <div className="flex flex-wrap items-center gap-2">
@@ -4417,7 +4443,9 @@ export default function ConfiguracionGeneralPage() {
           </form>
         ) : null}
       </section>
+      )}
 
+      {activeGeneralTab === "desarrolloLocal" && (
       <section className="space-y-4 rounded-xl border p-4">
         <CatalogHeader title="Desarrollo local" subtitle="CRUD de catálogo CommunityTerritory" />
         <div className="flex flex-wrap items-center gap-2">
@@ -4625,6 +4653,7 @@ export default function ConfiguracionGeneralPage() {
           </form>
         ) : null}
       </section>
+      )}
 
 
     </div>

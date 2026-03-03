@@ -65,6 +65,7 @@ type PaginationState = {
 };
 
 type PageAdjustReason = "filtro" | "límite" | "eliminación" | "navegación";
+type PatrimonioTab = "nivel2" | "nivel3" | "nivel4" | "nivel5";
 type Level2SortKey = "code" | "name" | "type" | "totalAreaHa" | "legalStatus" | "isActive";
 type Level3SortKey = "code" | "name" | "type" | "totalAreaHa" | "isActive";
 type Level4SortKey = "code" | "name" | "type" | "totalAreaHa" | "fscCertificateStatus" | "isActive";
@@ -107,6 +108,7 @@ export default function PatrimonioForestalPage() {
   const [selectedLevel2Id, setSelectedLevel2Id] = useState("");
   const [selectedLevel3Id, setSelectedLevel3Id] = useState("");
   const [selectedLevel4Id, setSelectedLevel4Id] = useState("");
+  const [activeTab, setActiveTab] = useState<PatrimonioTab>("nivel2");
 
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -1965,8 +1967,50 @@ export default function PatrimonioForestalPage() {
           Inicio de implementación Fase 1: captura y consulta de unidades administrativas Nivel 2 (Finca/Predio/Hato/Fundo/Hacienda).
         </p>
         {infoMessage ? <p className="mt-2 text-xs text-blue-600">{infoMessage}</p> : null}
+        <div className="mt-4 border-b">
+          <nav aria-label="Pestañas de niveles" className="-mb-px flex flex-wrap gap-2">
+            <button
+              className={`rounded-t-md border px-3 py-2 text-sm ${
+                activeTab === "nivel2" ? "border-b-background bg-background font-medium" : "text-muted-foreground"
+              }`}
+              onClick={() => setActiveTab("nivel2")}
+              type="button"
+            >
+              Nivel 2
+            </button>
+            <button
+              className={`rounded-t-md border px-3 py-2 text-sm ${
+                activeTab === "nivel3" ? "border-b-background bg-background font-medium" : "text-muted-foreground"
+              }`}
+              onClick={() => setActiveTab("nivel3")}
+              type="button"
+            >
+              Nivel 3
+            </button>
+            <button
+              className={`rounded-t-md border px-3 py-2 text-sm ${
+                activeTab === "nivel4" ? "border-b-background bg-background font-medium" : "text-muted-foreground"
+              }`}
+              onClick={() => setActiveTab("nivel4")}
+              type="button"
+            >
+              Nivel 4
+            </button>
+            <button
+              className={`rounded-t-md border px-3 py-2 text-sm ${
+                activeTab === "nivel5" ? "border-b-background bg-background font-medium" : "text-muted-foreground"
+              }`}
+              onClick={() => setActiveTab("nivel5")}
+              type="button"
+            >
+              Nivel 5
+            </button>
+          </nav>
+        </div>
       </section>
 
+      {activeTab === "nivel2" && (
+      <>
       <section className="rounded-lg border p-4">
         <h2 className="text-lg font-medium">Nuevo registro Nivel 2</h2>
         <form className="mt-4 grid gap-3 md:grid-cols-2" onSubmit={onSubmit}>
@@ -2298,7 +2342,10 @@ export default function PatrimonioForestalPage() {
           />
         </div>
       </section>
+      </>
+      )}
 
+      {activeTab === "nivel2" && (
       <section className="rounded-lg border p-4">
         <h2 className="text-lg font-medium">Jerarquía y vecinos</h2>
         <div className="mt-3 grid gap-3 md:grid-cols-1">
@@ -2424,9 +2471,11 @@ export default function PatrimonioForestalPage() {
 
 
       </section>
+      )}
 
 
 
+      {activeTab === "nivel3" && (
       <section className="rounded-lg border p-4">
         <div className="mt-5 grid gap-4 md:grid-cols-1">
           <h3 className="font-medium">Crear Nivel 3</h3>
@@ -2727,7 +2776,9 @@ export default function PatrimonioForestalPage() {
           </div>
         </div>
       </section>
+      )}
 
+      {activeTab === "nivel4" && (
       <section className="rounded-lg border p-4">
         <div className="mt-5 grid gap-4 md:grid-cols-1">
           <h3 className="font-medium">Crear Nivel 4</h3>
@@ -3061,9 +3112,11 @@ export default function PatrimonioForestalPage() {
 
         </div>
       </section>
+      )}
 
 
 
+      {activeTab === "nivel5" && (
       <section className="rounded-lg border p-4">
         <h3 className="font-medium">Crear Nivel 5</h3>
         <form className="mt-4 grid gap-3 md:grid-cols-2" onSubmit={onSubmitLevel5}>
@@ -3369,6 +3422,7 @@ export default function PatrimonioForestalPage() {
           </form>
         ) : null}
       </section>
+      )}
     </div>
 
 
