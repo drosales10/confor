@@ -141,3 +141,54 @@ pm2 save
 
 - El script `scripts/create-audit-partition.ts` permite crear la siguiente partición mensual de `audit_logs`.
 - El SQL en `prisma/migrations/0001_extensions_partitioning/migration.sql` incluye extensiones y triggers requeridos.
+
+Perfecto. Aquí tienes la versión compacta en tablas Markdown para tu README.md:
+
+## Carga de Shapefile (Nivel 4)
+
+### Atributos para vinculación jerárquica
+
+| Campo      | Obligatorio | Descripción |
+|------------|-------------|-------------|
+| `nivel2_id` | Sí          | Identificador de Nivel 2 |
+| `nivel3_id` | Sí          | Identificador de Nivel 3 |
+| `nivel4_id` | Sí          | Identificador de Nivel 4 (rodal) |
+
+> Clave de vínculo: **`nivel2_id + nivel3_id + nivel4_id`**
+
+### Atributos opcionales recomendados
+
+| Campo                 | Obligatorio | Formato sugerido |
+|-----------------------|-------------|------------------|
+| `nombre_rodal`        | No          | Texto            |
+| `fuente`              | No          | Texto            |
+| `fecha_levantamiento` | No          | `YYYY-MM-DD`     |
+| `observacion`         | No          | Texto            |
+
+### Plantilla de referencia (CSV)
+
+````csv
+nivel2_id,nivel3_id,nivel4_id,nombre_rodal,fuente,fecha_levantamiento,observacion
+FINCA-01,LOTE-01,RODAL-001,Rodal Norte,Levantamiento GPS,2026-03-01,Sin novedad
+FINCA-01,LOTE-01,RODAL
+Contenido obligatorio del ZIP
+Archivo	Obligatorio
+.shp	Sí
+.shx	Sí
+.dbf	Sí
+.prj	Sí
+Requisitos espaciales
+Regla	Valor
+Tipo de geometría	Polygon o MultiPolygon
+CRS	Transformable a EPSG:4326
+Validez	Geometrías válidas (sin errores no reparables)
+Checklist previo a carga
+ nivel2_id, nivel3_id, nivel4_id completos en todos los registros
+ Sin duplicados de nivel2_id + nivel3_id + nivel4_id dentro del lote
+ ZIP incluye .shp, .shx, .dbf, .prj
+ .prj correcto y CRS transformable a EPSG:4326
+ Geometrías válidas y tipo polígono
+## Seguridad multiorganización
+organization_id no se toma del shapefile; se resuelve desde el usuario autenticado.
+Toda carga/vinculación fuera de la organización del usuario es rechazada. ```````
+

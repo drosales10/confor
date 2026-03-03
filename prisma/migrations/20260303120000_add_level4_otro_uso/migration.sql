@@ -1,0 +1,1 @@
+ALTER TYPE "PatrimonyLevel4Type" ADD VALUE IF NOT EXISTS 'OTRO_USO';

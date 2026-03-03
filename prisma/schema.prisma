@@ -106,6 +106,7 @@ enum PatrimonyLevel4Type {
   ENUMERATION
   UNIDAD_DE_MANEJO
   CONUCO
+  OTRO_USO
 }
 
 enum FscCertificateStatus {
@@ -593,6 +594,9 @@ model ForestPatrimonyLevel4 {
   name              String                        @db.VarChar(255)
   type              PatrimonyLevel4Type
   fscCertificateStatus FscCertificateStatus       @default(NO)
+  currentLandUseName String?                      @db.VarChar(255)
+  previousLandUseName String?                     @db.VarChar(255)
+  landUseChangeDate DateTime?
   totalAreaHa       Decimal                       @db.Decimal(12, 2)
   plantableAreaHa   Decimal?                      @db.Decimal(12, 2)
   rotationPhase     String?                       @db.VarChar(120)

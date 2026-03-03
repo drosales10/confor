@@ -8,7 +8,7 @@ import * as XLSX from "xlsx";
 type Level2Type = "FINCA" | "PREDIO" | "HATO" | "FUNDO" | "HACIENDA" | "ABRAE";
 type LegalStatus = "ADQUISICION" | "ARRIENDO" | "USUFRUCTO" | "COMODATO" | "DECRETO";
 type Level3Type = "COMPARTIMIENTO" | "BLOCK" | "SECCION" | "LOTE" | "ZONA" | "BLOQUE" | "ZONIFICACION";
-type Level4Type = "RODAL" | "PARCELA" | "ENUMERATION" | "UNIDAD_DE_MANEJO" | "CONUCO";
+type Level4Type = "RODAL" | "PARCELA" | "ENUMERATION" | "UNIDAD_DE_MANEJO" | "CONUCO" | "OTRO_USO";
 type FscCertificateStatus = "SI" | "NO";
 type Level5Type = "REFERENCIA" | "SUBUNIDAD" | "SUBPARCELA" | "MUESTRA" | "SUBMUESTRA";
 type PlotShapeType = "RECTANGULAR" | "CUADRADA" | "CIRCULAR" | "HEXAGONAL";
@@ -162,8 +162,8 @@ function parseLevel3Type(value: string): Level3Type | null {
 }
 
 function parseLevel4Type(value: string): Level4Type | null {
-  const normalized = value.trim().toUpperCase();
-  if (["RODAL", "PARCELA", "ENUMERATION", "UNIDAD_DE_MANEJO", "CONUCO"].includes(normalized)) {
+  const normalized = value.trim().toUpperCase().replace(/\s+/g, "_");
+  if (["RODAL", "PARCELA", "ENUMERATION", "UNIDAD_DE_MANEJO", "CONUCO", "OTRO_USO"].includes(normalized)) {
     return normalized as Level4Type;
   }
   return null;

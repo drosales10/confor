@@ -49,6 +49,15 @@ async function resolveOrganizationId(sessionUser: { id?: string; organizationId?
   return user?.organizationId ?? null;
 }
 
+async function readJsonBody(req: NextRequest) {
+  try {
+    const body = await req.json();
+    return { body } as const;
+  } catch {
+    return { error: fail("Body JSON inválido o vacío", 400) } as const;
+  }
+}
+
 export async function GET(req: NextRequest) {
   const authResult = await requireAuth();
   if ("error" in authResult) return authResult.error;
@@ -85,6 +94,10 @@ export async function GET(req: NextRequest) {
     id: authResult.session.user.id,
     organizationId: authResult.session.user.organizationId,
   });
+
+  if (!isSuperAdmin && !organizationId) {
+    return fail("El usuario no tiene una organización asociada", 403);
+  }
 
   if (level === "2") {
     const where: Prisma.ForestPatrimonyLevel2WhereInput = {
@@ -208,7 +221,10 @@ export async function POST(req: NextRequest) {
     if (permissionError) return permissionError;
   }
 
-  const body = await req.json();
+  const bodyResult = await readJsonBody(req);
+  if ("error" in bodyResult) return bodyResult.error;
+
+  const body = bodyResult.body;
   const parsed = createPatrimonySchema.safeParse(body);
   if (!parsed.success) {
     return fail("Datos inválidos", 400, parsed.error.flatten());
@@ -355,7 +371,10 @@ export async function PATCH(req: NextRequest) {
     if (permissionError) return permissionError;
   }
 
-  const body = await req.json();
+  const bodyResult = await readJsonBody(req);
+  if ("error" in bodyResult) return bodyResult.error;
+
+  const body = bodyResult.body;
   const parsed = updatePatrimonySchema.safeParse(body);
   if (!parsed.success) {
     return fail("Datos inválidos", 400, parsed.error.flatten());
@@ -554,7 +573,10 @@ export async function DELETE(req: NextRequest) {
     if (permissionError) return permissionError;
   }
 
-  const body = await req.json();
+  const bodyResult = await readJsonBody(req);
+  if ("error" in bodyResult) return bodyResult.error;
+
+  const body = bodyResult.body;
   const parsed = deletePatrimonySchema.safeParse(body);
   if (!parsed.success) {
     return fail("Datos inválidos", 400, parsed.error.flatten());
@@ -644,7 +666,14 @@ export async function DELETE(req: NextRequest) {
       return fail("No se puede eliminar el nivel 4 porque tiene niveles 5 relacionados", 409);
     }
 
-    await prisma.forestPatrimonyLevel4.delete({ where: { id: parsed.data.id } });
+    await prisma.$transaction(async (tx) => {
+      await tx.$executeRaw`
+        DELETE FROM public.forest_geometry_n4
+        WHERE level4_id = ${parsed.data.id}::uuid
+      `;
+
+      await tx.forestPatrimonyLevel4.delete({ where: { id: parsed.data.id } });
+    });
 
     await safeAuditLog({
       userId: authResult.session.user.id,

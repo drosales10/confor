@@ -60,28 +60,76 @@ export async function GET(req: NextRequest) {
   }
 
   const rows = isSuperAdmin
-    ? await prisma.$queryRaw<Array<{ id: string; level4_id: string; superficie_ha: number; geometry: Prisma.JsonValue }>>`
+    ? await prisma.$queryRaw<Array<{
+      id: string;
+      level2_id: string;
+      level2_code: string;
+      level2_name: string;
+      level3_id: string;
+      level3_code: string;
+      level3_name: string;
+      level4_id: string;
+      level4_code: string;
+      level4_name: string;
+      superficie_ha: number;
+      geometry: Prisma.JsonValue;
+    }>>`
         SELECT
-          id::text,
-          level4_id::text,
-          superficie_ha::double precision,
-          ST_AsGeoJSON(geom)::json AS geometry
-        FROM public.forest_geometry_n4
-        WHERE is_active = TRUE
-          AND geom && ST_MakeEnvelope(${minLon}, ${minLat}, ${maxLon}, ${maxLat}, 4326)
-        LIMIT 5000
+          g.id::text,
+          g.level2_id::text,
+          l2.code::text AS level2_code,
+          l2.name::text AS level2_name,
+          g.level3_id::text,
+          l3.code::text AS level3_code,
+          l3.name::text AS level3_name,
+          g.level4_id::text,
+          l4.code::text AS level4_code,
+          l4.name::text AS level4_name,
+          g.superficie_ha::double precision,
+          ST_AsGeoJSON(g.geom)::json AS geometry
+        FROM public.forest_geometry_n4 g
+        INNER JOIN "public"."ForestPatrimonyLevel2" l2 ON l2.id = g.level2_id
+        INNER JOIN "public"."ForestPatrimonyLevel3" l3 ON l3.id = g.level3_id
+        INNER JOIN "public"."ForestPatrimonyLevel4" l4 ON l4.id = g.level4_id
+        WHERE g.is_active = TRUE
+          AND g.geom && ST_MakeEnvelope(${minLon}, ${minLat}, ${maxLon}, ${maxLat}, 4326)
+        ORDER BY g.updated_at DESC, g.valid_from DESC
       `
-    : await prisma.$queryRaw<Array<{ id: string; level4_id: string; superficie_ha: number; geometry: Prisma.JsonValue }>>`
+    : await prisma.$queryRaw<Array<{
+      id: string;
+      level2_id: string;
+      level2_code: string;
+      level2_name: string;
+      level3_id: string;
+      level3_code: string;
+      level3_name: string;
+      level4_id: string;
+      level4_code: string;
+      level4_name: string;
+      superficie_ha: number;
+      geometry: Prisma.JsonValue;
+    }>>`
         SELECT
-          id::text,
-          level4_id::text,
-          superficie_ha::double precision,
-          ST_AsGeoJSON(geom)::json AS geometry
-        FROM public.forest_geometry_n4
-        WHERE is_active = TRUE
-          AND organization_id = ${organizationId}::uuid
-          AND geom && ST_MakeEnvelope(${minLon}, ${minLat}, ${maxLon}, ${maxLat}, 4326)
-        LIMIT 5000
+          g.id::text,
+          g.level2_id::text,
+          l2.code::text AS level2_code,
+          l2.name::text AS level2_name,
+          g.level3_id::text,
+          l3.code::text AS level3_code,
+          l3.name::text AS level3_name,
+          g.level4_id::text,
+          l4.code::text AS level4_code,
+          l4.name::text AS level4_name,
+          g.superficie_ha::double precision,
+          ST_AsGeoJSON(g.geom)::json AS geometry
+        FROM public.forest_geometry_n4 g
+        INNER JOIN "public"."ForestPatrimonyLevel2" l2 ON l2.id = g.level2_id
+        INNER JOIN "public"."ForestPatrimonyLevel3" l3 ON l3.id = g.level3_id
+        INNER JOIN "public"."ForestPatrimonyLevel4" l4 ON l4.id = g.level4_id
+        WHERE g.is_active = TRUE
+          AND g.organization_id = ${organizationId}::uuid
+          AND g.geom && ST_MakeEnvelope(${minLon}, ${minLat}, ${maxLon}, ${maxLat}, 4326)
+        ORDER BY g.updated_at DESC, g.valid_from DESC
       `;
 
   return ok({
@@ -91,7 +139,15 @@ export async function GET(req: NextRequest) {
       geometry: row.geometry,
       properties: {
         id: row.id,
+        level2Id: row.level2_id,
+        level2Code: row.level2_code,
+        level2Name: row.level2_name,
+        level3Id: row.level3_id,
+        level3Code: row.level3_code,
+        level3Name: row.level3_name,
         level4Id: row.level4_id,
+        level4Code: row.level4_code,
+        level4Name: row.level4_name,
         surfaceHa: row.superficie_ha,
       },
     })),

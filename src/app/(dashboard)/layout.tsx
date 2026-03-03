@@ -7,8 +7,7 @@ import StatusBar from "@/components/StatusBar";
 import { buildAbilityFromPermissions } from "@/lib/ability";
 import { prisma } from "@/lib/prisma";
 import { getUserRolesAndPermissions } from "@/lib/permissions";
-import { Card, CardContent } from "@/components/ui/card";
-import { DashboardNav } from "@/components/DashboardNav";
+import { DashboardShell } from "@/components/DashboardShell";
 import { UserMenu } from "@/components/UserMenu";
 
 const nav = [
@@ -117,16 +116,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
           <UserMenu fullName={fullName} avatarUrl={currentUser?.avatarUrl ?? null} items={userMenuItems} />
         </div>
       </header>
-      <div className="mx-auto grid w-full max-w-6xl grid-cols-1 gap-4 p-4 md:grid-cols-[240px_1fr]">
-        <Card>
-          <CardContent className="p-3">
-            <DashboardNav nav={visibleNav} />
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">{children}</CardContent>
-        </Card>
-      </div>
+      <DashboardShell nav={visibleNav}>{children}</DashboardShell>
       <StatusBar />
     </div>
   );

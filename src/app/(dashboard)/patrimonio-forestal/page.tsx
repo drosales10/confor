@@ -82,6 +82,17 @@ function parseLocaleDecimal(value: string | number) {
   return Number.isFinite(parsed) ? parsed : Number.NaN;
 }
 
+async function readJsonSafe<T>(response: Response): Promise<T | null> {
+  const raw = await response.text();
+  if (!raw.trim()) return null;
+
+  try {
+    return JSON.parse(raw) as T;
+  } catch {
+    return null;
+  }
+}
+
 export default function PatrimonioForestalPage() {
   const importLevel2InputRef = useRef<HTMLInputElement | null>(null);
   const importLevel3InputRef = useRef<HTMLInputElement | null>(null);
@@ -963,14 +974,14 @@ export default function PatrimonioForestalPage() {
         `/api/forest/patrimony?level=2&page=${page}&limit=${limit}${search ? `&search=${encodeURIComponent(search)}` : ""}`,
         { cache: "no-store" },
       );
-      const result = await response.json();
+      const result = await readJsonSafe<{ success?: boolean; error?: string; data?: { items?: Level2Item[]; pagination?: PaginationState } }>(response);
 
       if (!response.ok || !result?.success) {
         setError(result?.error ?? "No fue posible cargar datos del patrimonio forestal");
         return;
       }
 
-      const level2Data = (result.data.items ?? []) as Level2Item[];
+      const level2Data = (result?.data?.items ?? []) as Level2Item[];
       setItems(level2Data);
       setPaginationLevel2({
         page: result?.data?.pagination?.page ?? 1,
@@ -991,7 +1002,12 @@ export default function PatrimonioForestalPage() {
       `/api/forest/patrimony?level=3&parentId=${level2Id}&page=${page}&limit=${limit}${search ? `&search=${encodeURIComponent(search)}` : ""}`,
       { cache: "no-store" },
     );
-    const result = await response.json();
+    const result = await readJsonSafe<{ success?: boolean; error?: string; data?: { items?: Level3Item[]; pagination?: PaginationState } }>(response);
+    if (!response.ok || !result?.success) {
+      setError(result?.error ?? "No fue posible cargar el nivel 3");
+      setLevel3Items([]);
+      return;
+    }
     const data = (result?.data?.items ?? []) as Level3Item[];
     setLevel3Items(data);
     setPaginationLevel3({
@@ -1012,7 +1028,12 @@ export default function PatrimonioForestalPage() {
       `/api/forest/patrimony?level=4&parentId=${level3Id}&page=${page}&limit=${limit}${search ? `&search=${encodeURIComponent(search)}` : ""}`,
       { cache: "no-store" },
     );
-    const result = await response.json();
+    const result = await readJsonSafe<{ success?: boolean; error?: string; data?: { items?: Level4Item[]; pagination?: PaginationState } }>(response);
+    if (!response.ok || !result?.success) {
+      setError(result?.error ?? "No fue posible cargar el nivel 4");
+      setLevel4Items([]);
+      return;
+    }
     const data = (result?.data?.items ?? []) as Level4Item[];
     setLevel4Items(data);
     setPaginationLevel4({
@@ -1033,7 +1054,12 @@ export default function PatrimonioForestalPage() {
       `/api/forest/patrimony?level=5&parentId=${level4Id}&page=${page}&limit=${limit}${search ? `&search=${encodeURIComponent(search)}` : ""}`,
       { cache: "no-store" },
     );
-    const result = await response.json();
+    const result = await readJsonSafe<{ success?: boolean; error?: string; data?: { items?: Level5Item[]; pagination?: PaginationState } }>(response);
+    if (!response.ok || !result?.success) {
+      setError(result?.error ?? "No fue posible cargar el nivel 5");
+      setLevel5Items([]);
+      return;
+    }
     setLevel5Items((result?.data?.items ?? []) as Level5Item[]);
     setPaginationLevel5({
       page: result?.data?.pagination?.page ?? 1,
@@ -1045,7 +1071,12 @@ export default function PatrimonioForestalPage() {
 
   const loadNeighbors = useCallback(async (level2Id: string) => {
     const response = await fetch(`/api/forest/patrimony/neighbors?level2Id=${level2Id}`, { cache: "no-store" });
-    const result = await response.json();
+    const result = await readJsonSafe<{ success?: boolean; error?: string; data?: { items?: NeighborItem[] } }>(response);
+    if (!response.ok || !result?.success) {
+      setError(result?.error ?? "No fue posible cargar colindantes");
+      setNeighbors([]);
+      return;
+    }
     setNeighbors((result?.data?.items ?? []) as NeighborItem[]);
   }, []);
 
@@ -1124,7 +1155,7 @@ export default function PatrimonioForestalPage() {
       body: JSON.stringify({ level, data }),
     });
 
-    const result = await response.json();
+    const result = await readJsonSafe<{ success?: boolean; error?: string }>(response);
     if (!response.ok || !result?.success) {
       throw new Error(result?.error ?? "No fue posible crear el registro");
     }
@@ -1177,7 +1208,7 @@ export default function PatrimonioForestalPage() {
       body: JSON.stringify({ level, id }),
     });
 
-    const result = await response.json();
+    const result = await readJsonSafe<{ success?: boolean; error?: string }>(response);
     if (!response.ok || !result?.success) {
       throw new Error(result?.error ?? "No fue posible eliminar el registro");
     }
@@ -1190,7 +1221,7 @@ export default function PatrimonioForestalPage() {
       body: JSON.stringify({ id }),
     });
 
-    const result = await response.json();
+    const result = await readJsonSafe<{ success?: boolean; error?: string }>(response);
     if (!response.ok || !result?.success) {
       throw new Error(result?.error ?? "No fue posible eliminar el vecino");
     }
@@ -1203,7 +1234,7 @@ export default function PatrimonioForestalPage() {
       body: JSON.stringify({ level, id, data }),
     });
 
-    const result = await response.json();
+    const result = await readJsonSafe<{ success?: boolean; error?: string }>(response);
     if (!response.ok || !result?.success) {
       throw new Error(result?.error ?? "No fue posible actualizar el registro");
     }
@@ -1216,7 +1247,7 @@ export default function PatrimonioForestalPage() {
       body: JSON.stringify({ id, ...data }),
     });
 
-    const result = await response.json();
+    const result = await readJsonSafe<{ success?: boolean; error?: string }>(response);
     if (!response.ok || !result?.success) {
       throw new Error(result?.error ?? "No fue posible actualizar el vecino");
     }
@@ -2743,6 +2774,7 @@ export default function PatrimonioForestalPage() {
               <option value="ENUMERATION">Enumeration</option>
               <option value="UNIDAD_DE_MANEJO">Unidad de Manejo</option>
               <option value="CONUCO">Conuco</option>
+              <option value="OTRO_USO">Otro Uso</option>
             </select>
             <select
               className="w-full rounded-md border px-3 py-2 text-sm"
@@ -2907,6 +2939,7 @@ export default function PatrimonioForestalPage() {
                             <option value="ENUMERATION">Enumeration</option>
                             <option value="UNIDAD_DE_MANEJO">Unidad de Manejo</option>
                             <option value="CONUCO">Conuco</option>
+                            <option value="OTRO_USO">Otro Uso</option>
                           </select>
                         ) : (
                           item.type
