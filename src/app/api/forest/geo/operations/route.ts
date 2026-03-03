@@ -7,7 +7,29 @@ import { hasPermission } from "@/lib/permissions";
 type SplitPayload = {
   operation: "split";
   sourceLevel4Id: string;
-  newCodes: [string, string];
+  newCodes?: [string, string];
+  newItems?: [
+    {
+      code: string;
+      name: string;
+      type?: "RODAL" | "PARCELA" | "ENUMERATION" | "UNIDAD_DE_MANEJO" | "CONUCO" | "OTRO_USO";
+      fscCertificateStatus?: "SI" | "NO";
+      currentLandUseName?: string | null;
+      previousLandUseName?: string | null;
+      rotationPhase?: string | null;
+      previousUse?: string | null;
+    },
+    {
+      code: string;
+      name: string;
+      type?: "RODAL" | "PARCELA" | "ENUMERATION" | "UNIDAD_DE_MANEJO" | "CONUCO" | "OTRO_USO";
+      fscCertificateStatus?: "SI" | "NO";
+      currentLandUseName?: string | null;
+      previousLandUseName?: string | null;
+      rotationPhase?: string | null;
+      previousUse?: string | null;
+    },
+  ];
   cutGeometry: {
     type: "Polygon" | "MultiPolygon";
     coordinates: unknown;
@@ -50,10 +72,27 @@ function isSplitPayload(value: unknown): value is SplitPayload {
 
   const sourceLevel4Id = payload.sourceLevel4Id;
   const newCodes = payload.newCodes;
+  const newItems = payload.newItems;
   const cutGeometry = payload.cutGeometry as Record<string, unknown> | undefined;
 
   if (typeof sourceLevel4Id !== "string" || !isUuid(sourceLevel4Id)) return false;
-  if (!Array.isArray(newCodes) || newCodes.length !== 2 || newCodes.some((item) => typeof item !== "string" || !item.trim())) return false;
+
+  const hasValidCodes = Array.isArray(newCodes)
+    && newCodes.length === 2
+    && newCodes.every((item) => typeof item === "string" && item.trim().length > 0);
+
+  const hasValidItems = Array.isArray(newItems)
+    && newItems.length === 2
+    && newItems.every((item) => {
+      if (!item || typeof item !== "object") return false;
+      const valueRecord = item as Record<string, unknown>;
+      const code = valueRecord.code;
+      const name = valueRecord.name;
+      return typeof code === "string" && code.trim().length > 0
+        && typeof name === "string" && name.trim().length > 0;
+    });
+
+  if (!hasValidCodes && !hasValidItems) return false;
 
   if (!cutGeometry || (cutGeometry.type !== "Polygon" && cutGeometry.type !== "MultiPolygon")) return false;
   if (cutGeometry.coordinates === undefined) return false;
@@ -216,19 +255,32 @@ export async function POST(req: NextRequest) {
           data: { isActive: false },
         });
 
-        const [codeA, codeB] = body.newCodes.map((item) => item.trim());
+        const legacyCodes = body.newCodes?.map((item) => item.trim()) as [string, string] | undefined;
+        const itemA = body.newItems?.[0];
+        const itemB = body.newItems?.[1];
+
+        const codeA = (itemA?.code ?? legacyCodes?.[0] ?? "").trim();
+        const codeB = (itemB?.code ?? legacyCodes?.[1] ?? "").trim();
+        const nameA = (itemA?.name ?? `${source.name} - A`).trim();
+        const nameB = (itemB?.name ?? `${source.name} - B`).trim();
+
+        if (!codeA || !codeB || !nameA || !nameB) {
+          throw new Error("Debes indicar código y nombre para los dos rodales resultantes.");
+        }
 
         const createdA = await tx.forestPatrimonyLevel4.create({
           data: {
             level3Id: source.level3Id,
             code: codeA,
-            name: `${source.name} - A`,
-            type: source.type,
-            fscCertificateStatus: source.fscCertificateStatus,
+            name: nameA,
+            type: itemA?.type ?? source.type,
+            fscCertificateStatus: itemA?.fscCertificateStatus ?? source.fscCertificateStatus,
+            currentLandUseName: itemA?.currentLandUseName?.trim() || null,
+            previousLandUseName: itemA?.previousLandUseName?.trim() || null,
             totalAreaHa: 0,
             plantableAreaHa: source.plantableAreaHa,
-            rotationPhase: source.rotationPhase,
-            previousUse: source.previousUse,
+            rotationPhase: itemA?.rotationPhase?.trim() || null,
+            previousUse: itemA?.previousUse?.trim() || null,
             lastInfoDate: new Date(),
             isActive: true,
           },
@@ -238,13 +290,15 @@ export async function POST(req: NextRequest) {
           data: {
             level3Id: source.level3Id,
             code: codeB,
-            name: `${source.name} - B`,
-            type: source.type,
-            fscCertificateStatus: source.fscCertificateStatus,
+            name: nameB,
+            type: itemB?.type ?? source.type,
+            fscCertificateStatus: itemB?.fscCertificateStatus ?? source.fscCertificateStatus,
+            currentLandUseName: itemB?.currentLandUseName?.trim() || null,
+            previousLandUseName: itemB?.previousLandUseName?.trim() || null,
             totalAreaHa: 0,
             plantableAreaHa: source.plantableAreaHa,
-            rotationPhase: source.rotationPhase,
-            previousUse: source.previousUse,
+            rotationPhase: itemB?.rotationPhase?.trim() || null,
+            previousUse: itemB?.previousUse?.trim() || null,
             lastInfoDate: new Date(),
             isActive: true,
           },

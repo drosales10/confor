@@ -539,8 +539,26 @@ export function GeoDashboardMap() {
   const [operationMessage, setOperationMessage] = useState<string | null>(null);
   const [isApplyingOperation, setIsApplyingOperation] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [splitCodeA, setSplitCodeA] = useState("");
-  const [splitCodeB, setSplitCodeB] = useState("");
+  const [splitFormA, setSplitFormA] = useState({
+    code: "",
+    name: "",
+    type: "RODAL",
+    fscCertificateStatus: "NO",
+    currentLandUseName: "",
+    previousLandUseName: "",
+    rotationPhase: "",
+    previousUse: "",
+  });
+  const [splitFormB, setSplitFormB] = useState({
+    code: "",
+    name: "",
+    type: "RODAL",
+    fscCertificateStatus: "NO",
+    currentLandUseName: "",
+    previousLandUseName: "",
+    rotationPhase: "",
+    previousUse: "",
+  });
   const [mergeCode, setMergeCode] = useState("");
   const [createLevel2Id, setCreateLevel2Id] = useState("");
   const [createLevel3Id, setCreateLevel3Id] = useState("");
@@ -1493,6 +1511,54 @@ export function GeoDashboardMap() {
     suppressNextMapClickRef.current = true;
   }, []);
 
+  const resetSplitForms = useCallback(() => {
+    setSplitFormA({
+      code: "",
+      name: "",
+      type: "RODAL",
+      fscCertificateStatus: "NO",
+      currentLandUseName: "",
+      previousLandUseName: "",
+      rotationPhase: "",
+      previousUse: "",
+    });
+    setSplitFormB({
+      code: "",
+      name: "",
+      type: "RODAL",
+      fscCertificateStatus: "NO",
+      currentLandUseName: "",
+      previousLandUseName: "",
+      rotationPhase: "",
+      previousUse: "",
+    });
+  }, []);
+
+  const populateSplitFormsFromSelected = useCallback(() => {
+    if (!selectedLevel4Detail) return;
+
+    setSplitFormA({
+      code: "",
+      name: `${selectedLevel4Detail.name} - A`,
+      type: selectedLevel4Detail.type,
+      fscCertificateStatus: selectedLevel4Detail.fscCertificateStatus,
+      currentLandUseName: selectedLevel4Detail.currentLandUseName ?? "",
+      previousLandUseName: selectedLevel4Detail.previousLandUseName ?? "",
+      rotationPhase: selectedLevel4Detail.rotationPhase ?? "",
+      previousUse: selectedLevel4Detail.previousUse ?? "",
+    });
+    setSplitFormB({
+      code: "",
+      name: `${selectedLevel4Detail.name} - B`,
+      type: selectedLevel4Detail.type,
+      fscCertificateStatus: selectedLevel4Detail.fscCertificateStatus,
+      currentLandUseName: selectedLevel4Detail.currentLandUseName ?? "",
+      previousLandUseName: selectedLevel4Detail.previousLandUseName ?? "",
+      rotationPhase: selectedLevel4Detail.rotationPhase ?? "",
+      previousUse: selectedLevel4Detail.previousUse ?? "",
+    });
+  }, [selectedLevel4Detail]);
+
   const startMode = useCallback((mode: EditMode) => {
     setEditMode(mode);
     setDrawPoints([]);
@@ -1500,8 +1566,9 @@ export function GeoDashboardMap() {
     setMeasurementLabel(null);
     setOperationMessage(null);
     if (mode !== "split") {
-      setSplitCodeA("");
-      setSplitCodeB("");
+      resetSplitForms();
+    } else if (selectedLevel4Detail) {
+      populateSplitFormsFromSelected();
     }
     if (mode !== "createLevel4") {
       setCreateCode("");
@@ -1513,7 +1580,7 @@ export function GeoDashboardMap() {
       setCreateRotationPhase("");
       setCreatePreviousUse("");
     }
-  }, []);
+  }, [populateSplitFormsFromSelected, resetSplitForms, selectedLevel4Detail]);
 
   const cancelDrawing = useCallback(() => {
     setEditMode("none");
@@ -1557,12 +1624,14 @@ export function GeoDashboardMap() {
       return;
     }
 
-    const codeA = splitCodeA.trim();
-    const codeB = splitCodeB.trim();
-    if (!codeA || !codeB) {
-      const message = "Debes indicar los códigos nuevos para ambos rodales resultantes.";
+    const codeA = splitFormA.code.trim();
+    const codeB = splitFormB.code.trim();
+    const nameA = splitFormA.name.trim();
+    const nameB = splitFormB.name.trim();
+    if (!codeA || !codeB || !nameA || !nameB) {
+      const message = "Debes indicar código y nombre para ambos rodales resultantes.";
       setOperationMessage(message);
-      sileo.warning({ title: "Códigos requeridos", description: message });
+      sileo.warning({ title: "Datos requeridos", description: message });
       return;
     }
 
@@ -1581,7 +1650,28 @@ export function GeoDashboardMap() {
         body: JSON.stringify({
           operation: "split",
           sourceLevel4Id: selectedFeatureIds[0],
-          newCodes: [codeA, codeB],
+          newItems: [
+            {
+              code: codeA,
+              name: nameA,
+              type: splitFormA.type,
+              fscCertificateStatus: splitFormA.fscCertificateStatus,
+              currentLandUseName: splitFormA.currentLandUseName.trim() || null,
+              previousLandUseName: splitFormA.previousLandUseName.trim() || null,
+              rotationPhase: splitFormA.rotationPhase.trim() || null,
+              previousUse: splitFormA.previousUse.trim() || null,
+            },
+            {
+              code: codeB,
+              name: nameB,
+              type: splitFormB.type,
+              fscCertificateStatus: splitFormB.fscCertificateStatus,
+              currentLandUseName: splitFormB.currentLandUseName.trim() || null,
+              previousLandUseName: splitFormB.previousLandUseName.trim() || null,
+              rotationPhase: splitFormB.rotationPhase.trim() || null,
+              previousUse: splitFormB.previousUse.trim() || null,
+            },
+          ],
           cutGeometry: {
             type: "Polygon",
             coordinates: [cutRing],
@@ -1603,8 +1693,7 @@ export function GeoDashboardMap() {
       setSelectedFeatureIds([]);
       setDrawPoints([]);
       setIsNearFirstVertex(false);
-      setSplitCodeA("");
-      setSplitCodeB("");
+      resetSplitForms();
       setEditMode("none");
       await loadLayer();
     } catch (error) {
@@ -1614,7 +1703,30 @@ export function GeoDashboardMap() {
     } finally {
       setIsApplyingOperation(false);
     }
-  }, [drawPoints, loadLayer, selectedFeatureIds, splitCodeA, splitCodeB]);
+  }, [drawPoints, loadLayer, resetSplitForms, selectedFeatureIds, splitFormA, splitFormB]);
+
+  useEffect(() => {
+    if (editMode !== "split" || !selectedLevel4Detail) return;
+
+    const hasManualValues = [
+      splitFormA.code,
+      splitFormA.name,
+      splitFormB.code,
+      splitFormB.name,
+      splitFormA.currentLandUseName,
+      splitFormB.currentLandUseName,
+      splitFormA.previousLandUseName,
+      splitFormB.previousLandUseName,
+      splitFormA.rotationPhase,
+      splitFormB.rotationPhase,
+      splitFormA.previousUse,
+      splitFormB.previousUse,
+    ].some((value) => value.trim().length > 0);
+
+    if (!hasManualValues) {
+      populateSplitFormsFromSelected();
+    }
+  }, [editMode, populateSplitFormsFromSelected, selectedLevel4Detail, splitFormA.code, splitFormA.currentLandUseName, splitFormA.name, splitFormA.previousLandUseName, splitFormA.previousUse, splitFormA.rotationPhase, splitFormB.code, splitFormB.currentLandUseName, splitFormB.name, splitFormB.previousLandUseName, splitFormB.previousUse, splitFormB.rotationPhase]);
 
   const executeMerge = useCallback(async () => {
     if (selectedFeatureIds.length !== 2) {
@@ -2311,8 +2423,26 @@ export function GeoDashboardMap() {
     setSelectedFeatureIds([]);
     setDrawPoints([]);
     setIsNearFirstVertex(false);
-    setSplitCodeA("");
-    setSplitCodeB("");
+    setSplitFormA({
+      code: "",
+      name: "",
+      type: "RODAL",
+      fscCertificateStatus: "NO",
+      currentLandUseName: "",
+      previousLandUseName: "",
+      rotationPhase: "",
+      previousUse: "",
+    });
+    setSplitFormB({
+      code: "",
+      name: "",
+      type: "RODAL",
+      fscCertificateStatus: "NO",
+      currentLandUseName: "",
+      previousLandUseName: "",
+      rotationPhase: "",
+      previousUse: "",
+    });
     setMergeCode("");
     setCreateLevel2Id("");
     setCreateLevel3Id("");
@@ -2327,8 +2457,9 @@ export function GeoDashboardMap() {
     setEditMode("none");
     setMeasurementLabel(null);
     setOperationMessage(null);
+    resetSplitForms();
     sileo.success({ title: "Vista restablecida", description: "Se aplicaron los valores por defecto del visualizador." });
-  }, [drawPoints.length, editMode, searchTerm, selectedFeatureIds.length, selectedLevel2, selectedLevel3, selectedLevel4]);
+  }, [drawPoints.length, editMode, resetSplitForms, searchTerm, selectedFeatureIds.length, selectedLevel2, selectedLevel3, selectedLevel4]);
 
   useEffect(() => {
     const handleFullscreenChange = () => {
@@ -2351,7 +2482,28 @@ export function GeoDashboardMap() {
     await element.requestFullscreen();
   }, []);
 
-  const canRunSplit = selectedFeatureIds.length === 1 && splitCodeA.trim().length > 0 && splitCodeB.trim().length > 0;
+  const splitValidation = useMemo(() => {
+    const missing = {
+      codeA: splitFormA.code.trim().length === 0,
+      nameA: splitFormA.name.trim().length === 0,
+      codeB: splitFormB.code.trim().length === 0,
+      nameB: splitFormB.name.trim().length === 0,
+    };
+
+    const messages: string[] = [];
+    if (missing.codeA) messages.push("Código A");
+    if (missing.nameA) messages.push("Nombre A");
+    if (missing.codeB) messages.push("Código B");
+    if (missing.nameB) messages.push("Nombre B");
+
+    return {
+      missing,
+      isValid: messages.length === 0,
+      message: messages.length > 0 ? `Campos requeridos: ${messages.join(", ")}` : null,
+    };
+  }, [splitFormA.code, splitFormA.name, splitFormB.code, splitFormB.name]);
+
+  const canRunSplit = selectedFeatureIds.length === 1 && splitValidation.isValid;
   const canRunMerge = selectedFeatureIds.length === 2 && mergeCode.trim().length > 0;
   const hasCreateCatalog = patrimonyLevel2Options.length > 0;
   const canCrudSelectedLevel4 = Boolean(selectedSingleLevel4Id && selectedLevel4Detail);
@@ -2497,7 +2649,7 @@ export function GeoDashboardMap() {
         ref={viewerRef}
         className={`grid gap-3 ${isPanelCollapsed ? "lg:grid-cols-[1fr_44px]" : "lg:grid-cols-[1fr_320px]"} ${isFullscreen ? "bg-background p-3" : ""}`}
       >
-        <div ref={mapWrapperRef} className={`relative overflow-hidden rounded-lg border ${isFullscreen ? "h-[calc(100vh-140px)]" : "h-[520px]"}`}>
+        <div ref={mapWrapperRef} className={`relative overflow-hidden rounded-lg border ${isFullscreen ? "h-[calc(100vh-140px)]" : "h-130"}`}>
           <LeafletMapContainer center={[mapView.lat, mapView.lng]} zoom={mapView.zoom} className={`h-full w-full ${isDrawingMode ? "cursor-crosshair" : "cursor-default"}`} scrollWheelZoom>
             <MapInstanceController onMapReady={(map) => { mapInstanceRef.current = map; }} />
             <MapResizeController resizeToken={resizeToken} />
@@ -2611,13 +2763,13 @@ export function GeoDashboardMap() {
             ))}
           </LeafletMapContainer>
 
-          <div className="pointer-events-none absolute right-3 bottom-3 z-[520] rounded-md border bg-background/95 px-2 py-1 text-[11px] text-muted-foreground shadow-sm backdrop-blur-sm">
+          <div className="pointer-events-none absolute right-3 bottom-3 z-520 rounded-md border bg-background/95 px-2 py-1 text-[11px] text-muted-foreground shadow-sm backdrop-blur-sm">
             {pointerCoords
               ? `Lon: ${pointerCoords.lng.toFixed(6)} · Lat: ${pointerCoords.lat.toFixed(6)}`
               : "Mueve el puntero para ver coordenadas"}
           </div>
 
-          <div className="absolute left-3 bottom-14 z-[520] w-56 rounded-md border bg-background/95 p-2 shadow-sm backdrop-blur-sm">
+          <div className="absolute left-3 bottom-14 z-520 w-56 rounded-md border bg-background/95 p-2 shadow-sm backdrop-blur-sm">
             <label className="mb-1 block text-[10px] text-muted-foreground">Mapa base</label>
             <select
               value={selectedBasemap}
@@ -2631,7 +2783,7 @@ export function GeoDashboardMap() {
           </div>
 
           {showLegend ? (
-            <div className="pointer-events-none absolute right-3 bottom-28 z-[500] w-64 rounded-lg border bg-background/95 p-3 shadow-sm backdrop-blur-sm">
+            <div className="pointer-events-none absolute right-3 bottom-28 z-500 w-64 rounded-lg border bg-background/95 p-3 shadow-sm backdrop-blur-sm">
               <p className="mb-2 text-xs font-semibold">Leyenda de capas</p>
               {legendLayers.length === 0 ? (
                 <p className="text-xs text-muted-foreground">No hay capas visibles con datos.</p>
@@ -3142,19 +3294,157 @@ export function GeoDashboardMap() {
               ) : null}
 
               {editMode === "split" ? (
-                <div className="grid grid-cols-2 gap-2">
-                  <input
-                    value={splitCodeA}
-                    onChange={(event) => setSplitCodeA(event.target.value)}
-                    placeholder="Código nuevo A"
-                    className="h-8 rounded-md border bg-background px-2 text-[11px]"
-                  />
-                  <input
-                    value={splitCodeB}
-                    onChange={(event) => setSplitCodeB(event.target.value)}
-                    placeholder="Código nuevo B"
-                    className="h-8 rounded-md border bg-background px-2 text-[11px]"
-                  />
+                <div className="grid grid-cols-1 gap-2">
+                  <div className="flex justify-end">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="h-8 px-2 text-[11px]"
+                      onClick={populateSplitFormsFromSelected}
+                      disabled={!selectedLevel4Detail}
+                    >
+                      Autocompletar desde forma original
+                    </Button>
+                  </div>
+                  <div className="rounded-md border p-2">
+                    <p className="mb-2 text-[11px] font-medium">Nueva forma A</p>
+                    <div className="grid grid-cols-2 gap-2">
+                      <input
+                        value={splitFormA.code}
+                        onChange={(event) => setSplitFormA((prev) => ({ ...prev, code: event.target.value }))}
+                        placeholder="Código A"
+                        className={`h-8 rounded-md border bg-background px-2 text-[11px] ${splitValidation.missing.codeA ? "border-red-500" : ""}`}
+                      />
+                      <input
+                        value={splitFormA.name}
+                        onChange={(event) => setSplitFormA((prev) => ({ ...prev, name: event.target.value }))}
+                        placeholder="Nombre A"
+                        className={`h-8 rounded-md border bg-background px-2 text-[11px] ${splitValidation.missing.nameA ? "border-red-500" : ""}`}
+                      />
+                      <select
+                        value={splitFormA.type}
+                        onChange={(event) => setSplitFormA((prev) => ({ ...prev, type: event.target.value }))}
+                        className="h-8 rounded-md border bg-background px-2 text-[11px]"
+                      >
+                        <option value="RODAL">Rodal</option>
+                        <option value="PARCELA">Parcela</option>
+                        <option value="ENUMERATION">Enumeration</option>
+                        <option value="UNIDAD_DE_MANEJO">Unidad de Manejo</option>
+                        <option value="CONUCO">Conuco</option>
+                        <option value="OTRO_USO">Otro Uso</option>
+                      </select>
+                      <select
+                        value={splitFormA.fscCertificateStatus}
+                        onChange={(event) => setSplitFormA((prev) => ({ ...prev, fscCertificateStatus: event.target.value }))}
+                        className="h-8 rounded-md border bg-background px-2 text-[11px]"
+                      >
+                        <option value="SI">Si</option>
+                        <option value="NO">No</option>
+                      </select>
+                      <select
+                        value={splitFormA.currentLandUseName}
+                        onChange={(event) => setSplitFormA((prev) => ({ ...prev, currentLandUseName: event.target.value }))}
+                        className="h-8 rounded-md border bg-background px-2 text-[11px]"
+                      >
+                        <option value="">Uso actual</option>
+                        {landUseOptions.map((item) => (
+                          <option key={`split-a-current-use-${item.id}`} value={item.name}>{item.name}</option>
+                        ))}
+                      </select>
+                      <select
+                        value={splitFormA.previousLandUseName}
+                        onChange={(event) => setSplitFormA((prev) => ({ ...prev, previousLandUseName: event.target.value }))}
+                        className="h-8 rounded-md border bg-background px-2 text-[11px]"
+                      >
+                        <option value="">Uso antiguo</option>
+                        {landUseOptions.map((item) => (
+                          <option key={`split-a-previous-use-${item.id}`} value={item.name}>{item.name}</option>
+                        ))}
+                      </select>
+                      <input
+                        value={splitFormA.rotationPhase}
+                        onChange={(event) => setSplitFormA((prev) => ({ ...prev, rotationPhase: event.target.value }))}
+                        placeholder="Fase"
+                        className="h-8 rounded-md border bg-background px-2 text-[11px]"
+                      />
+                      <input
+                        value={splitFormA.previousUse}
+                        onChange={(event) => setSplitFormA((prev) => ({ ...prev, previousUse: event.target.value }))}
+                        placeholder="Uso previo"
+                        className="h-8 rounded-md border bg-background px-2 text-[11px]"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="rounded-md border p-2">
+                    <p className="mb-2 text-[11px] font-medium">Nueva forma B</p>
+                    <div className="grid grid-cols-2 gap-2">
+                      <input
+                        value={splitFormB.code}
+                        onChange={(event) => setSplitFormB((prev) => ({ ...prev, code: event.target.value }))}
+                        placeholder="Código B"
+                        className={`h-8 rounded-md border bg-background px-2 text-[11px] ${splitValidation.missing.codeB ? "border-red-500" : ""}`}
+                      />
+                      <input
+                        value={splitFormB.name}
+                        onChange={(event) => setSplitFormB((prev) => ({ ...prev, name: event.target.value }))}
+                        placeholder="Nombre B"
+                        className={`h-8 rounded-md border bg-background px-2 text-[11px] ${splitValidation.missing.nameB ? "border-red-500" : ""}`}
+                      />
+                      <select
+                        value={splitFormB.type}
+                        onChange={(event) => setSplitFormB((prev) => ({ ...prev, type: event.target.value }))}
+                        className="h-8 rounded-md border bg-background px-2 text-[11px]"
+                      >
+                        <option value="RODAL">Rodal</option>
+                        <option value="PARCELA">Parcela</option>
+                        <option value="ENUMERATION">Enumeration</option>
+                        <option value="UNIDAD_DE_MANEJO">Unidad de Manejo</option>
+                        <option value="CONUCO">Conuco</option>
+                        <option value="OTRO_USO">Otro Uso</option>
+                      </select>
+                      <select
+                        value={splitFormB.fscCertificateStatus}
+                        onChange={(event) => setSplitFormB((prev) => ({ ...prev, fscCertificateStatus: event.target.value }))}
+                        className="h-8 rounded-md border bg-background px-2 text-[11px]"
+                      >
+                        <option value="SI">Si</option>
+                        <option value="NO">No</option>
+                      </select>
+                      <select
+                        value={splitFormB.currentLandUseName}
+                        onChange={(event) => setSplitFormB((prev) => ({ ...prev, currentLandUseName: event.target.value }))}
+                        className="h-8 rounded-md border bg-background px-2 text-[11px]"
+                      >
+                        <option value="">Uso actual</option>
+                        {landUseOptions.map((item) => (
+                          <option key={`split-b-current-use-${item.id}`} value={item.name}>{item.name}</option>
+                        ))}
+                      </select>
+                      <select
+                        value={splitFormB.previousLandUseName}
+                        onChange={(event) => setSplitFormB((prev) => ({ ...prev, previousLandUseName: event.target.value }))}
+                        className="h-8 rounded-md border bg-background px-2 text-[11px]"
+                      >
+                        <option value="">Uso antiguo</option>
+                        {landUseOptions.map((item) => (
+                          <option key={`split-b-previous-use-${item.id}`} value={item.name}>{item.name}</option>
+                        ))}
+                      </select>
+                      <input
+                        value={splitFormB.rotationPhase}
+                        onChange={(event) => setSplitFormB((prev) => ({ ...prev, rotationPhase: event.target.value }))}
+                        placeholder="Fase"
+                        className="h-8 rounded-md border bg-background px-2 text-[11px]"
+                      />
+                      <input
+                        value={splitFormB.previousUse}
+                        onChange={(event) => setSplitFormB((prev) => ({ ...prev, previousUse: event.target.value }))}
+                        placeholder="Uso previo"
+                        className="h-8 rounded-md border bg-background px-2 text-[11px]"
+                      />
+                    </div>
+                  </div>
                 </div>
               ) : null}
 
@@ -3170,6 +3460,7 @@ export function GeoDashboardMap() {
                 {editMode === "distance" ? <p>Distancia actual: {formatDistance(drawDistanceMeters)}</p> : null}
                 {editMode === "area" || editMode === "split" || editMode === "createLevel4" ? <p>Área actual: {formatArea(drawAreaM2)}</p> : null}
                 {editMode === "split" ? <p>Dibuja polígono de corte y pulsa Finalizar.</p> : null}
+                {editMode === "split" && splitValidation.message ? <p className="text-red-600">{splitValidation.message}</p> : null}
                 {editMode === "createLevel4" ? <p>Dibuja el polígono del nuevo rodal y pulsa Finalizar.</p> : null}
                 {editMode !== "none" ? <p>Tip: arrastra vértices para mover, clic derecho en un vértice para borrarlo.</p> : null}
                 {editMode !== "none" ? <p>Atajo: Supr o Backspace elimina el último vértice.</p> : null}
