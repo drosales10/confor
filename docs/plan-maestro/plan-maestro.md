@@ -75,6 +75,20 @@ Integracion biologica-contable (NIC 41):
 - [ ] Raleo comercial: cambio de activo biologico a inventario (producto cosechado).
 - [ ] Podas: gasto del periodo o capitalizacion segun politica.
 
+### Implementación técnica FASE 8 (en curso)
+
+- [x] Capa espacial en PostgreSQL + PostGIS con versionado de geometrías Nivel 4.
+- [x] Worker `import-level4-shapes-worker` para procesar shapefiles en segundo plano.
+- [x] Worker de recálculo post-guardado de Nivel 4 para actualizar superficie y centroides.
+- [x] API de carga (`/api/forest/geo/import`) y estado de job (`/api/forest/geo/import/[jobId]`).
+- [x] API geoespacial por BBOX (`/api/forest/geo/layers/nivel4`).
+- [x] Mapa en pantalla principal (`/dashboard`) con botón de carga `.zip` y feedback de estado.
+- [x] Regla de seguridad: aislamiento por `organization_id` en procesamiento y consultas.
+
+Detalle técnico y máquina de estados del worker en:
+
+- `docs/plan-maestro/plan-maestro-geoespacial-fase8.md`
+
 ## 5. FASE 2: Modulo Gestion Administrativa/Financiera
 
 Submodulos y alcance:

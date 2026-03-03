@@ -23,7 +23,6 @@ type Level3Item = {
   name: string;
   type: string;
   totalAreaHa: string | number;
-  legalStatus?: string | null;
   isActive: boolean;
 };
 
@@ -32,8 +31,8 @@ type Level4Item = {
   code: string;
   name: string;
   type: string;
+  fscCertificateStatus: "SI" | "NO";
   totalAreaHa: string | number;
-  legalStatus?: string | null;
   isActive: boolean;
 };
 
@@ -67,8 +66,8 @@ type PaginationState = {
 
 type PageAdjustReason = "filtro" | "límite" | "eliminación" | "navegación";
 type Level2SortKey = "code" | "name" | "type" | "totalAreaHa" | "legalStatus" | "isActive";
-type Level3SortKey = "code" | "name" | "type" | "totalAreaHa" | "legalStatus" | "isActive";
-type Level4SortKey = "code" | "name" | "type" | "totalAreaHa" | "legalStatus" | "isActive";
+type Level3SortKey = "code" | "name" | "type" | "totalAreaHa" | "isActive";
+type Level4SortKey = "code" | "name" | "type" | "totalAreaHa" | "fscCertificateStatus" | "isActive";
 type Level5SortKey = "code" | "name" | "type" | "shapeType" | "areaM2" | "isActive";
 
 function parseLocaleDecimal(value: string | number) {
@@ -123,6 +122,7 @@ export default function PatrimonioForestalPage() {
     code: "",
     name: "",
     type: "RODAL",
+    fscCertificateStatus: "NO",
     totalAreaHa: "",
   });
 
@@ -194,6 +194,7 @@ export default function PatrimonioForestalPage() {
     code: "",
     name: "",
     type: "FINCA",
+    legalStatus: "ADQUISICION",
     totalAreaHa: "",
     isActive: true,
   });
@@ -208,6 +209,7 @@ export default function PatrimonioForestalPage() {
     code: "",
     name: "",
     type: "RODAL",
+    fscCertificateStatus: "NO",
     totalAreaHa: "",
     isActive: true,
   });
@@ -304,18 +306,14 @@ export default function PatrimonioForestalPage() {
           ? left.code
           : sortByLevel3 === "name"
             ? left.name
-            : sortByLevel3 === "type"
-              ? left.type
-              : left.legalStatus ?? "";
+            : left.type;
 
       const rightValue =
         sortByLevel3 === "code"
           ? right.code
           : sortByLevel3 === "name"
             ? right.name
-            : sortByLevel3 === "type"
-              ? right.type
-              : right.legalStatus ?? "";
+            : right.type;
 
       return String(leftValue).localeCompare(String(rightValue), "es", { sensitivity: "base" }) * direction;
     });
@@ -352,7 +350,7 @@ export default function PatrimonioForestalPage() {
             ? left.name
             : sortByLevel4 === "type"
               ? left.type
-              : left.legalStatus ?? "";
+              : left.fscCertificateStatus;
 
       const rightValue =
         sortByLevel4 === "code"
@@ -361,7 +359,7 @@ export default function PatrimonioForestalPage() {
             ? right.name
             : sortByLevel4 === "type"
               ? right.type
-              : right.legalStatus ?? "";
+              : right.fscCertificateStatus;
 
       return String(leftValue).localeCompare(String(rightValue), "es", { sensitivity: "base" }) * direction;
     });
@@ -1230,6 +1228,7 @@ export default function PatrimonioForestalPage() {
       code: item.code,
       name: item.name,
       type: item.type,
+      legalStatus: item.legalStatus ?? "ADQUISICION",
       totalAreaHa: String(item.totalAreaHa),
       isActive: item.isActive,
     });
@@ -1252,6 +1251,7 @@ export default function PatrimonioForestalPage() {
       code: item.code,
       name: item.name,
       type: item.type,
+      fscCertificateStatus: item.fscCertificateStatus ?? "NO",
       totalAreaHa: String(item.totalAreaHa),
       isActive: item.isActive,
     });
@@ -1296,6 +1296,7 @@ export default function PatrimonioForestalPage() {
         code: editLevel2Form.code.trim(),
         name: editLevel2Form.name.trim(),
         type: editLevel2Form.type,
+        legalStatus: editLevel2Form.legalStatus,
         totalAreaHa,
         isActive: editLevel2Form.isActive,
       });
@@ -1336,6 +1337,7 @@ export default function PatrimonioForestalPage() {
         code: editLevel4Form.code.trim(),
         name: editLevel4Form.name.trim(),
         type: editLevel4Form.type,
+        fscCertificateStatus: editLevel4Form.fscCertificateStatus,
         totalAreaHa,
         isActive: editLevel4Form.isActive,
       });
@@ -1815,9 +1817,10 @@ export default function PatrimonioForestalPage() {
         code,
         name,
         type: level4Form.type,
+        fscCertificateStatus: level4Form.fscCertificateStatus,
         totalAreaHa,
       });
-      setLevel4Form({ code: "", name: "", type: "RODAL", totalAreaHa: "" });
+      setLevel4Form({ code: "", name: "", type: "RODAL", fscCertificateStatus: "NO", totalAreaHa: "" });
       await loadLevel4(selectedLevel3Id, debouncedSearchLevel4, pageLevel4, limitLevel4);
       sileo.success({
         title: "Nivel 4 creado",
@@ -1964,6 +1967,7 @@ export default function PatrimonioForestalPage() {
               <option value="HATO">Hato</option>
               <option value="FUNDO">Fundo</option>
               <option value="HACIENDA">Hacienda</option>
+              <option value="ABRAE">ABRAE</option>
             </select>
           </label>
           <label className="space-y-1 text-sm">
@@ -1977,6 +1981,7 @@ export default function PatrimonioForestalPage() {
               <option value="ARRIENDO">Arriendo</option>
               <option value="USUFRUCTO">Usufructo</option>
               <option value="COMODATO">Comodato</option>
+              <option value="DECRETO">Decreto</option>
             </select>
           </label>
           <label className="space-y-1 text-sm md:col-span-2">
@@ -2145,6 +2150,7 @@ export default function PatrimonioForestalPage() {
                         <option value="HATO">Hato</option>
                         <option value="FUNDO">Fundo</option>
                         <option value="HACIENDA">Hacienda</option>
+                        <option value="ABRAE">ABRAE</option>
                       </select>
                     ) : (
                       item.type
@@ -2164,7 +2170,23 @@ export default function PatrimonioForestalPage() {
                       String(item.totalAreaHa)
                     )}
                   </td>
-                  <td className="px-3 py-2">{item.legalStatus ?? "-"}</td>
+                  <td className="px-3 py-2">
+                    {editingLevel2Id === item.id ? (
+                      <select
+                        className="w-full rounded-md border px-2 py-1 text-xs"
+                        onChange={(event) => setEditLevel2Form((prev) => ({ ...prev, legalStatus: event.target.value }))}
+                        value={editLevel2Form.legalStatus}
+                      >
+                        <option value="ADQUISICION">Adquisición</option>
+                        <option value="ARRIENDO">Arriendo</option>
+                        <option value="USUFRUCTO">Usufructo</option>
+                        <option value="COMODATO">Comodato</option>
+                        <option value="DECRETO">Decreto</option>
+                      </select>
+                    ) : (
+                      item.legalStatus ?? "-"
+                    )}
+                  </td>
                   <td className="px-3 py-2">
                     {editingLevel2Id === item.id ? (
                       <label className="flex items-center gap-2 text-xs">
@@ -2248,7 +2270,7 @@ export default function PatrimonioForestalPage() {
 
       <section className="rounded-lg border p-4">
         <h2 className="text-lg font-medium">Jerarquía y vecinos</h2>
-        <div className="mt-3 grid gap-3 md:grid-cols-3">
+        <div className="mt-3 grid gap-3 md:grid-cols-1">
           <label className="space-y-1 text-sm">
             <span>Nivel 2</span>
             <select
@@ -2266,42 +2288,6 @@ export default function PatrimonioForestalPage() {
             >
               <option value="">Seleccione</option>
               {items.map((item) => (
-                <option key={item.id} value={item.id}>
-                  {item.code} - {item.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="space-y-1 text-sm">
-            <span>Nivel 3</span>
-            <select
-              className="w-full rounded-md border px-3 py-2"
-              value={selectedLevel3Id}
-              onChange={(event) => {
-                setPageAdjustReason("navegación");
-                setSelectedLevel3Id(event.target.value);
-                setSelectedLevel4Id("");
-                setPageLevel4(1);
-                setPageLevel5(1);
-              }}
-            >
-              <option value="">Seleccione</option>
-              {level3Items.map((item) => (
-                <option key={item.id} value={item.id}>
-                  {item.code} - {item.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="space-y-1 text-sm">
-            <span>Nivel 4</span>
-            <select
-              className="w-full rounded-md border px-3 py-2"
-              value={selectedLevel4Id}
-              onChange={(event) => setSelectedLevel4Id(event.target.value)}
-            >
-              <option value="">Seleccione</option>
-              {level4Items.map((item) => (
                 <option key={item.id} value={item.id}>
                   {item.code} - {item.name}
                 </option>
@@ -2459,6 +2445,7 @@ export default function PatrimonioForestalPage() {
               <option value="LOTE">Lote</option>
               <option value="ZONA">Zona</option>
               <option value="BLOQUE">Bloque</option>
+              <option value="ZONIFICACION">Zonificación</option>
             </select>
             <input
               className="w-full rounded-md border px-3 py-2 text-sm"
@@ -2560,15 +2547,6 @@ export default function PatrimonioForestalPage() {
                   </th>
                   <th className="px-3 py-2">
                     <SortableHeader
-                      label="Estado legal"
-                      onToggle={toggleSortLevel3}
-                      sortBy={sortByLevel3}
-                      sortKey="legalStatus"
-                      sortOrder={sortOrderLevel3}
-                    />
-                  </th>
-                  <th className="px-3 py-2">
-                    <SortableHeader
                       label="Estatus"
                       onToggle={toggleSortLevel3}
                       sortBy={sortByLevel3}
@@ -2617,6 +2595,7 @@ export default function PatrimonioForestalPage() {
                           <option value="LOTE">Lote</option>
                           <option value="ZONA">Zona</option>
                           <option value="BLOQUE">Bloque</option>
+                          <option value="ZONIFICACION">Zonificación</option>
                         </select>
                       ) : (
                         item.type
@@ -2636,7 +2615,6 @@ export default function PatrimonioForestalPage() {
                         String(item.totalAreaHa)
                       )}
                     </td>
-                    <td className="px-3 py-2">{item.legalStatus ?? "-"}</td>
                     <td className="px-3 py-2">
                       {editingLevel3Id === item.id ? (
                         <label className="flex items-center gap-2 text-xs">
@@ -2698,7 +2676,7 @@ export default function PatrimonioForestalPage() {
                 ))}
                 {!loading && level3Items.length === 0 ? (
                   <tr>
-                    <td className="px-3 py-3" colSpan={7}>
+                    <td className="px-3 py-3" colSpan={6}>
                       Sin resultados
                     </td>
                   </tr>
@@ -2764,6 +2742,15 @@ export default function PatrimonioForestalPage() {
               <option value="PARCELA">Parcela</option>
               <option value="ENUMERATION">Enumeration</option>
               <option value="UNIDAD_DE_MANEJO">Unidad de Manejo</option>
+              <option value="CONUCO">Conuco</option>
+            </select>
+            <select
+              className="w-full rounded-md border px-3 py-2 text-sm"
+              value={level4Form.fscCertificateStatus}
+              onChange={(event) => setLevel4Form((prev) => ({ ...prev, fscCertificateStatus: event.target.value as "SI" | "NO" }))}
+            >
+              <option value="SI">Si</option>
+              <option value="NO">No</option>
             </select>
             <input
               className="w-full rounded-md border px-3 py-2 text-sm"
@@ -2863,10 +2850,10 @@ export default function PatrimonioForestalPage() {
                     </th>
                     <th className="px-3 py-2">
                       <SortableHeader
-                        label="Estado legal"
+                        label="Certificado FSC"
                         onToggle={toggleSortLevel4}
                         sortBy={sortByLevel4}
-                        sortKey="legalStatus"
+                        sortKey="fscCertificateStatus"
                         sortOrder={sortOrderLevel4}
                       />
                     </th>
@@ -2919,6 +2906,7 @@ export default function PatrimonioForestalPage() {
                             <option value="PARCELA">Parcela</option>
                             <option value="ENUMERATION">Enumeration</option>
                             <option value="UNIDAD_DE_MANEJO">Unidad de Manejo</option>
+                            <option value="CONUCO">Conuco</option>
                           </select>
                         ) : (
                           item.type
@@ -2938,7 +2926,24 @@ export default function PatrimonioForestalPage() {
                           String(item.totalAreaHa)
                         )}
                       </td>
-                      <td className="px-3 py-2">{item.legalStatus ?? "-"}</td>
+                      <td className="px-3 py-2">
+                        {editingLevel4Id === item.id ? (
+                          <select
+                            className="w-full rounded-md border px-2 py-1 text-xs"
+                            onChange={(event) =>
+                              setEditLevel4Form((prev) => ({ ...prev, fscCertificateStatus: event.target.value as "SI" | "NO" }))
+                            }
+                            value={editLevel4Form.fscCertificateStatus}
+                          >
+                            <option value="SI">Si</option>
+                            <option value="NO">No</option>
+                          </select>
+                        ) : item.fscCertificateStatus === "SI" ? (
+                          "Si"
+                        ) : (
+                          "No"
+                        )}
+                      </td>
                       <td className="px-3 py-2">
                         {editingLevel4Id === item.id ? (
                           <label className="flex items-center gap-2 text-xs">

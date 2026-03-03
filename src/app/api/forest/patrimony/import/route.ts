@@ -5,10 +5,11 @@ import { fail, ok, requireAuth, requirePermission } from "@/lib/api-helpers";
 import { hasPermission } from "@/lib/permissions";
 import * as XLSX from "xlsx";
 
-type Level2Type = "FINCA" | "PREDIO" | "HATO" | "FUNDO" | "HACIENDA";
-type LegalStatus = "ADQUISICION" | "ARRIENDO" | "USUFRUCTO" | "COMODATO";
-type Level3Type = "COMPARTIMIENTO" | "BLOCK" | "SECCION" | "LOTE" | "ZONA" | "BLOQUE";
-type Level4Type = "RODAL" | "PARCELA" | "ENUMERATION" | "UNIDAD_DE_MANEJO";
+type Level2Type = "FINCA" | "PREDIO" | "HATO" | "FUNDO" | "HACIENDA" | "ABRAE";
+type LegalStatus = "ADQUISICION" | "ARRIENDO" | "USUFRUCTO" | "COMODATO" | "DECRETO";
+type Level3Type = "COMPARTIMIENTO" | "BLOCK" | "SECCION" | "LOTE" | "ZONA" | "BLOQUE" | "ZONIFICACION";
+type Level4Type = "RODAL" | "PARCELA" | "ENUMERATION" | "UNIDAD_DE_MANEJO" | "CONUCO";
+type FscCertificateStatus = "SI" | "NO";
 type Level5Type = "REFERENCIA" | "SUBUNIDAD" | "SUBPARCELA" | "MUESTRA" | "SUBMUESTRA";
 type PlotShapeType = "RECTANGULAR" | "CUADRADA" | "CIRCULAR" | "HEXAGONAL";
 
@@ -33,6 +34,7 @@ type ImportLevel4Row = {
   code: string;
   name: string;
   type: Level4Type;
+  fscCertificateStatus: FscCertificateStatus;
   totalAreaHa: number;
   isActive?: boolean;
 };
@@ -144,7 +146,7 @@ function parseNumber(value: string) {
 
 function parseType(value: string): Level2Type | null {
   const normalized = value.trim().toUpperCase();
-  if (["FINCA", "PREDIO", "HATO", "FUNDO", "HACIENDA"].includes(normalized)) {
+  if (["FINCA", "PREDIO", "HATO", "FUNDO", "HACIENDA", "ABRAE"].includes(normalized)) {
     return normalized as Level2Type;
   }
   return null;
@@ -152,7 +154,8 @@ function parseType(value: string): Level2Type | null {
 
 function parseLevel3Type(value: string): Level3Type | null {
   const normalized = value.trim().toUpperCase();
-  if (["COMPARTIMIENTO", "BLOCK", "SECCION", "LOTE", "ZONA", "BLOQUE"].includes(normalized)) {
+  if (["COMPARTIMIENTO", "BLOCK", "SECCION", "LOTE", "ZONA", "BLOQUE", "ZONIFICACION", "ZONIFICACIÓN"].includes(normalized)) {
+    if (normalized === "ZONIFICACIÓN") return "ZONIFICACION";
     return normalized as Level3Type;
   }
   return null;
@@ -160,9 +163,16 @@ function parseLevel3Type(value: string): Level3Type | null {
 
 function parseLevel4Type(value: string): Level4Type | null {
   const normalized = value.trim().toUpperCase();
-  if (["RODAL", "PARCELA", "ENUMERATION", "UNIDAD_DE_MANEJO"].includes(normalized)) {
+  if (["RODAL", "PARCELA", "ENUMERATION", "UNIDAD_DE_MANEJO", "CONUCO"].includes(normalized)) {
     return normalized as Level4Type;
   }
+  return null;
+}
+
+function parseFscCertificateStatus(value: string): FscCertificateStatus | null {
+  const normalized = value.trim().toUpperCase();
+  if (["SI", "SÍ"].includes(normalized)) return "SI";
+  if (normalized === "NO") return "NO";
   return null;
 }
 
@@ -185,7 +195,7 @@ function parseShapeType(value: string): PlotShapeType | null {
 function parseLegalStatus(value: string): LegalStatus | undefined {
   const normalized = value.trim().toUpperCase();
   if (!normalized) return undefined;
-  if (["ADQUISICION", "ADQUISICIÓN", "ARRIENDO", "USUFRUCTO", "COMODATO"].includes(normalized)) {
+  if (["ADQUISICION", "ADQUISICIÓN", "ARRIENDO", "USUFRUCTO", "COMODATO", "DECRETO"].includes(normalized)) {
     return normalized as LegalStatus;
   }
   return undefined;
@@ -382,12 +392,14 @@ export async function POST(req: NextRequest) {
           };
 
           const type = parseLevel4Type(get("type", "tipo"));
+          const fscCertificateStatus = parseFscCertificateStatus(get("fscCertificateStatus", "certificadoFsc", "certificado fsc"));
           const totalAreaHa = parseNumber(get("totalareaha", "superficie(ha)", "superficie"));
 
           return {
             code: get("code", "codigo", "código"),
             name: get("name", "nombre"),
             type: type ?? "RODAL",
+            fscCertificateStatus: fscCertificateStatus ?? "NO",
             totalAreaHa,
             isActive: parseBoolean(get("isactive", "estatus", "estado")),
           } satisfies ImportLevel4Row;
@@ -502,12 +514,14 @@ export async function POST(req: NextRequest) {
           };
 
           const type = parseLevel4Type(get("type", "tipo"));
+          const fscCertificateStatus = parseFscCertificateStatus(get("fscCertificateStatus", "certificadoFsc", "certificado fsc"));
           const totalAreaHa = parseNumber(get("totalareaha", "superficie(ha)", "superficie"));
 
           return {
             code: get("code", "codigo", "código"),
             name: get("name", "nombre"),
             type: type ?? "RODAL",
+            fscCertificateStatus: fscCertificateStatus ?? "NO",
             totalAreaHa,
             isActive: parseBoolean(get("isactive", "estatus", "estado")),
           } satisfies ImportLevel4Row;
@@ -676,6 +690,7 @@ export async function POST(req: NextRequest) {
             data: {
               name: level4Row.name,
               type: level4Row.type,
+              fscCertificateStatus: level4Row.fscCertificateStatus,
               totalAreaHa: level4Row.totalAreaHa,
               isActive: level4Row.isActive ?? existing.isActive,
             },
@@ -691,6 +706,7 @@ export async function POST(req: NextRequest) {
             code: level4Row.code,
             name: level4Row.name,
             type: level4Row.type,
+            fscCertificateStatus: level4Row.fscCertificateStatus,
             totalAreaHa: level4Row.totalAreaHa,
             isActive: level4Row.isActive ?? true,
           },

@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { enqueueLevel4RecalcJob } from "@/lib/geo-import-worker";
 import { calculatePlotAreaM2 } from "@/lib/forest-area";
 import {
   createPatrimonySchema,
@@ -296,6 +297,14 @@ export async function POST(req: NextRequest) {
       newValues: parsed.data.data,
     });
 
+    if (!isSuperAdmin && organizationId) {
+      void enqueueLevel4RecalcJob({
+        organizationId,
+        level4Id: created.id,
+        createdById: authResult.session.user.id,
+      });
+    }
+
     return ok(created, 201);
   }
 
@@ -443,6 +452,23 @@ export async function PATCH(req: NextRequest) {
       entityId: updated.id,
       newValues: parsed.data.data,
     });
+
+    let effectiveOrganizationId = organizationId;
+    if (isSuperAdmin) {
+      const owner = await prisma.forestPatrimonyLevel4.findUnique({
+        where: { id: updated.id },
+        select: { level3: { select: { level2: { select: { organizationId: true } } } } },
+      });
+      effectiveOrganizationId = owner?.level3.level2.organizationId ?? null;
+    }
+
+    if (effectiveOrganizationId) {
+      void enqueueLevel4RecalcJob({
+        organizationId: effectiveOrganizationId,
+        level4Id: updated.id,
+        createdById: authResult.session.user.id,
+      });
+    }
 
     return ok(updated);
   }

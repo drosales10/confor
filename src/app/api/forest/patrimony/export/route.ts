@@ -6,7 +6,7 @@ import { hasPermission } from "@/lib/permissions";
 import { z } from "zod";
 import * as XLSX from "xlsx";
 
-const sortKeys = ["code", "name", "type", "shapeType", "totalAreaHa", "areaM2", "legalStatus", "isActive"] as const;
+const sortKeys = ["code", "name", "type", "shapeType", "totalAreaHa", "areaM2", "legalStatus", "fscCertificateStatus", "isActive"] as const;
 
 function resolveExportMaxLimit() {
   const raw = process.env.FOREST_PATRIMONY_EXPORT_MAX_LIMIT;
@@ -303,6 +303,8 @@ export async function GET(req: NextRequest) {
             ? ({ type: orderDirection } as const)
             : sortBy === "totalAreaHa"
               ? ({ totalAreaHa: orderDirection } as const)
+              : sortBy === "fscCertificateStatus"
+                ? ({ fscCertificateStatus: orderDirection } as const)
               : sortBy === "isActive"
                 ? ({ isActive: orderDirection } as const)
                 : ({ createdAt: "desc" } as const);
@@ -314,11 +316,13 @@ export async function GET(req: NextRequest) {
     });
 
     if (format === "csv") {
-      const headers = ["code", "name", "type", "totalAreaHa", "isActive"];
+      const headers = ["code", "name", "type", "totalAreaHa", "fscCertificateStatus", "isActive"];
       const csv = [
         headers.join(","),
         ...items.map((item) =>
-          [item.code, item.name, item.type, item.totalAreaHa, item.isActive ? "true" : "false"].map(csvEscape).join(","),
+          [item.code, item.name, item.type, item.totalAreaHa, item.fscCertificateStatus === "SI" ? "Si" : "No", item.isActive ? "true" : "false"]
+            .map(csvEscape)
+            .join(","),
         ),
       ].join("\n");
 
@@ -336,13 +340,13 @@ export async function GET(req: NextRequest) {
       Nombre: item.name,
       Tipo: item.type,
       "Superficie (ha)": Number(item.totalAreaHa),
-      "Estado legal": "",
+      "Certificado FSC": item.fscCertificateStatus === "SI" ? "Si" : "No",
       Estatus: item.isActive ? "Activo" : "Inactivo",
     }));
 
     const workbook = XLSX.utils.book_new();
     const worksheet = XLSX.utils.json_to_sheet(rows, {
-      header: ["Código", "Nombre", "Tipo", "Superficie (ha)", "Estado legal", "Estatus"],
+      header: ["Código", "Nombre", "Tipo", "Superficie (ha)", "Certificado FSC", "Estatus"],
     });
 
     XLSX.utils.book_append_sheet(workbook, worksheet, "Nivel4");
@@ -417,13 +421,12 @@ export async function GET(req: NextRequest) {
     Nombre: item.name,
     Tipo: item.type,
     "Superficie (ha)": Number(item.totalAreaHa),
-    "Estado legal": "",
     Estatus: item.isActive ? "Activo" : "Inactivo",
   }));
 
   const workbook = XLSX.utils.book_new();
   const worksheet = XLSX.utils.json_to_sheet(rows, {
-    header: ["Código", "Nombre", "Tipo", "Superficie (ha)", "Estado legal", "Estatus"],
+    header: ["Código", "Nombre", "Tipo", "Superficie (ha)", "Estatus"],
   });
 
   XLSX.utils.book_append_sheet(workbook, worksheet, "Nivel3");

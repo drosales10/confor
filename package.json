@@ -10,7 +10,9 @@
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:push": "prisma db push",
-    "db:seed": "prisma db seed"
+    "db:seed": "prisma db seed",
+    "worker:geo": "tsx src/workers/geo-worker-scheduler.ts",
+    "worker:geo:once": "cross-env GEO_WORKER_RUN_ONCE=true tsx src/workers/geo-worker-scheduler.ts"
   },
   "dependencies": {
     "@casl/ability": "^6.8.0",
@@ -20,8 +22,11 @@
     "bcryptjs": "^3.0.3",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "cross-env": "^7.0.3",
     "date-fns": "^4.1.0",
     "lucide-react": "^0.575.0",
+    "leaflet": "^1.9.4",
+    "jszip": "^3.10.1",
     "next": "16.1.6",
     "next-auth": "^5.0.0-beta.30",
     "nodemailer": "^7.0.13",
@@ -30,7 +35,9 @@
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "react-hook-form": "^7.71.2",
+    "react-leaflet": "^5.0.0",
     "recharts": "^3.7.0",
+    "shpjs": "^6.2.0",
     "sileo": "^0.1.5",
     "tailwind-merge": "^3.5.0",
     "xlsx": "^0.18.5",

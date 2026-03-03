@@ -79,6 +79,7 @@ enum PatrimonyLevel2Type {
   HATO
   FUNDO
   HACIENDA
+  ABRAE
 }
 
 enum LegalStatus {
@@ -86,6 +87,7 @@ enum LegalStatus {
   ARRIENDO
   USUFRUCTO
   COMODATO
+  DECRETO
 }
 
 enum PatrimonyLevel3Type {
@@ -95,6 +97,7 @@ enum PatrimonyLevel3Type {
   LOTE
   ZONA
   BLOQUE
+  ZONIFICACION
 }
 
 enum PatrimonyLevel4Type {
@@ -102,6 +105,12 @@ enum PatrimonyLevel4Type {
   PARCELA
   ENUMERATION
   UNIDAD_DE_MANEJO
+  CONUCO
+}
+
+enum FscCertificateStatus {
+  SI
+  NO
 }
 
 enum PatrimonyLevel5Type {
@@ -165,6 +174,27 @@ enum CommunityType {
 enum RecommendedHarvestType {
   MECANIZADA
   MANUAL
+}
+
+enum GeoImportJobStatus {
+  PENDING
+  EXTRACTING
+  VALIDATING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+enum GeoImportItemStatus {
+  PROCESSED
+  FAILED
+}
+
+enum GeoRecalcJobStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
 }
 
 model Organization {
@@ -562,6 +592,7 @@ model ForestPatrimonyLevel4 {
   code              String                        @db.VarChar(80)
   name              String                        @db.VarChar(255)
   type              PatrimonyLevel4Type
+  fscCertificateStatus FscCertificateStatus       @default(NO)
   totalAreaHa       Decimal                       @db.Decimal(12, 2)
   plantableAreaHa   Decimal?                      @db.Decimal(12, 2)
   rotationPhase     String?                       @db.VarChar(120)
@@ -576,8 +607,94 @@ model ForestPatrimonyLevel4 {
   level5Units       ForestPatrimonyLevel5[]
   level6Assets      ForestBiologicalAssetLevel6[]
   level4Costs       Level4AdministrativeCost[]
+  geometryVersions  ForestGeometryN4[]
+  recalcJobs        ForestGeometryRecalcJob[]
 
   @@unique([level3Id, code])
+}
+
+model ForestGeometryN4 {
+  id             String                 @id @default(uuid()) @db.Uuid
+  organizationId String                 @map("organization_id") @db.Uuid
+  level2Id       String                 @map("level2_id") @db.Uuid
+  level3Id       String                 @map("level3_id") @db.Uuid
+  level4Id       String                 @map("level4_id") @db.Uuid
+  geom           Unsupported("geometry(MultiPolygon, 4326)")
+  centroid       Unsupported("geometry(Point, 4326)")?
+  superficieHa   Decimal                @default(0) @map("superficie_ha") @db.Decimal(12, 4)
+  validFrom      DateTime               @default(now()) @map("valid_from")
+  validTo        DateTime?              @map("valid_to")
+  isActive       Boolean                @default(true) @map("is_active")
+  importJobId    String?                @map("import_job_id") @db.Uuid
+  createdAt      DateTime               @default(now()) @map("created_at")
+  updatedAt      DateTime               @updatedAt @map("updated_at")
+  level4         ForestPatrimonyLevel4  @relation(fields: [level4Id], references: [id], onDelete: Restrict)
+  importJob      GeoImportJob?          @relation(fields: [importJobId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, level2Id, level3Id], map: "idx_forest_geometry_n4_hierarchy")
+  @@index([level4Id, isActive], map: "idx_forest_geometry_n4_level4_active")
+  @@map("forest_geometry_n4")
+}
+
+model GeoImportJob {
+  id               String               @id @default(uuid()) @db.Uuid
+  organizationId   String               @map("organization_id") @db.Uuid
+  status           GeoImportJobStatus   @default(PENDING)
+  fileName         String               @map("file_name") @db.VarChar(255)
+  storagePath      String               @map("storage_path")
+  totalRecords     Int                  @default(0) @map("total_records")
+  processedRecords Int                  @default(0) @map("processed_records")
+  failedRecords    Int                  @default(0) @map("failed_records")
+  metadata         Json?
+  errorMessage     String?              @map("error_message")
+  startedAt        DateTime?            @map("started_at")
+  completedAt      DateTime?            @map("completed_at")
+  createdById      String?              @map("created_by_id") @db.Uuid
+  createdAt        DateTime             @default(now()) @map("created_at")
+  updatedAt        DateTime             @updatedAt @map("updated_at")
+  items            GeoImportJobItem[]
+  geometries       ForestGeometryN4[]
+
+  @@index([organizationId, status], map: "idx_geo_import_jobs_org_status")
+  @@index([status, createdAt], map: "idx_geo_import_jobs_status_created")
+  @@map("geo_import_jobs")
+}
+
+model GeoImportJobItem {
+  id            String              @id @default(uuid()) @db.Uuid
+  jobId         String              @map("job_id") @db.Uuid
+  featureIndex  Int                 @map("feature_index")
+  status        GeoImportItemStatus
+  level2Code    String?             @map("level2_code") @db.VarChar(80)
+  level3Code    String?             @map("level3_code") @db.VarChar(80)
+  level4Code    String?             @map("level4_code") @db.VarChar(80)
+  message       String?
+  rawProperties Json?               @map("raw_properties")
+  createdAt     DateTime            @default(now()) @map("created_at")
+  job           GeoImportJob        @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@index([jobId, status], map: "idx_geo_import_job_items_job_status")
+  @@map("geo_import_job_items")
+}
+
+model ForestGeometryRecalcJob {
+  id             String            @id @default(uuid()) @db.Uuid
+  organizationId String            @map("organization_id") @db.Uuid
+  level4Id       String            @map("level4_id") @db.Uuid
+  status         GeoRecalcJobStatus @default(PENDING)
+  attempts       Int               @default(0)
+  runAfter       DateTime          @default(now()) @map("run_after")
+  lastError      String?           @map("last_error")
+  startedAt      DateTime?         @map("started_at")
+  completedAt    DateTime?         @map("completed_at")
+  createdById    String?           @map("created_by_id") @db.Uuid
+  createdAt      DateTime          @default(now()) @map("created_at")
+  updatedAt      DateTime          @updatedAt @map("updated_at")
+  level4         ForestPatrimonyLevel4 @relation(fields: [level4Id], references: [id], onDelete: Cascade)
+
+  @@index([status, runAfter], map: "idx_forest_geometry_recalc_jobs_status_run_after")
+  @@index([organizationId, level4Id], map: "idx_forest_geometry_recalc_jobs_org_level4")
+  @@map("forest_geometry_recalc_jobs")
 }
 
 model ForestPatrimonyLevel5 {
